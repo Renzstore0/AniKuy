@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>AniKuy</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="/assets/css/style.css" />
+  </head>
+  <body data-page="home">
+    <div class="app-root">
+      <!-- HEADER -->
+      <header class="app-header">
+        <button
+          class="icon-button back-button"
+          id="backButton"
+          aria-label="Kembali"
+        >
+          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"
+            />
+          </svg>
+        </button>
+
+        <div class="logo-wrap">
+          <img
+            src="https://pomf2.lain.la/f/22yuvdrk.png"
+            alt="AniKuy Logo"
+            class="logo-img"
+          />
+        </div>
+
+        <button class="icon-button" id="searchButton" aria-label="Cari Anime">
+          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L19 20.49 20.49 19 15.5 14zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
+            />
+          </svg>
+        </button>
+      </header>
+
+      <!-- MAIN -->
+      <main id="mainContent">
+        <div class="page-container">
+          <!-- Sedang Tayang -->
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">Sedang Tayang</h2>
+              <p class="section-subtitle">Episode terbaru minggu ini</p>
+            </div>
+            <button class="section-action" id="seeAllOngoingBtn" type="button">
+              Semua
+            </button>
+          </div>
+
+          <div id="ongoingGridHome" class="anime-grid"></div>
+
+          <!-- Selesai Ditayangkan (ROW HORIZONTAL) -->
+          <div class="section-header section-header-spaced">
+            <div>
+              <h2 class="section-title">Selesai Ditayangkan</h2>
+              <p class="section-subtitle">Anime yang sudah tamat</p>
+            </div>
+            <button
+              class="section-action"
+              id="seeAllCompleteBtn"
+              type="button"
+            >
+              Semua
+            </button>
+          </div>
+
+          <div id="completeRowHome" class="anime-row"></div>
+        </div>
+      </main>
+
+      <!-- BOTTOM NAV -->
+      <nav class="bottom-nav">
+        <a class="nav-item active" data-tab="home" href="/">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"
+            />
+          </svg>
+          <span class="nav-label">Home</span>
+        </a>
+        <a class="nav-item" data-tab="explore" href="/explore">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm3.94 6.06-2.12 5.3a1 1 0 0 1-.56.56l-5.3 2.12a.25.25 0 0 1-.32-.32z"
+            />
+          </svg>
+          <span class="nav-label">Explore</span>
+        </a>
+        <a class="nav-item" data-tab="my-list" href="/my-list">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 12h3v8z"
+            />
+          </svg>
+          <span class="nav-label">My List</span>
+        </a>
+        <a class="nav-item" data-tab="profile" href="/profile">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M12 12a5 5 0 1 0-5-5 5.006 5.006 0 0 0 5 5zm0 2c-4.33 0-8 2.17-8 4.5V21h16v-2.5C20 16.17 16.33 14 12 14z"
+            />
+          </svg>
+          <span class="nav-label">Profile</span>
+        </a>
+      </nav>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="/assets/js/core.js"></script>
+    <script src="/assets/js/home.js"></script>
+  </body>
+</html>
