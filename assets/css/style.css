@@ -630,6 +630,14 @@ img {
   color: #e5e7eb;
 }
 
+.profile-footer {
+  margin-top: 10px;
+  font-size: 11px;
+  text-align: center;
+  color: #9ca3af;
+  opacity: 0.8;
+}
+
 /* BOTTOM NAV */
 
 .bottom-nav {
