@@ -630,6 +630,18 @@ img {
   color: #e5e7eb;
 }
 
+.version-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.version-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
 .profile-footer {
   margin-top: 10px;
   font-size: 11px;
