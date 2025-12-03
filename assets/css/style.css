@@ -281,14 +281,10 @@ img {
   margin-top: 12px;
 }
 
-/* Rekomendasi / list horizontal */
 .anime-row {
   display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
   gap: 12px;
   overflow-x: auto;
-  overflow-y: hidden;
   padding-bottom: 4px;
 }
 
@@ -314,10 +310,9 @@ img {
     background 0.14s ease;
 }
 
-/* kartu dalam row untuk scroll */
 .anime-row .anime-card {
-  min-width: 60%;
-  max-width: 60%;
+  min-width: 32%;
+  max-width: 32%;
   flex-shrink: 0;
 }
 
@@ -869,8 +864,8 @@ img {
   }
 
   .anime-row .anime-card {
-    min-width: 32%;
-    max-width: 32%;
+    min-width: 24%;
+    max-width: 24%;
   }
 }
 
@@ -880,7 +875,7 @@ img {
   }
 
   .anime-row .anime-card {
-    min-width: 24%;
-    max-width: 24%;
+    min-width: 19%;
+    max-width: 19%;
   }
 }
