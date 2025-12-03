@@ -1,19 +1,27 @@
 // assets/js/home.js
 
-// util nama hari Indonesia
+const ongoingGridHome = document.getElementById("ongoingGridHome");
+const completeRowHome = document.getElementById("completeRowHome");
+const seeAllOngoingBtn = document.getElementById("seeAllOngoingBtn");
+const seeAllCompleteBtn = document.getElementById("seeAllCompleteBtn");
+
+// elemen "Rilis Hari Ini"
+const todaySection = document.getElementById("todaySection");
+const todayRowHome = document.getElementById("todayRowHome");
+const todaySubtitle = document.getElementById("todaySubtitle");
+const todaySeeAllBtn = document.getElementById("todaySeeAllBtn");
+
+// --- UTIL HARI ---
+
 function getTodayName() {
   const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
   return days[new Date().getDay()];
 }
 
-// LOAD RILIS HARI INI
-async function loadTodayAnime() {
-  const section = document.getElementById("todaySection");
-  const listEl = document.getElementById("todayRowHome");
-  const subtitleEl = document.getElementById("todaySubtitle");
-  const seeAllBtn = document.getElementById("todaySeeAllBtn");
+// --- RILIS HARI INI ---
 
-  if (!section || !listEl) return;
+async function loadTodayAnime() {
+  if (!todaySection || !todayRowHome) return;
 
   let json;
   try {
@@ -32,117 +40,93 @@ async function loadTodayAnime() {
   }
 
   // tampilkan section
-  section.style.display = "block";
-  if (subtitleEl) {
-    subtitleEl.textContent = `Jadwal tayang hari ${todayName}`;
+  todaySection.style.display = "block";
+  if (todaySubtitle) {
+    todaySubtitle.textContent = `Jadwal tayang hari ${todayName}`;
   }
 
-  listEl.innerHTML = "";
+  todayRowHome.innerHTML = "";
   todayObj.anime_list.forEach((a) => {
     const item = {
       title: a.anime_name,
       poster: a.poster,
       slug: a.slug,
     };
+
     const card = createAnimeCard(item, {
-      badgeTop: "Baru",
+      badgeTop: "Hari ini",
       meta: todayName,
     });
-    listEl.appendChild(card);
+
+    todayRowHome.appendChild(card);
   });
 
-  if (seeAllBtn) {
-    seeAllBtn.addEventListener("click", () => {
-      // arahkan ke Explore tab Jadwal (sesuaikan nanti kalau ada query param khusus)
+  if (todaySeeAllBtn) {
+    todaySeeAllBtn.addEventListener("click", () => {
       window.location.href = "/explore?tab=schedule";
     });
   }
 }
 
-// LOAD SEDANG TAYANG
-async function loadOngoingHome() {
-  const grid = document.getElementById("ongoingGridHome");
-  if (!grid) return;
+// --- HOME (SEDANG TAYANG & SELESAI) ---
 
-  grid.innerHTML = "";
+async function loadHome() {
+  if (!ongoingGridHome || !completeRowHome) return;
 
-  let json;
+  let data;
   try {
-    json = await apiGet("/anime/ongoing");
+    data = await apiGet("/anime/home");
   } catch {
     return;
   }
 
-  if (!json || json.status !== "success" || !Array.isArray(json.data)) return;
+  if (!data || data.status !== "success") {
+    showToast("Data home tidak valid");
+    return;
+  }
 
-  json.data.forEach((a) => {
-    const item = {
-      title: a.title || a.anime_name,
-      poster: a.poster,
-      slug: a.slug,
-    };
+  const ongoing = data.data.ongoing_anime || [];
+  const complete = data.data.complete_anime || [];
 
-    const card = createAnimeCard(item, {
+  ongoingGridHome.innerHTML = "";
+  completeRowHome.innerHTML = "";
+
+  ongoing.slice(0, 9).forEach((a) => {
+    const card = createAnimeCard(a, {
       badgeTop: "Baru",
-      badgeBottom: a.episode ? `Episode ${a.episode}` : null,
-      meta: a.day || "",
+      badgeBottom: a.current_episode || "",
+      meta: a.release_day || "",
     });
+    ongoingGridHome.appendChild(card);
+  });
 
-    grid.appendChild(card);
+  complete.slice(0, 15).forEach((a) => {
+    const card = createAnimeCard(a, {
+      rating: a.rating && a.rating !== "" ? a.rating : "N/A",
+      badgeBottom: `${a.episode_count || "?"} Eps`,
+      meta: a.last_release_date || "",
+    });
+    completeRowHome.appendChild(card);
   });
 }
 
-// LOAD SELESAI DITAYANGKAN
-async function loadCompleteHome() {
-  const row = document.getElementById("completeRowHome");
-  if (!row) return;
+// --- BUTTON "SEMUA" ---
 
-  row.innerHTML = "";
-
-  let json;
-  try {
-    json = await apiGet("/anime/complete");
-  } catch {
-    return;
-  }
-
-  if (!json || json.status !== "success" || !Array.isArray(json.data)) return;
-
-  json.data.forEach((a) => {
-    const item = {
-      title: a.title || a.anime_name,
-      poster: a.poster,
-      slug: a.slug,
-    };
-
-    const card = createAnimeCard(item, {
-      meta: a.type || "Tamat",
-    });
-
-    row.appendChild(card);
+if (seeAllOngoingBtn) {
+  seeAllOngoingBtn.addEventListener("click", () => {
+    window.location.href = "/anime/ongoing";
   });
 }
 
-// INIT HOME
+if (seeAllCompleteBtn) {
+  seeAllCompleteBtn.addEventListener("click", () => {
+    window.location.href = "/anime/complete";
+  });
+}
+
+// --- INIT ---
+
 document.addEventListener("DOMContentLoaded", () => {
-  if (document.body.dataset.page !== "home") return;
-
-  const seeAllOngoingBtn = document.getElementById("seeAllOngoingBtn");
-  const seeAllCompleteBtn = document.getElementById("seeAllCompleteBtn");
-
-  if (seeAllOngoingBtn) {
-    seeAllOngoingBtn.addEventListener("click", () => {
-      window.location.href = "/explore";
-    });
-  }
-
-  if (seeAllCompleteBtn) {
-    seeAllCompleteBtn.addEventListener("click", () => {
-      window.location.href = "/explore";
-    });
-  }
-
+  loadHome();
   loadTodayAnime();
-  loadOngoingHome();
-  loadCompleteHome();
 });
