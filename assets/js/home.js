@@ -5,11 +5,18 @@ const completeRowHome = document.getElementById("completeRowHome");
 const seeAllOngoingBtn = document.getElementById("seeAllOngoingBtn");
 const seeAllCompleteBtn = document.getElementById("seeAllCompleteBtn");
 
-// elemen "Rilis Hari Ini"
+// elemen "Rilis Hari Ini" (hero)
 const todaySection = document.getElementById("todaySection");
-const todayRowHome = document.getElementById("todayRowHome");
+const todayPoster = document.getElementById("todayPoster");
+const todayTitle = document.getElementById("todayTitle");
 const todaySubtitle = document.getElementById("todaySubtitle");
-const todaySeeAllBtn = document.getElementById("todaySeeAllBtn");
+const todayDots = document.getElementById("todayDots");
+const todayWatchBtn = document.getElementById("todayWatchBtn");
+const todayPrevBtn = document.getElementById("todayPrevBtn");
+const todayNextBtn = document.getElementById("todayNextBtn");
+
+let todayAnimeList = [];
+let todayIndex = 0;
 
 // --- UTIL HARI ---
 
@@ -18,10 +25,44 @@ function getTodayName() {
   return days[new Date().getDay()];
 }
 
-// --- RILIS HARI INI ---
+// --- RILIS HARI INI (HERO) ---
+
+function updateTodayHero() {
+  if (
+    !todaySection ||
+    !todayPoster ||
+    !todayTitle ||
+    !todayDots ||
+    !todayAnimeList.length
+  ) {
+    return;
+  }
+
+  const current = todayAnimeList[todayIndex];
+  if (!current) return;
+
+  todayPoster.src = current.poster;
+  todayPoster.alt = current.title;
+  todayTitle.textContent = current.title;
+
+  // dots
+  todayDots.innerHTML = "";
+  todayAnimeList.forEach((_, i) => {
+    const dot = document.createElement("span");
+    if (i === todayIndex) dot.classList.add("active");
+    todayDots.appendChild(dot);
+  });
+}
+
+function goToTodayDetail() {
+  const current = todayAnimeList[todayIndex];
+  if (!current || !current.slug) return;
+  const url = `/anime/detail?slug=${encodeURIComponent(current.slug)}`;
+  window.location.href = url;
+}
 
 async function loadTodayAnime() {
-  if (!todaySection || !todayRowHome) return;
+  if (!todaySection) return;
 
   let json;
   try {
@@ -39,31 +80,43 @@ async function loadTodayAnime() {
     return;
   }
 
+  // mapping ke list internal
+  todayAnimeList = todayObj.anime_list.map((a) => ({
+    title: a.anime_name,
+    poster: a.poster,
+    slug: a.slug,
+  }));
+
+  if (!todayAnimeList.length) return;
+
   // tampilkan section
   todaySection.style.display = "block";
   if (todaySubtitle) {
-    todaySubtitle.textContent = `Jadwal tayang hari ${todayName}`;
+    todaySubtitle.textContent = `Anime rilis hari ${todayName}`;
   }
 
-  todayRowHome.innerHTML = "";
-  todayObj.anime_list.forEach((a) => {
-    const item = {
-      title: a.anime_name,
-      poster: a.poster,
-      slug: a.slug,
-    };
+  todayIndex = 0;
+  updateTodayHero();
 
-    const card = createAnimeCard(item, {
-      badgeTop: "Hari ini",
-      meta: todayName,
+  // event tombol
+  if (todayWatchBtn) {
+    todayWatchBtn.addEventListener("click", goToTodayDetail);
+  }
+  if (todayPoster) {
+    todayPoster.addEventListener("click", goToTodayDetail);
+  }
+  if (todayPrevBtn) {
+    todayPrevBtn.addEventListener("click", () => {
+      if (!todayAnimeList.length) return;
+      todayIndex = (todayIndex - 1 + todayAnimeList.length) % todayAnimeList.length;
+      updateTodayHero();
     });
-
-    todayRowHome.appendChild(card);
-  });
-
-  if (todaySeeAllBtn) {
-    todaySeeAllBtn.addEventListener("click", () => {
-      window.location.href = "/explore?tab=schedule";
+  }
+  if (todayNextBtn) {
+    todayNextBtn.addEventListener("click", () => {
+      if (!todayAnimeList.length) return;
+      todayIndex = (todayIndex + 1) % todayAnimeList.length;
+      updateTodayHero();
     });
   }
 }
