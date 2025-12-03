@@ -172,6 +172,103 @@ img {
   cursor: pointer;
 }
 
+/* RILIS HARI INI HERO */
+
+.today-hero-section {
+  margin-bottom: 20px;
+}
+
+.today-hero-card {
+  position: relative;
+  margin-top: 8px;
+  padding: 12px 12px 16px;
+  border-radius: 20px;
+  background: radial-gradient(circle at top, #0b1220, #020617 80%);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.today-hero-poster-wrap {
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 16px 35px rgba(15, 23, 42, 0.9);
+}
+
+#todayPoster {
+  width: 220px;
+  max-width: 70vw;
+  height: auto;
+  display: block;
+}
+
+.today-hero-info {
+  text-align: center;
+  margin-top: 6px;
+}
+
+.today-hero-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.today-hero-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 18px;
+  background: linear-gradient(135deg, #facc15, #eab308);
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.today-hero-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(15, 23, 42, 0.9);
+  color: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.today-hero-nav.prev {
+  left: 8px;
+}
+
+.today-hero-nav.next {
+  right: 8px;
+}
+
+.today-hero-dots {
+  margin-top: 6px;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.today-hero-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.5);
+}
+
+.today-hero-dots span.active {
+  width: 18px;
+  background: #facc15;
+}
+
 /* GRID & ROW */
 
 .anime-grid {
