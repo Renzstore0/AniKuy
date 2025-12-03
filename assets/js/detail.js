@@ -47,6 +47,7 @@ async function loadAnimeDetail(slug) {
 
   const info = document.createElement("div");
   info.className = "detail-meta";
+  // Durasi DIHAPUS di sini
   info.innerHTML = `
     <div><span class="label">Rating:</span> ${d.rating || "N/A"}</div>
     <div><span class="label">Tipe:</span> ${d.type || "-"}</div>
@@ -75,11 +76,43 @@ async function loadAnimeDetail(slug) {
   });
   metaCol.appendChild(genresWrap);
 
-  // wrapper aksi (Favorit + Putar)
+  // ================== AKSI: PUTAR (kiri) + FAVORIT (kanan) ==================
+
   const actionWrap = document.createElement("div");
   actionWrap.className = "detail-actions";
 
-  // tombol favorit
+  // tombol putar (kiri)
+  const playBtn = document.createElement("button");
+  playBtn.type = "button";
+  playBtn.className = "btn-play";
+
+  const playIcon = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "svg"
+  );
+  playIcon.setAttribute("viewBox", "0 0 24 24");
+  const playPath = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "path"
+  );
+  playPath.setAttribute("d", "M8 5v14l11-7z");
+  playPath.setAttribute("fill", "currentColor");
+  playIcon.appendChild(playPath);
+
+  const playText = document.createElement("span");
+  playText.textContent = "Putar";
+
+  playBtn.appendChild(playIcon);
+  playBtn.appendChild(playText);
+
+  playBtn.addEventListener("click", () => {
+    const eps = d.episode_lists || [];
+    if (!eps.length || !eps[0].slug) return;
+    const url = `/anime/episode?slug=${encodeURIComponent(eps[0].slug)}`;
+    window.location.href = url;
+  });
+
+  // tombol favorit (kanan)
   const favBtn = document.createElement("button");
   favBtn.type = "button";
   favBtn.className = "btn-fav";
@@ -131,39 +164,9 @@ async function loadAnimeDetail(slug) {
     refreshFavBtn();
   });
 
-  // tombol putar
-  const playBtn = document.createElement("button");
-  playBtn.type = "button";
-  playBtn.className = "btn-play";
-
-  const playIcon = document.createElementNS(
-    "http://www.w3.org/2000/svg",
-    "svg"
-  );
-  playIcon.setAttribute("viewBox", "0 0 24 24");
-  const playPath = document.createElementNS(
-    "http://www.w3.org/2000/svg",
-    "path"
-  );
-  playPath.setAttribute("d", "M8 5v14l11-7z");
-  playPath.setAttribute("fill", "currentColor");
-  playIcon.appendChild(playPath);
-
-  const playText = document.createElement("span");
-  playText.textContent = "Putar";
-
-  playBtn.appendChild(playIcon);
-  playBtn.appendChild(playText);
-
-  playBtn.addEventListener("click", () => {
-    const eps = d.episode_lists || [];
-    if (!eps.length || !eps[0].slug) return;
-    const url = `/anime/episode?slug=${encodeURIComponent(eps[0].slug)}`;
-    window.location.href = url;
-  });
-
-  actionWrap.appendChild(favBtn);
+  // Play dulu, baru Favorit => Play kiri, Favorit kanan
   actionWrap.appendChild(playBtn);
+  actionWrap.appendChild(favBtn);
   metaCol.appendChild(actionWrap);
 
   animeDetailContent.appendChild(posterCol);
@@ -205,7 +208,7 @@ async function loadAnimeDetail(slug) {
     });
   }
 
-  // rekomendasi (kontainer di HTML sudah pakai class "anime-row" biar bisa digeser)
+  // rekomendasi (container di HTML pakai class "anime-row")
   if (recommendationGrid) {
     recommendationGrid.innerHTML = "";
     (d.recommendations || []).forEach((a) => {
