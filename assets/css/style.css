@@ -23,6 +23,16 @@ body {
   user-select: none;
 }
 
+/* IZINKAN SELECT / COPY / PASTE DI INPUT */
+input,
+textarea,
+.search-input {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+  user-select: text;
+}
+
 img {
   pointer-events: none;
 }
