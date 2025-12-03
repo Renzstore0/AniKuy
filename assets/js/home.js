@@ -7,9 +7,9 @@ const seeAllCompleteBtn = document.getElementById("seeAllCompleteBtn");
 
 // elemen "Rilis Hari Ini" (hero)
 const todaySection = document.getElementById("todaySection");
+const todayHeaderTitle = document.getElementById("todayHeaderTitle");
 const todayPoster = document.getElementById("todayPoster");
 const todayTitle = document.getElementById("todayTitle");
-const todaySubtitle = document.getElementById("todaySubtitle");
 const todayDots = document.getElementById("todayDots");
 const todayWatchBtn = document.getElementById("todayWatchBtn");
 const todayPrevBtn = document.getElementById("todayPrevBtn");
@@ -91,8 +91,8 @@ async function loadTodayAnime() {
 
   // tampilkan section
   todaySection.style.display = "block";
-  if (todaySubtitle) {
-    todaySubtitle.textContent = `Anime rilis hari ${todayName}`;
+  if (todayHeaderTitle) {
+    todayHeaderTitle.textContent = `Anime Rilis Hari Ini - ${todayName}`;
   }
 
   todayIndex = 0;
