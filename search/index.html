@@ -153,5 +153,40 @@
 
     <script src="/assets/js/core.js"></script>
     <script src="/assets/js/search.js"></script>
+
+    <!-- Override supaya copy/paste di input search tetap jalan -->
+    <script>
+      (function () {
+        const allowTargets = () => {
+          const input = document.getElementById("searchInput");
+          return input;
+        };
+
+        // izinkan context menu (Paste / Copy) di input
+        window.addEventListener(
+          "contextmenu",
+          function (e) {
+            const input = allowTargets();
+            if (input && (e.target === input || input.contains(e.target))) {
+              e.stopImmediatePropagation();
+              // jangan preventDefault -> biar menu sistem muncul
+            }
+          },
+          true
+        );
+
+        // izinkan start seleksi di input
+        window.addEventListener(
+          "selectstart",
+          function (e) {
+            const input = allowTargets();
+            if (input && (e.target === input || input.contains(e.target))) {
+              e.stopImmediatePropagation();
+            }
+          },
+          true
+        );
+      })();
+    </script>
   </body>
 </html>
