@@ -471,7 +471,7 @@ img {
 
 /* tombol favorit di detail */
 .btn-fav {
-  margin-top: 10px;
+  margin-top: 0;
   padding: 6px 12px;
   border-radius: 999px;
   border: none;
@@ -489,10 +489,11 @@ img {
   height: 16px;
 }
 
-/* wrapper aksi detail (Favorit + Putar) */
+/* wrapper aksi detail (Putar + Favorit) */
 .detail-actions {
   margin-top: 10px;
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   gap: 8px;
 }
@@ -514,6 +515,24 @@ img {
 .btn-play svg {
   width: 16px;
   height: 16px;
+}
+
+/* genre pill di halaman detail */
+.genre-pill {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: #e5e7eb;
+  color: #0f172a;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.45);
+  white-space: nowrap;
+}
+
+.genre-pill:active {
+  transform: translateY(1px);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.6);
 }
 
 /* synopsis rapi (span 2 kolom grid) */
