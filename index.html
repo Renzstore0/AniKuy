@@ -104,25 +104,59 @@
       <!-- MAIN -->
       <main id="mainContent">
         <div class="page-container">
-          <!-- Rilis Hari Ini -->
-          <div id="todaySection" style="display: none;">
+          <!-- Rilis Hari Ini (hero slider) -->
+          <div
+            id="todaySection"
+            class="today-hero-section"
+            style="display: none;"
+          >
             <div class="section-header">
               <div>
                 <h2 class="section-title">Rilis Hari Ini</h2>
                 <p class="section-subtitle" id="todaySubtitle">
-                  Jadwal tayang hari ini
+                  Anime rilis hari ini
                 </p>
               </div>
-              <button
-                class="section-action"
-                id="todaySeeAllBtn"
-                type="button"
-              >
-                Semua
-              </button>
             </div>
 
-            <div id="todayRowHome" class="anime-row"></div>
+            <div class="today-hero-card">
+              <button
+                class="today-hero-nav prev"
+                id="todayPrevBtn"
+                aria-label="Sebelumnya"
+              >
+                &#10094;
+              </button>
+
+              <div class="today-hero-poster-wrap">
+                <img
+                  id="todayPoster"
+                  src=""
+                  alt="Poster anime hari ini"
+                />
+              </div>
+
+              <button
+                class="today-hero-nav next"
+                id="todayNextBtn"
+                aria-label="Selanjutnya"
+              >
+                &#10095;
+              </button>
+
+              <div class="today-hero-info">
+                <h3 class="today-hero-title" id="todayTitle"></h3>
+                <button
+                  class="today-hero-btn"
+                  id="todayWatchBtn"
+                  type="button"
+                >
+                  Tonton Sekarang
+                </button>
+              </div>
+
+              <div class="today-hero-dots" id="todayDots"></div>
+            </div>
           </div>
 
           <!-- Sedang Tayang -->
