@@ -52,7 +52,6 @@ async function loadAnimeDetail(slug) {
     <div><span class="label">Tipe:</span> ${d.type || "-"}</div>
     <div><span class="label">Status:</span> ${d.status || "-"}</div>
     <div><span class="label">Episode:</span> ${d.episode_count || "?"}</div>
-    <div><span class="label">Durasi:</span> ${d.duration || "-"}</div>
     <div><span class="label">Rilis:</span> ${d.release_date || "-"}</div>
     <div><span class="label">Studio:</span> ${d.studio || "-"}</div>
   `;
@@ -75,6 +74,10 @@ async function loadAnimeDetail(slug) {
     genresWrap.appendChild(chip);
   });
   metaCol.appendChild(genresWrap);
+
+  // wrapper aksi (Favorit + Putar)
+  const actionWrap = document.createElement("div");
+  actionWrap.className = "detail-actions";
 
   // tombol favorit
   const favBtn = document.createElement("button");
@@ -101,9 +104,9 @@ async function loadAnimeDetail(slug) {
 
   function refreshFavBtn() {
     if (isFavorite(detailSlug)) {
-      favText.textContent = "Hapus dari My List";
+      favText.textContent = "Hapus dari Favorit";
     } else {
-      favText.textContent = "Tambah ke My List";
+      favText.textContent = "Favorit";
     }
   }
 
@@ -128,7 +131,40 @@ async function loadAnimeDetail(slug) {
     refreshFavBtn();
   });
 
-  metaCol.appendChild(favBtn);
+  // tombol putar
+  const playBtn = document.createElement("button");
+  playBtn.type = "button";
+  playBtn.className = "btn-play";
+
+  const playIcon = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "svg"
+  );
+  playIcon.setAttribute("viewBox", "0 0 24 24");
+  const playPath = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "path"
+  );
+  playPath.setAttribute("d", "M8 5v14l11-7z");
+  playPath.setAttribute("fill", "currentColor");
+  playIcon.appendChild(playPath);
+
+  const playText = document.createElement("span");
+  playText.textContent = "Putar";
+
+  playBtn.appendChild(playIcon);
+  playBtn.appendChild(playText);
+
+  playBtn.addEventListener("click", () => {
+    const eps = d.episode_lists || [];
+    if (!eps.length || !eps[0].slug) return;
+    const url = `/anime/episode?slug=${encodeURIComponent(eps[0].slug)}`;
+    window.location.href = url;
+  });
+
+  actionWrap.appendChild(favBtn);
+  actionWrap.appendChild(playBtn);
+  metaCol.appendChild(actionWrap);
 
   animeDetailContent.appendChild(posterCol);
   animeDetailContent.appendChild(metaCol);
@@ -169,7 +205,7 @@ async function loadAnimeDetail(slug) {
     });
   }
 
-  // rekomendasi
+  // rekomendasi (kontainer di HTML sudah pakai class "anime-row" biar bisa digeser)
   if (recommendationGrid) {
     recommendationGrid.innerHTML = "";
     (d.recommendations || []).forEach((a) => {
