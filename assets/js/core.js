@@ -28,20 +28,50 @@ function initThemeFromStorage() {
 
 function bindThemeControls(currentTheme) {
   const radios = document.querySelectorAll('input[name="theme-option"]');
+  const themeCard = document.getElementById("themeCard");
+  const themeToggle = document.getElementById("themeToggle");
+  const themeList = document.getElementById("themeList");
+  const currentLabelEl = document.getElementById("currentThemeLabel");
+
+  function labelText(theme) {
+    return theme === THEME_LIGHT
+      ? "Putih & Hitam"
+      : "Biru & Hitam (Default)";
+  }
+
+  function updateCurrentLabel(theme) {
+    if (currentLabelEl) {
+      currentLabelEl.textContent = labelText(theme);
+    }
+  }
+
+  // label awal di tombol
+  updateCurrentLabel(currentTheme);
+
+  // buka/tutup dropdown tema
+  if (themeToggle && themeCard && themeList) {
+    themeToggle.addEventListener("click", () => {
+      const isOpen = themeCard.classList.toggle("open");
+      themeToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+  }
+
   if (!radios.length) return;
+
+  // binding radio
   radios.forEach((radio) => {
     radio.checked = radio.value === currentTheme;
     radio.addEventListener("change", (e) => {
       const value = e.target.value === THEME_LIGHT ? THEME_LIGHT : THEME_DARK;
       localStorage.setItem(LS_KEY_THEME, value);
       applyTheme(value);
+      updateCurrentLabel(value);
       if (typeof showToast === "function") {
         showToast("Tema berhasil diubah");
       }
     });
   });
 }
-
 
 // TOAST
 function showToast(msg) {
