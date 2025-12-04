@@ -7,7 +7,7 @@
 
     <meta
       name="description"
-      content="Halaman profil AniKuy: lihat versi aplikasi dan info singkat seputar pengaturan akunmu."
+      content="Halaman profil AniKuy: lihat versi website dan info singkat seputar pengaturan akunmu."
     />
 
     <!-- Open Graph -->
@@ -16,7 +16,7 @@
     <meta property="og:title" content="Profil - AniKuy" />
     <meta
       property="og:description"
-      content="Halaman profil AniKuy: lihat versi aplikasi dan info singkat seputar pengaturan akunmu."
+      content="Halaman profil AniKuy: lihat versi website dan info singkat seputar pengaturan akunmu."
     />
     <meta property="og:url" content="https://anikuy.my.id/profile" />
     <meta
@@ -30,7 +30,7 @@
     <meta name="twitter:title" content="Profil - AniKuy" />
     <meta
       name="twitter:description"
-      content="Halaman profil AniKuy: lihat versi aplikasi dan info singkat seputar pengaturan akunmu."
+      content="Halaman profil AniKuy: lihat versi website dan info singkat seputar pengaturan akunmu."
     />
     <meta
       name="twitter:image"
@@ -98,43 +98,80 @@
               <span class="version-value">1.4.0</span>
             </h3>
           </div>
-          <div class="profile-card">
+
+          <!-- KARTU TEMA -->
+          <div class="profile-card theme-card" id="themeCard">
             <h3 class="section-title small-title">Tema</h3>
             <p class="profile-text">
-              Pilih tampilan yang kamu suka. Pengaturan ini berlaku untuk semua halaman.
+              Pilih tampilan yang kamu suka. Pengaturan ini berlaku untuk semua
+              halaman.
             </p>
-            <div class="theme-options">
-              <label class="theme-option">
-                <input
-                  type="radio"
-                  name="theme-option"
-                  value="dark"
-                  id="themeDark"
-                />
-                <div>
-                  <div class="theme-option-main">Biru &amp; Hitam (Default)</div>
-                  <div class="theme-option-sub">
-                    Tampilan gelap dengan aksen biru.
-                  </div>
+
+            <!-- Tombol utama -->
+            <button
+              type="button"
+              class="theme-toggle-btn"
+              id="themeToggle"
+              aria-expanded="false"
+              aria-controls="themeList"
+            >
+              <div>
+                <div class="theme-toggle-main">Change Theme</div>
+                <div
+                  class="theme-toggle-current"
+                  id="currentThemeLabel"
+                >
+                  Biru &amp; Hitam (Default)
                 </div>
-              </label>
-              <label class="theme-option">
-                <input
-                  type="radio"
-                  name="theme-option"
-                  value="light"
-                  id="themeLight"
+              </div>
+              <svg
+                class="theme-toggle-icon"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  fill="currentColor"
+                  d="M7 10l5 5 5-5H7z"
                 />
-                <div>
-                  <div class="theme-option-main">Putih &amp; Hitam</div>
-                  <div class="theme-option-sub">
-                    Tampilan terang dengan latar putih dan teks hitam.
+              </svg>
+            </button>
+
+            <!-- List tema (dropdown) -->
+            <div class="theme-list" id="themeList">
+              <div class="theme-options">
+                <label class="theme-option">
+                  <input
+                    type="radio"
+                    name="theme-option"
+                    value="dark"
+                    id="themeDark"
+                  />
+                  <div>
+                    <div class="theme-option-main">
+                      Biru &amp; Hitam (Default)
+                    </div>
+                    <div class="theme-option-sub">
+                      Tampilan gelap dengan aksen biru.
+                    </div>
                   </div>
-                </div>
-              </label>
+                </label>
+                <label class="theme-option">
+                  <input
+                    type="radio"
+                    name="theme-option"
+                    value="light"
+                    id="themeLight"
+                  />
+                  <div>
+                    <div class="theme-option-main">Putih &amp; Hitam</div>
+                    <div class="theme-option-sub">
+                      Tampilan terang dengan latar putih dan teks hitam.
+                    </div>
+                  </div>
+                </label>
+              </div>
             </div>
           </div>
-
 
           <p class="profile-footer">© 2025 AniKuy. All rights reserved.</p>
         </div>
