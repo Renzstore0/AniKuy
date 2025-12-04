@@ -5,12 +5,10 @@
     <title>AniKuy</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <meta name="robots" content="index,follow,max-image-preview:none" />
-
     <!-- Meta Description -->
     <meta
       name="description"
-      content="AniKuy adalah website buat ngatur dan ngikutin anime favoritmu: bikin list tontonan, tandai yang sudah ditonton, dan pantau episode terbaru dengan tampilan simpel dan cepat."
+      content="AniKuy adalah tempat buat ngatur dan ngikutin anime favoritmu. Lihat anime yang lagi tayang, simpan daftar favorit, dan pantau episode terbaru dengan tampilan simpel dan cepat."
     />
 
     <!-- Open Graph -->
@@ -19,7 +17,7 @@
     <meta property="og:title" content="AniKuy" />
     <meta
       property="og:description"
-      content="AniKuy adalah tempat buat ngatur dan ngikutin anime favoritmu...., dan pantau episode terbaru dengan tampilan simpel dan cepat."
+      content="AniKuy adalah tempat buat ngatur dan ngikutin anime favoritmu. Lihat anime yang lagi tayang, simpan daftar favorit, dan pantau episode terbaru dengan tampilan simpel dan cepat."
     />
     <meta property="og:url" content="https://anikuy.my.id/" />
     <meta
@@ -29,26 +27,18 @@
     <meta property="og:image:alt" content="Logo AniKuy" />
 
     <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="AniKuy" />
     <meta
       name="twitter:description"
-      content="AniKuy adalah tempat buat ngatur dan ngikutin anime favoritmu...., dan pantau episode terbaru dengan tampilan simpel dan cepat."
+      content="AniKuy adalah tempat buat ngatur dan ngikutin anime favoritmu. Lihat anime yang lagi tayang, simpan daftar favorit, dan pantau episode terbaru dengan tampilan simpel dan cepat."
     />
     <meta
       name="twitter:image"
       content="https://pomf2.lain.la/f/jut4jh8e.jpg"
     />
 
-    <!-- PWA + Theme Color -->
-    <meta name="theme-color" content="#111827" />
-    <meta name="background-color" content="#111827" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-
-    <!-- Icons -->
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+    <!-- App Name -->
     <meta name="application-name" content="AniKuy" />
     <meta name="apple-mobile-web-app-title" content="AniKuy" />
 
@@ -72,14 +62,7 @@
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": "AniKuy",
-        "alternateName": "anikuy.my.id",
-        "url": "https://anikuy.my.id/",
-        "image": "https://pomf2.lain.la/f/leu65s82.png",
-        "potentialAction": {
-          "@type": "SearchAction",
-          "target": "https://anikuy.my.id/search/?q={search_term_string}",
-          "query-input": "required name=search_term_string"
-        }
+        "url": "https://anikuy.my.id/"
       }
     </script>
   </head>
@@ -88,132 +71,154 @@
       <!-- HEADER -->
       <header class="app-header">
         <button
-          class="icon-button"
-          id="sidebarToggle"
-          aria-label="Buka navigasi utama"
+          class="icon-button back-button"
+          id="backButton"
+          aria-label="Kembali"
         >
           <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="currentColor"
-              d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"
+              d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"
             />
           </svg>
         </button>
 
-        <a href="/" class="logo">
+        <div class="logo-wrap">
           <img
-            src="https://pomf2.lain.la/f/leu65s82.png"
-            alt="Logo AniKuy"
+            src="https://pomf2.lain.la/f/22yuvdrk.png"
+            alt="AniKuy Logo"
             class="logo-img"
           />
-          <span class="logo-text">AniKuy</span>
-        </a>
+        </div>
 
         <button class="icon-button" id="searchButton" aria-label="Cari Anime">
           <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="currentColor"
-              d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16a6.471 6.471 0 0 0 4.23-1.57l.27.28v.79L20 20.49 21.49 19zM9.5 14A4.5 4.5 0 1 1 14 9.5 4.505 4.505 0 0 1 9.5 14z"
+              d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L19 20.49 20.49 19 15.5 14zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
             />
           </svg>
         </button>
       </header>
 
       <!-- MAIN -->
-      <main id="mainContent" class="app-main">
-        <!-- HERO -->
-        <section class="hero">
-          <div class="hero-text">
-            <h1 class="hero-title">Kelola &amp; Ikuti Anime Favoritmu</h1>
-            <p class="hero-subtitle">
-              Simpan daftar tontonan, tandai episode yang sudah ditonton, dan
-              jangan ketinggalan update anime yang lagi tayang.
-            </p>
-            <div class="hero-actions">
-              <a href="/explore/" class="btn btn-primary">Eksplor Anime</a>
-              <a href="/my-list/" class="btn btn-secondary">Lihat List-ku</a>
+      <main id="mainContent">
+        <div class="page-container">
+          <!-- Rilis Hari Ini (hero slider) -->
+          <div
+            id="todaySection"
+            class="today-hero-section"
+            style="display: none;"
+          >
+            <div class="section-header">
+              <div>
+                <h2 class="section-title" id="todayHeaderTitle">
+                  Anime Rilis Hari Ini
+                </h2>
+              </div>
+            </div>
+
+            <div class="today-hero-card">
+              <button
+                class="today-hero-nav prev"
+                id="todayPrevBtn"
+                aria-label="Sebelumnya"
+              >
+                &#10094;
+              </button>
+
+              <div class="today-hero-poster-wrap">
+                <img
+                  id="todayPoster"
+                  src=""
+                  alt="Poster anime hari ini"
+                />
+              </div>
+
+              <button
+                class="today-hero-nav next"
+                id="todayNextBtn"
+                aria-label="Selanjutnya"
+              >
+                &#10095;
+              </button>
+
+              <div class="today-hero-info">
+                <h3 class="today-hero-title" id="todayTitle"></h3>
+                <button
+                  class="today-hero-btn"
+                  id="todayWatchBtn"
+                  type="button"
+                >
+                  Tonton Sekarang
+                </button>
+              </div>
+
+              <div class="today-hero-dots" id="todayDots"></div>
             </div>
           </div>
-          <div class="hero-illustration">
-            <div class="hero-card-grid">
-              <div class="hero-card shimmer"></div>
-              <div class="hero-card shimmer"></div>
-              <div class="hero-card shimmer"></div>
+
+          <!-- Sedang Tayang -->
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">Sedang Tayang</h2>
             </div>
+            <button class="section-action" id="seeAllOngoingBtn" type="button">
+              Semua
+            </button>
           </div>
-        </section>
 
-        <!-- SECTION: Sedang Tayang -->
-        <section class="section">
-          <div class="section-header">
-            <h2 class="section-title">Sedang Tayang</h2>
-            <a href="/anime/ongoing.html" class="section-link">
-              Lihat Semua
-            </a>
-          </div>
-          <div id="ongoingGrid" class="anime-grid">
-            <!-- diisi via JS -->
-          </div>
-        </section>
+          <div id="ongoingGridHome" class="anime-grid"></div>
 
-        <!-- SECTION: Episode Terbaru -->
-        <section class="section">
-          <div class="section-header">
-            <h2 class="section-title">Episode Terbaru</h2>
-            <a href="/anime/episode.html" class="section-link">
-              Lihat Semua
-            </a>
+          <!-- Selesai Ditayangkan (ROW HORIZONTAL) -->
+          <div class="section-header section-header-spaced">
+            <div>
+              <h2 class="section-title">Selesai Ditayangkan</h2>
+            </div>
+            <button
+              class="section-action"
+              id="seeAllCompleteBtn"
+              type="button"
+            >
+              Semua
+            </button>
           </div>
-          <div id="latestEpisodeGrid" class="anime-grid">
-            <!-- diisi via JS -->
-          </div>
-        </section>
 
-        <!-- SECTION: Populer -->
-        <section class="section">
-          <div class="section-header">
-            <h2 class="section-title">Populer Minggu Ini</h2>
-            <a href="/explore/" class="section-link">
-              Lihat Semua
-            </a>
-          </div>
-          <div id="popularGrid" class="anime-grid">
-            <!-- diisi via JS -->
-          </div>
-        </section>
+          <div id="completeRowHome" class="anime-row"></div>
+        </div>
       </main>
 
       <!-- BOTTOM NAV -->
       <nav class="bottom-nav">
-        <a href="/" class="bottom-nav-item active" data-nav="home">
-          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              fill="currentColor"
-              d="M12 3l9 8h-3v9h-5v-6H11v6H6v-9H3z"
-            />
-          </svg>
-          <span class="nav-label">Home</span>
-        </a>
-        <a href="/explore/" class="bottom-nav-item" data-nav="explore">
-          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+        <a class="nav-item active" data-tab="home" href="/">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="currentColor"
               d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"
             />
           </svg>
-          <span class="nav-label">Explore</span>
+          <span class="nav-label">Home</span>
         </a>
-        <a href="/my-list/" class="bottom-nav-item" data-nav="my-list">
-          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+        <a class="nav-item" data-tab="explore" href="/explore">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="currentColor"
-              d="M7 5h14v2H7zm0 4h14v2H7zm0 4h10v2H7zM3 5h2v2H3zm0 4h2v2H3zm0 4h2v2H3z"
+              d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm3.94 6.06-2.12 5.3a1 1 0 0 1-.56.56l-5.3 2.12a.25.25 0 0 1-.32-.32z"
+            />
+          </svg>
+          <span class="nav-label">Explore</span>
+        </a>
+        <a class="nav-item" data-tab="my-list" href="/my-list">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 12h3v8z"
             />
           </svg>
           <span class="nav-label">My List</span>
         </a>
-        <a href="/profile/" class="bottom-nav-item" data-nav="profile">
-          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+        <a class="nav-item" data-tab="profile" href="/profile">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="currentColor"
               d="M12 12a5 5 0 1 0-5-5 5.006 5.006 0 0 0 5 5zm0 2c-4.33 0-8 2.17-8 4.5V21h16v-2.5C20 16.17 16.33 14 12 14z"
