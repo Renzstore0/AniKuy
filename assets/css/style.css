@@ -1070,3 +1070,92 @@ img {
     max-width: 19%;
   }
 }
+
+
+/* THEME SYSTEM */
+body.theme-dark {
+  background: #020617;
+  color: #e5e7eb;
+}
+
+body.theme-light {
+  background: #f9fafb;
+  color: #111827;
+}
+
+/* Light theme overrides */
+body.theme-light .app-header {
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+body.theme-light .bottom-nav {
+  background: #ffffff;
+  border-top-color: rgba(148, 163, 184, 0.6);
+}
+
+body.theme-light .nav-item {
+  color: #4b5563;
+}
+
+body.theme-light .nav-item.active {
+  color: #1d4ed8;
+}
+
+body.theme-light .toast {
+  background: #111827;
+  color: #f9fafb;
+}
+
+body.theme-light .profile-card {
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
+}
+
+body.theme-light .version-value {
+  color: #1f2937;
+}
+
+body.theme-light .profile-footer {
+  color: #6b7280;
+}
+
+/* Theme options (profile) */
+.theme-options {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.theme-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.9);
+  cursor: pointer;
+}
+
+.theme-option input {
+  margin-top: 4px;
+}
+
+.theme-option-main {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.theme-option-sub {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+body.theme-light .theme-option {
+  background: #f3f4f6;
+}
+
+body.theme-light .theme-option-sub {
+  color: #6b7280;
+}
