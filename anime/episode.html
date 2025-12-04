@@ -44,6 +44,7 @@
         <div class="page-container">
           <h2 id="episodeTitle" class="page-title">Episode</h2>
 
+          <!-- PLAYER -->
           <div class="player-wrapper">
             <iframe
               id="episodePlayer"
@@ -54,6 +55,97 @@
             ></iframe>
           </div>
 
+          <!-- TOOLBAR: SERVER / QUALITY / DOWNLOAD / SHARE -->
+          <div class="player-toolbar">
+            <!-- Server -->
+            <button id="serverBtn" class="toolbar-btn" type="button">
+              <span class="toolbar-icon-wrap">
+                <svg
+                  class="toolbar-icon"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M4 5h16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm0 8h16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2zm2 3v2h2v-2zM6 8v2h2V8z"
+                  />
+                </svg>
+              </span>
+              <span class="toolbar-text">
+                <span class="toolbar-text-main">Server</span>
+                <span class="toolbar-text-sub" id="serverLabel">Auto</span>
+              </span>
+            </button>
+
+            <!-- Kualitas -->
+            <button id="qualityBtn" class="toolbar-btn" type="button">
+              <span class="toolbar-icon-wrap">
+                <svg
+                  class="toolbar-icon"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M12 4a8 8 0 1 0 8 8 8.01 8.01 0 0 0-8-8zm3.46 9.88-1.42 1.42L12 13.41l-2.05 1.89-1.41-1.42L10.59 12 8.54 9.88l1.41-1.42L12 10.59l2.04-2.13 1.42 1.42L13.41 12z"
+                  />
+                </svg>
+              </span>
+              <span class="toolbar-text">
+                <span class="toolbar-text-main">Kualitas</span>
+                <span class="toolbar-text-sub" id="qualityLabel">Auto</span>
+              </span>
+            </button>
+
+            <!-- Unduh -->
+            <button id="downloadBtn" class="toolbar-btn" type="button">
+              <span class="toolbar-icon-wrap">
+                <svg
+                  class="toolbar-icon"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M5 20h14v-2H5v2zm7-16-5 5h3v4h4v-4h3l-5-5z"
+                  />
+                </svg>
+              </span>
+              <span class="toolbar-text">
+                <span class="toolbar-text-main">Unduh</span>
+                <span class="toolbar-text-sub">Pilih kualitas</span>
+              </span>
+            </button>
+
+            <!-- Bagikan -->
+            <button id="shareBtn" class="toolbar-btn" type="button">
+              <span class="toolbar-icon-wrap">
+                <svg
+                  class="toolbar-icon"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path
+                    fill="currentColor"
+                    d="M18 16a3 3 0 0 0-2.24 1.03L9.91 13.7a3.09 3.09 0 0 0 0-1.4l5.85-3.33A3 3 0 1 0 15 7a2.94 2.94 0 0 0 .07.64L9.22 11a3 3 0 1 0 0 4l5.85 3.36A3 3 0 1 0 18 16z"
+                  />
+                </svg>
+              </span>
+              <span class="toolbar-text">
+                <span class="toolbar-text-main">Bagikan</span>
+                <span class="toolbar-text-sub">Link episode</span>
+              </span>
+            </button>
+          </div>
+
+          <!-- DROPDOWN PANELS -->
+          <div id="playerDropdownContainer" class="dropdown-container">
+            <div id="serverMenu" class="dropdown-panel"></div>
+            <div id="qualityMenu" class="dropdown-panel"></div>
+            <div id="downloadMenu" class="dropdown-panel"></div>
+          </div>
+
+          <!-- PREV / NEXT -->
           <div class="episode-nav">
             <button id="prevEpisodeBtn" class="btn-outline" type="button">
               &larr; Episode Sebelumnya
@@ -63,6 +155,15 @@
             </button>
           </div>
 
+          <!-- EPISODE SELECTOR -->
+          <section class="episode-selector">
+            <div class="episode-selector-header">
+              <h3 class="section-title small-title">Episode</h3>
+            </div>
+            <div id="episodeChipList" class="episode-chip-list"></div>
+          </section>
+
+          <!-- SERVER LIST (LIST ASLI DARI API, OPSIONAL) -->
           <h3 class="section-title small-title">Server Streaming</h3>
           <div id="serverList" class="server-list"></div>
         </div>
