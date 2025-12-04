@@ -20,9 +20,6 @@ const serverMenu = document.getElementById("serverMenu");
 const qualityMenu = document.getElementById("qualityMenu");
 const downloadMenu = document.getElementById("downloadMenu");
 
-// episode chips
-const episodeChipList = document.getElementById("episodeChipList");
-
 let currentEpisodeSlug = null;
 let currentAnimeSlug = null;
 let prevSlug = null;
@@ -290,46 +287,6 @@ function renderDownloadMenu() {
   }
 }
 
-// episode chips (kalau backend ada list-nya)
-function renderEpisodeChips(d) {
-  if (!episodeChipList) return;
-
-  const episodes =
-    d.episode_list ||
-    d.episodes ||
-    (d.anime && (d.anime.episodes || d.anime.episode_list)) ||
-    [];
-
-  episodeChipList.innerHTML = "";
-
-  if (!episodes || !episodes.length) {
-    episodeChipList.parentElement.style.display = "none";
-    return;
-  }
-
-  episodeChipList.parentElement.style.display = "";
-
-  episodes.forEach((ep) => {
-    if (!ep || !ep.slug) return;
-    const num = ep.episode || ep.number || ep.name || "?";
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "episode-chip";
-    if (ep.slug === currentEpisodeSlug) {
-      btn.classList.add("active");
-    }
-    btn.textContent = num;
-
-    btn.addEventListener("click", () => {
-      if (ep.slug === currentEpisodeSlug) return;
-      loadEpisode(ep.slug);
-    });
-
-    episodeChipList.appendChild(btn);
-  });
-}
-
 // BAGIKAN: share link episode saat ini
 function handleShare() {
   const slug = currentEpisodeSlug;
@@ -416,7 +373,6 @@ async function loadEpisode(slug) {
   renderServerMenu();
   renderQualityMenu();
   renderDownloadMenu();
-  renderEpisodeChips(d);
 
   // update slug di URL (replaceState)
   const params = new URLSearchParams(window.location.search);
