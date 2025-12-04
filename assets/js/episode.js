@@ -29,12 +29,12 @@ let prevSlug = null;
 let nextSlug = null;
 
 // data toolbar
-let streamGroups = [];      // [{quality, servers:[]}]
-let downloadData = null;    // d.download_urls
+let streamGroups = []; // [{ quality, servers: [] }]
+let downloadData = null; // d.download_urls
 let selectedQuality = null;
 let selectedServerName = null;
 
-// ---- UTIL ----
+// ---------------- UTIL ----------------
 
 // normalisasi group stream: pastikan ada field quality
 function normalizeStreamGroups(raw) {
@@ -43,7 +43,6 @@ function normalizeStreamGroups(raw) {
     let quality = g.quality || "";
 
     if (!quality && servers.length) {
-      // coba ambil dari id/label, contoh: "/anime/server/...-360p"
       const sample =
         servers[0].quality || servers[0].label || servers[0].id || "";
       const m = String(sample).match(/(\d{3,4}p)/i);
@@ -57,6 +56,27 @@ function normalizeStreamGroups(raw) {
       servers,
     };
   });
+}
+
+// resolve url server (bisa langsung url, atau lewat endpoint id)
+async function resolveServerUrl(server) {
+  if (!server) return null;
+  if (server.url) return server.url;
+  if (server.embed_url) return server.embed_url;
+  if (server.link) return server.link;
+
+  if (server.id) {
+    try {
+      const res = await apiGet(server.id); // contoh: "/anime/server/188041-0-360p"
+      if (!res) return null;
+      const d = res.data || res;
+      return d.stream_url || d.url || d.embed_url || null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  return null;
 }
 
 // tutup semua dropdown
@@ -76,7 +96,7 @@ document.addEventListener("click", (e) => {
 });
 
 // set stream berdasarkan quality + server
-function setStreamSource(targetQuality, targetServerName) {
+async function setStreamSource(targetQuality, targetServerName) {
   if (!episodePlayer) return;
   if (!streamGroups || !streamGroups.length) return;
 
@@ -86,7 +106,7 @@ function setStreamSource(targetQuality, targetServerName) {
     (streamGroups[0] && streamGroups[0].quality) ||
     null;
 
-  let group =
+  const group =
     streamGroups.find((g) => g.quality === qualityToUse) || streamGroups[0];
 
   if (!group) return;
@@ -103,9 +123,11 @@ function setStreamSource(targetQuality, targetServerName) {
 
   if (!server) return;
 
-  // backend bisa pakai field url, atau id (relative path)
-  const url = server.url || server.link || server.id;
-  if (!url) return;
+  const url = await resolveServerUrl(server);
+  if (!url) {
+    showToast("Gagal memuat server");
+    return;
+  }
 
   episodePlayer.src = url;
 
@@ -117,17 +139,20 @@ function setStreamSource(targetQuality, targetServerName) {
 // update label tombol
 function updateToolbarLabels() {
   if (serverLabelEl) {
-    serverLabelEl.textContent =
-      (selectedServerName &&
-        (selectedQuality ? `${selectedServerName} ${selectedQuality}` : selectedServerName)) ||
-      "Auto";
+    if (selectedServerName) {
+      serverLabelEl.textContent = selectedQuality
+        ? `${selectedServerName} ${selectedQuality}`
+        : selectedServerName;
+    } else {
+      serverLabelEl.textContent = "Auto";
+    }
   }
   if (qualityLabelEl) {
     qualityLabelEl.textContent = selectedQuality || "Auto";
   }
 }
 
-// ---- DROPDOWN RENDER ----
+// ---------------- DROPDOWN RENDER ----------------
 
 // semua server (nama + kualitas)
 function renderServerMenu() {
@@ -256,7 +281,8 @@ function renderDownloadMenu() {
     });
   });
 
-  if (!downloadMenu.children.length) {
+  if (downloadMenu.children.length === 1) {
+    // cuma title
     const empty = document.createElement("div");
     empty.className = "dropdown-empty";
     empty.textContent = "Link unduhan belum tersedia";
@@ -310,7 +336,10 @@ function handleShare() {
   const baseUrl = `${window.location.origin}${window.location.pathname}`;
   const shareUrl = slug ? `${baseUrl}?slug=${slug}` : window.location.href;
 
-  const title = document.title || episodeTitleEl?.textContent || "AniKuy";
+  const title =
+    document.title ||
+    (episodeTitleEl && episodeTitleEl.textContent) ||
+    "AniKuy";
   const text = "Tonton episode anime di AniKuy";
 
   if (navigator.share) {
@@ -335,7 +364,7 @@ function handleShare() {
   }
 }
 
-// ---- LOAD EPISODE ----
+// ---------------- LOAD EPISODE ----------------
 
 async function loadEpisode(slug) {
   if (!episodePlayer || !episodeTitleEl) return;
@@ -369,7 +398,7 @@ async function loadEpisode(slug) {
   streamGroups = normalizeStreamGroups(d.stream_servers || []);
   downloadData = d.download_urls || null;
 
-  // set default quality + server
+  // set default quality + server (tanpa fetch lagi)
   if (streamGroups.length && streamGroups[0].servers.length) {
     selectedQuality = streamGroups[0].quality || null;
     selectedServerName = streamGroups[0].servers[0].name || null;
@@ -396,7 +425,7 @@ async function loadEpisode(slug) {
   window.history.replaceState({}, "", newUrl);
 }
 
-// ---- EVENT LISTENER ----
+// ---------------- EVENT LISTENER ----------------
 
 // prev/next episode
 if (prevEpisodeBtn) {
