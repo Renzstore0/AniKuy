@@ -2,6 +2,46 @@
 
 const BASE_URL = "https://www.sankavollerei.com";
 const LS_KEY_FAVORITES = "anikuy_favorites";
+const LS_KEY_THEME = "anikuy_theme";
+const THEME_DARK = "dark";
+const THEME_LIGHT = "light";
+
+function applyTheme(theme) {
+  const body = document.body;
+  if (!body) return;
+  body.classList.remove("theme-dark", "theme-light");
+  const t = theme === THEME_LIGHT ? THEME_LIGHT : THEME_DARK;
+  body.classList.add(t === THEME_LIGHT ? "theme-light" : "theme-dark");
+}
+
+function initThemeFromStorage() {
+  try {
+    const saved = localStorage.getItem(LS_KEY_THEME);
+    const theme = saved === THEME_LIGHT ? THEME_LIGHT : THEME_DARK;
+    applyTheme(theme);
+    return theme;
+  } catch (e) {
+    applyTheme(THEME_DARK);
+    return THEME_DARK;
+  }
+}
+
+function bindThemeControls(currentTheme) {
+  const radios = document.querySelectorAll('input[name="theme-option"]');
+  if (!radios.length) return;
+  radios.forEach((radio) => {
+    radio.checked = radio.value === currentTheme;
+    radio.addEventListener("change", (e) => {
+      const value = e.target.value === THEME_LIGHT ? THEME_LIGHT : THEME_DARK;
+      localStorage.setItem(LS_KEY_THEME, value);
+      applyTheme(value);
+      if (typeof showToast === "function") {
+        showToast("Tema berhasil diubah");
+      }
+    });
+  });
+}
+
 
 // TOAST
 function showToast(msg) {
@@ -138,6 +178,9 @@ function createAnimeCard(item, opts = {}) {
 
 // GLOBAL UI (back button, search, navbar scroll, anti copy)
 document.addEventListener("DOMContentLoaded", () => {
+  const currentTheme = initThemeFromStorage();
+  bindThemeControls(currentTheme);
+
   const backButton = document.getElementById("backButton");
   const searchButton = document.getElementById("searchButton");
   const pageType = document.body.dataset.page || "";
