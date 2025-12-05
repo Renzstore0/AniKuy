@@ -99,5 +99,29 @@
 
     <script src="/assets/js/core.js"></script>
     <script src="/assets/js/detail.js"></script>
+
+    <!-- Ubah judul episode jadi "Episode 1", "Episode 2", ... -->
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const list = document.getElementById("episodeList");
+        if (!list) return;
+
+        const renameEpisodeItems = () => {
+          const items = list.querySelectorAll(".episode-item");
+          items.forEach((item, index) => {
+            const titleSpan = item.querySelector("span");
+            if (!titleSpan) return;
+            titleSpan.textContent = "Episode " + (index + 1);
+          });
+        };
+
+        // Kalau episode sudah ada
+        renameEpisodeItems();
+
+        // Kalau episode diisi belakangan oleh JS lain
+        const observer = new MutationObserver(renameEpisodeItems);
+        observer.observe(list, { childList: true, subtree: true });
+      });
+    </script>
   </body>
 </html>
