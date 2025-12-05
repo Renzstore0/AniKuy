@@ -520,52 +520,56 @@ img {
   gap: 6px;
 }
 
-/* tombol favorit di detail */
-.btn-fav {
-  margin-top: 0;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  background: linear-gradient(135deg, #1e40af, #22d3ee);
-  color: #e5e7eb;
-}
-
-.btn-fav svg {
-  width: 16px;
-  height: 16px;
-}
-
 /* wrapper aksi detail (Putar + Favorit) */
 .detail-actions {
   margin-top: 10px;
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-wrap: nowrap;
+  gap: 10px;
 }
 
 /* tombol Putar */
 .btn-play {
-  padding: 6px 12px;
+  flex: 1 1 0;
+  padding: 10px 16px;
   border-radius: 999px;
   border: none;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 13px;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
   cursor: pointer;
   background: linear-gradient(135deg, #facc15, #eab308);
   color: #1f2937;
 }
 
 .btn-play svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
+}
+
+/* tombol favorit di detail */
+.btn-fav {
+  flex: 1 1 0;
+  margin-top: 0;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #1e40af, #22d3ee);
+  color: #e5e7eb;
+}
+
+.btn-fav svg {
+  width: 18px;
+  height: 18px;
 }
 
 /* genre pill di halaman detail */
@@ -1349,7 +1353,23 @@ body.theme-light .episode-item span {
   color: inherit;
 }
 
-body.theme-light .synopsis {
+/* Light theme: detail card */
+body.theme-light .anime-detail {
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+  color: #111827;
+}
+
+body.theme-light .anime-detail::before {
+  background: radial-gradient(
+    circle at top,
+    rgba(59, 130, 246, 0.18),
+    transparent 60%
+  );
+  opacity: 1;
+}
+
+body.theme-light .detail-main-title {
   color: #111827;
 }
 
@@ -1363,4 +1383,14 @@ body.theme-light .detail-meta {
 
 body.theme-light .detail-meta span.label {
   color: #6b7280;
+}
+
+body.theme-light .synopsis {
+  color: #111827;
+}
+
+body.theme-light .genre-pill {
+  background: #f3f4f6;
+  border-color: rgba(156, 163, 175, 0.8);
+  color: #1f2937;
 }
