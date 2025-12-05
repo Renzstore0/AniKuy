@@ -21,12 +21,16 @@ async function loadAnimeDetail(slug) {
   const d = json.data;
   const detailSlug = d.slug || slug;
 
-  // wrapper kosong dulu
   animeDetailContent.innerHTML = "";
 
   // ================== KARTU UTAMA (DALAM BOX) ==================
   const card = document.createElement("div");
   card.className = "anime-detail-card";
+
+  // set poster blur sebagai background kartu (via CSS var)
+  if (d.poster) {
+    card.style.setProperty("--detail-bg", `url("${d.poster}")`);
+  }
 
   // poster
   const posterCol = document.createElement("div");
@@ -83,7 +87,7 @@ async function loadAnimeDetail(slug) {
   card.appendChild(posterCol);
   card.appendChild(metaCol);
 
-  // tempel kartu ke wrapper
+  // tempel kartu ke wrapper utama
   animeDetailContent.appendChild(card);
 
   // ================== TOMBOL PLAY + FAVORIT (DI LUAR BOX) ==================
@@ -176,10 +180,9 @@ async function loadAnimeDetail(slug) {
   actionWrap.appendChild(playBtn);
   actionWrap.appendChild(favBtn);
 
-  // tempel tombol di luar kartu
   animeDetailContent.appendChild(actionWrap);
 
-  // ================== SINOPSIS (DI LUAR BOX JUGA) ==================
+  // ================== SINOPSIS (DI LUAR BOX) ==================
   const syn = document.createElement("p");
   syn.className = "synopsis";
   let cleanSynopsis = (d.synopsis || "")
@@ -201,7 +204,6 @@ async function loadAnimeDetail(slug) {
 
       const left = document.createElement("span");
       left.textContent = `Episode ${index + 1}`;
-
       item.appendChild(left);
 
       item.addEventListener("click", () => {
@@ -223,6 +225,7 @@ async function loadAnimeDetail(slug) {
     });
   }
 
+  // judul tab
   document.title = `AniKuy - ${d.title}`;
 }
 
