@@ -344,6 +344,14 @@ async function loadEpisode(slug) {
   prevSlug = d.has_previous_episode ? d.previous_episode.slug : null;
   nextSlug = d.has_next_episode ? d.next_episode.slug : null;
 
+  // set target custom untuk tombol back → selalu balik ke halaman detail anime
+  const backButton = document.getElementById("backButton");
+  if (backButton && currentAnimeSlug) {
+    backButton.dataset.href = `/anime/detail?slug=${encodeURIComponent(
+      currentAnimeSlug
+    )}`;
+  }
+
   episodeTitleEl.textContent = d.episode || "Episode";
 
   // stream default
