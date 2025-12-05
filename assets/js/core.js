@@ -223,7 +223,12 @@ document.addEventListener("DOMContentLoaded", () => {
       : "visible";
 
     backButton.addEventListener("click", () => {
-      window.history.back();
+      const customHref = backButton.dataset.href;
+      if (customHref) {
+        window.location.href = customHref;
+      } else {
+        window.history.back();
+      }
     });
   }
 
