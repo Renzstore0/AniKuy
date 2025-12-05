@@ -444,7 +444,7 @@ img {
   margin-bottom: 14px;
 }
 
-/* kartu utama dengan blur poster */
+/* kartu utama dengan poster blur */
 .anime-detail-card {
   position: relative;
   padding: 12px 12px 14px;
@@ -459,20 +459,20 @@ img {
   overflow: hidden;
 }
 
-/* poster blur */
+/* poster blur (tidak terlalu blur) */
 .anime-detail-card::before {
   content: "";
   position: absolute;
-  inset: -12%;
+  inset: -10%;
   background-image: var(--detail-bg);
   background-size: cover;
   background-position: center;
-  filter: blur(18px);
-  transform: scale(1.08);
+  filter: blur(10px);
+  transform: scale(1.05);
   z-index: 0;
 }
 
-/* overlay gelap supaya teks kebaca */
+/* overlay supaya teks kebaca di dark theme */
 .anime-detail-card::after {
   content: "";
   position: absolute;
@@ -482,7 +482,7 @@ img {
     rgba(15, 23, 42, 0.9),
     rgba(15, 23, 42, 0.98)
   );
-  opacity: 0.96;
+  opacity: 0.9;
   z-index: 0;
 }
 
@@ -1375,13 +1375,14 @@ body.theme-light .anime-detail-card {
   color: #111827;
 }
 
+/* overlay di light theme dibuat terang */
 body.theme-light .anime-detail-card::after {
   background: radial-gradient(
     circle at top left,
     rgba(255, 255, 255, 0.95),
     rgba(249, 250, 251, 0.98)
   );
-  opacity: 0.98;
+  opacity: 0.96;
 }
 
 body.theme-light .detail-main-title {
