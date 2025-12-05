@@ -1,13 +1,10 @@
 // assets/js/detail.js
 
-const animeDetailContent = document.getElementById("animeDetailContent");
-const episodeList = document.getElementById("episodeList");
-const recommendationGrid = document.getElementById("recommendationGrid");
-
 const detailParams = new URLSearchParams(window.location.search);
 const detailSlugFromUrl = detailParams.get("slug");
 
-async function loadAnimeDetail(slug) {
+async function loadAnimeDetail(slug, refs) {
+  const { animeDetailContent, episodeList, recommendationGrid } = refs;
   if (!animeDetailContent) return;
 
   let json;
@@ -47,7 +44,6 @@ async function loadAnimeDetail(slug) {
 
   const info = document.createElement("div");
   info.className = "detail-meta";
-  // Durasi DIHAPUS di sini
   info.innerHTML = `
     <div><span class="label">Rating:</span> ${d.rating || "N/A"}</div>
     <div><span class="label">Tipe:</span> ${d.type || "-"}</div>
@@ -76,12 +72,11 @@ async function loadAnimeDetail(slug) {
   });
   metaCol.appendChild(genresWrap);
 
-  // ================== AKSI: PUTAR (kiri) + FAVORIT (kanan) ==================
-
+  // AKSI: PUTAR + FAVORIT
   const actionWrap = document.createElement("div");
   actionWrap.className = "detail-actions";
 
-  // tombol putar (kiri)
+  // tombol putar
   const playBtn = document.createElement("button");
   playBtn.type = "button";
   playBtn.className = "btn-play";
@@ -112,7 +107,7 @@ async function loadAnimeDetail(slug) {
     window.location.href = url;
   });
 
-  // tombol favorit (kanan)
+  // tombol favorit
   const favBtn = document.createElement("button");
   favBtn.type = "button";
   favBtn.className = "btn-fav";
@@ -164,7 +159,6 @@ async function loadAnimeDetail(slug) {
     refreshFavBtn();
   });
 
-  // Play dulu, baru Favorit => Play kiri, Favorit kanan
   actionWrap.appendChild(playBtn);
   actionWrap.appendChild(favBtn);
   metaCol.appendChild(actionWrap);
@@ -185,16 +179,20 @@ async function loadAnimeDetail(slug) {
   syn.textContent = cleanSynopsis;
   animeDetailContent.appendChild(syn);
 
-  // episode list
+  // EPISODE LIST
   if (episodeList) {
     episodeList.innerHTML = "";
-    (d.episode_lists || []).forEach((ep) => {
+    (d.episode_lists || []).forEach((ep, index) => {
       const item = document.createElement("div");
       item.className = "episode-item";
+
       const left = document.createElement("span");
-      left.textContent = ep.episode;
+      // judul disederhanakan: Episode 1, Episode 2, ...
+      left.textContent = `Episode ${index + 1}`;
+
       const right = document.createElement("span");
-      right.textContent = `Ep ${ep.episode_number}`;
+      right.textContent = `Ep ${ep.episode_number || index + 1}`;
+
       item.appendChild(left);
       item.appendChild(right);
 
@@ -208,7 +206,7 @@ async function loadAnimeDetail(slug) {
     });
   }
 
-  // rekomendasi (container di HTML pakai class "anime-row")
+  // REKOMENDASI
   if (recommendationGrid) {
     recommendationGrid.innerHTML = "";
     (d.recommendations || []).forEach((a) => {
@@ -222,9 +220,18 @@ async function loadAnimeDetail(slug) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  const animeDetailContent = document.getElementById("animeDetailContent");
+  const episodeList = document.getElementById("episodeList");
+  const recommendationGrid = document.getElementById("recommendationGrid");
+
   if (!detailSlugFromUrl) {
     showToast("Slug anime tidak ditemukan");
     return;
   }
-  loadAnimeDetail(detailSlugFromUrl);
+
+  loadAnimeDetail(detailSlugFromUrl, {
+    animeDetailContent,
+    episodeList,
+    recommendationGrid,
+  });
 });
