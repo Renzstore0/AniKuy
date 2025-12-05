@@ -440,17 +440,45 @@ img {
   color: #9ca3af;
 }
 
-/* DETAIL ANIME */
+/* DETAIL ANIME
+   Dibikin seperti kartu horizontal (mirip contoh High School DxD) */
 
 .anime-detail {
+  position: relative;
+  margin-bottom: 14px;
+  padding: 12px 12px 14px;
+  border-radius: 22px;
+  background: radial-gradient(circle at top left, #0f172a, #020617 70%);
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.96);
   display: grid;
   grid-template-columns: 110px 1fr;
-  gap: 12px;
-  margin-bottom: 10px;
+  column-gap: 14px;
+  row-gap: 6px;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* efek glow halus di belakang konten */
+.anime-detail::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: radial-gradient(
+    circle at top,
+    rgba(148, 163, 184, 0.25),
+    transparent 60%
+  );
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.anime-detail > * {
+  position: relative;
+  z-index: 1;
 }
 
 .detail-poster {
-  border-radius: 16px;
+  border-radius: 18px;
   overflow: hidden;
   box-shadow: 0 16px 35px rgba(15, 23, 42, 0.9);
   aspect-ratio: 2 / 3;
@@ -463,28 +491,33 @@ img {
 }
 
 .detail-main-title {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
 .detail-sub {
-  font-size: 12px;
-  color: #9ca3af;
-  margin-top: 2px;
+  font-size: 13px;
+  color: #cbd5f5;
+  margin-top: 3px;
 }
 
 .detail-meta {
   margin-top: 8px;
   font-size: 12px;
-  color: #cbd5f5;
+  color: #e5e7eb;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
 }
 
 .detail-meta span.label {
-  color: #64748b;
+  color: #9ca3af;
+  font-weight: 500;
 }
 
 .detail-genres {
-  margin-top: 6px;
+  margin-top: 10px;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
