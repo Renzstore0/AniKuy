@@ -179,7 +179,7 @@ async function loadAnimeDetail(slug, refs) {
   syn.textContent = cleanSynopsis;
   animeDetailContent.appendChild(syn);
 
-  // EPISODE LIST
+  // EPISODE LIST – hanya "Episode 1", "Episode 2", ...
   if (episodeList) {
     episodeList.innerHTML = "";
     (d.episode_lists || []).forEach((ep, index) => {
@@ -187,14 +187,9 @@ async function loadAnimeDetail(slug, refs) {
       item.className = "episode-item";
 
       const left = document.createElement("span");
-      // judul disederhanakan: Episode 1, Episode 2, ...
       left.textContent = `Episode ${index + 1}`;
 
-      const right = document.createElement("span");
-      right.textContent = `Ep ${ep.episode_number || index + 1}`;
-
       item.appendChild(left);
-      item.appendChild(right);
 
       item.addEventListener("click", () => {
         if (!ep.slug) return;
@@ -215,7 +210,6 @@ async function loadAnimeDetail(slug, refs) {
     });
   }
 
-  // update title tab
   document.title = `AniKuy - ${d.title}`;
 }
 
