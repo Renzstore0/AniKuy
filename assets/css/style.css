@@ -208,6 +208,8 @@ img {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  /* teks di dalam hero selalu terang (dark & light theme) */
+  color: #e5e7eb;
 }
 
 .today-hero-poster-wrap {
