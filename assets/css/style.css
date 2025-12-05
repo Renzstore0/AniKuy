@@ -208,7 +208,6 @@ img {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  /* teks di dalam hero selalu terang (dark & light theme) */
   color: #e5e7eb;
 }
 
@@ -440,8 +439,7 @@ img {
   color: #9ca3af;
 }
 
-/* DETAIL ANIME
-   Dibikin seperti kartu horizontal (mirip contoh High School DxD) */
+/* DETAIL ANIME – kartu seperti contoh */
 
 .anime-detail {
   position: relative;
@@ -458,7 +456,6 @@ img {
   overflow: hidden;
 }
 
-/* efek glow halus di belakang konten */
 .anime-detail::before {
   content: "";
   position: absolute;
@@ -588,7 +585,7 @@ img {
   box-shadow: 0 3px 8px rgba(15, 23, 42, 0.6);
 }
 
-/* synopsis rapi (span 2 kolom grid) */
+/* synopsis */
 .synopsis {
   grid-column: 1 / -1;
   margin-top: 10px;
@@ -598,7 +595,7 @@ img {
   white-space: normal;
 }
 
-/* EPISODE LIST (halaman detail) */
+/* EPISODE LIST */
 
 .episode-list {
   margin-top: 6px;
@@ -632,7 +629,6 @@ img {
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.95);
 }
 
-/* tinggi video dibuat tidak terlalu tinggi (16:9) */
 .player-wrapper iframe {
   width: 100%;
   height: auto;
@@ -640,7 +636,7 @@ img {
   border: none;
 }
 
-/* TOOLBAR DI BAWAH PLAYER */
+/* TOOLBAR */
 
 .player-toolbar {
   margin-top: 10px;
@@ -759,7 +755,7 @@ img {
   color: #9ca3af;
 }
 
-/* EPISODE NAVIGATION */
+/* EPISODE NAV */
 
 .episode-nav {
   margin-top: 10px;
@@ -768,7 +764,7 @@ img {
   gap: 8px;
 }
 
-/* EPISODE SELECTOR (angka 4,5,6,7,...) */
+/* EPISODE SELECTOR */
 
 .episode-selector {
   margin-top: 12px;
@@ -816,7 +812,7 @@ img {
   border-color: transparent;
 }
 
-/* SERVER LIST (legacy) */
+/* SERVER LIST */
 
 .server-list {
   margin-top: 6px;
@@ -1194,7 +1190,7 @@ body.theme-light .theme-option-sub {
   color: #6b7280;
 }
 
-/* THEME CARD DROPDOWN (Profil) */
+/* THEME CARD DROPDOWN */
 
 .theme-card {
   position: relative;
@@ -1256,7 +1252,7 @@ body.theme-light .theme-toggle-current {
   color: #6b7280;
 }
 
-/* Light theme: toolbar & player elements */
+/* Light theme: player & dropdown dsb */
 body.theme-light .player-wrapper {
   background: #ffffff;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.1);
@@ -1317,7 +1313,6 @@ body.theme-light .section-subtitle {
   color: #6b7280;
 }
 
-/* Light theme: card & list text di atas background gelap */
 body.theme-light .anime-card {
   color: #e5e7eb;
 }
