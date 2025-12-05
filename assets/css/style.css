@@ -1220,3 +1220,64 @@ body.theme-light .theme-toggle-btn {
 body.theme-light .theme-toggle-current {
   color: #6b7280;
 }
+
+/* Light theme: toolbar & player elements */
+body.theme-light .player-wrapper {
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.1);
+}
+
+body.theme-light .toolbar-btn {
+  background: #f3f4f6;
+  color: #111827;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
+}
+
+body.theme-light .toolbar-icon-wrap {
+  background: #e5e7eb;
+}
+
+body.theme-light .toolbar-text-sub {
+  color: #6b7280;
+}
+
+body.theme-light .dropdown-panel {
+  background: #ffffff;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.12);
+  color: #111827;
+}
+
+body.theme-light .dropdown-title {
+  color: #111827;
+}
+
+body.theme-light .dropdown-item {
+  background: #f3f4f6;
+  color: #111827;
+  border: 1px solid rgba(156, 163, 175, 0.6);
+}
+
+body.theme-light .dropdown-item.active {
+  background: linear-gradient(135deg, #1d4ed8, #22c55e);
+  color: #f9fafb;
+}
+
+body.theme-light .dropdown-empty {
+  color: #6b7280;
+}
+
+body.theme-light .episode-chip {
+  background: #e5e7eb;
+  color: #111827;
+  border-color: rgba(156, 163, 175, 0.7);
+}
+
+body.theme-light .episode-chip.active {
+  background: #111827;
+  color: #f9fafb;
+  border-color: transparent;
+}
+
+body.theme-light .section-subtitle {
+  color: #6b7280;
+}
