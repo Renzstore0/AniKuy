@@ -1281,3 +1281,56 @@ body.theme-light .episode-chip.active {
 body.theme-light .section-subtitle {
   color: #6b7280;
 }
+
+/* Light theme: card & list text di atas background gelap */
+body.theme-light .anime-card {
+  color: #e5e7eb;
+}
+
+body.theme-light .anime-card .anime-title {
+  color: #e5e7eb;
+}
+
+body.theme-light .anime-card .anime-meta {
+  color: #cbd5f5;
+}
+
+body.theme-light .badge-top-left,
+body.theme-light .badge-bottom-left,
+body.theme-light .badge-rating {
+  background: rgba(15, 23, 42, 0.96);
+  color: #e5e7eb;
+}
+
+body.theme-light .badge-top-left {
+  color: #bfdbfe;
+}
+
+body.theme-light .badge-rating span.star {
+  color: #facc15;
+}
+
+body.theme-light .episode-item {
+  background: rgba(15, 23, 42, 0.95);
+  color: #e5e7eb;
+}
+
+body.theme-light .episode-item span {
+  color: inherit;
+}
+
+body.theme-light .synopsis {
+  color: #111827;
+}
+
+body.theme-light .detail-sub {
+  color: #6b7280;
+}
+
+body.theme-light .detail-meta {
+  color: #4b5563;
+}
+
+body.theme-light .detail-meta span.label {
+  color: #6b7280;
+}
