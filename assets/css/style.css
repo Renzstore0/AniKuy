@@ -1373,16 +1373,17 @@ body.theme-light .episode-item span {
 body.theme-light .anime-detail-card {
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
   color: #111827;
+  border: 1px solid rgba(209, 213, 219, 0.9);
 }
 
-/* overlay di light theme dibuat terang */
+/* overlay di light theme: lebih transparan supaya poster blur kelihatan */
 body.theme-light .anime-detail-card::after {
   background: radial-gradient(
     circle at top left,
-    rgba(255, 255, 255, 0.95),
-    rgba(249, 250, 251, 0.98)
+    rgba(255, 255, 255, 0.82),
+    rgba(249, 250, 251, 0.9)
   );
-  opacity: 0.96;
+  opacity: 0.9;
 }
 
 body.theme-light .detail-main-title {
