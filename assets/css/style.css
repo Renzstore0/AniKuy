@@ -163,6 +163,23 @@ img {
   margin-bottom: 20px;
 }
 
+/* header khusus "Anime Rilis Hari Ini" */
+.today-section-header {
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.today-section-header > div {
+  width: 100%;
+  text-align: center;
+}
+
+.today-section-title {
+  font-size: 20px;
+  letter-spacing: 0.08em;
+}
+
+/* judul section lain */
 .section-title {
   font-size: 22px;
   font-weight: 700;
@@ -193,18 +210,16 @@ img {
 
 /* =========================
    RILIS HARI INI HERO
-   (sudah diupdate supaya rapi
-   walau anime hari itu banyak)
    ========================= */
 
 .today-hero-section {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .today-hero-card {
   position: relative;
-  margin-top: 8px;
-  padding: 12px 12px 14px;
+  margin-top: 4px;
+  padding: 12px 12px 16px;
   border-radius: 20px;
   background: radial-gradient(circle at top, #0b1220, #020617 80%);
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.95);
@@ -227,7 +242,7 @@ img {
   gap: 8px;
   width: 100%;
   padding: 0 40px; /* ruang panah kiri/kanan */
-  height: 210px; /* tinggi poster area fix */
+  height: 210px;   /* tinggi poster area fix */
 }
 
 /* container poster */
@@ -289,8 +304,8 @@ img {
   margin-bottom: 8px;
   max-width: 260px;
   line-height: 1.3;
-  height: 46px; /* kira-kira 2 baris */
-  overflow: hidden; /* sisanya dipotong */
+  height: 46px;      /* kira-kira 2 baris */
+  overflow: hidden;  /* sisanya dipotong */
 }
 
 .today-hero-btn {
@@ -328,7 +343,7 @@ img {
   right: 8px;
 }
 
-/* dots sekarang scroll horizontal kalau banyak */
+/* dots bisa scroll kalau banyak */
 .today-hero-dots {
   margin-top: 6px;
   display: flex;
