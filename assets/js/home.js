@@ -27,6 +27,30 @@ function getTodayName() {
   return days[new Date().getDay()];
 }
 
+// --- HELPER: AUTO SCROLL DOTS ---
+
+function scrollTodayDotsToActive(activeIndex) {
+  if (!todayDots) return;
+
+  const dots = todayDots.querySelectorAll("span");
+  const active = dots[activeIndex];
+  if (!active) return;
+
+  const cRect = todayDots.getBoundingClientRect();
+  const aRect = active.getBoundingClientRect();
+
+  // geser sehingga dot aktif kira-kira di tengah kontainer
+  const offset =
+    aRect.left -
+    cRect.left -
+    (cRect.width / 2 - aRect.width / 2);
+
+  todayDots.scrollBy({
+    left: offset,
+    behavior: "smooth",
+  });
+}
+
 // --- RILIS HARI INI (HERO) ---
 
 function updateTodayHero() {
@@ -72,8 +96,18 @@ function updateTodayHero() {
   todayAnimeList.forEach((_, i) => {
     const dot = document.createElement("span");
     if (i === todayIndex) dot.classList.add("active");
+
+    // klik dot buat lompat ke slide
+    dot.addEventListener("click", () => {
+      todayIndex = i;
+      updateTodayHero();
+    });
+
     todayDots.appendChild(dot);
   });
+
+  // auto-scroll ke dot aktif
+  scrollTodayDotsToActive(todayIndex);
 }
 
 function goToTodayDetail() {
