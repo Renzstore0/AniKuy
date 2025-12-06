@@ -1,5 +1,3 @@
-// assets/js/genre.js
-
 const genreTitle = document.getElementById("genreTitle");
 const genreAnimeGrid = document.getElementById("genreAnimeGrid");
 const genrePrevBtn = document.getElementById("genrePrevBtn");
@@ -10,7 +8,13 @@ const urlParams = new URLSearchParams(window.location.search);
 const currentGenreSlug = urlParams.get("slug");
 const currentGenreName = urlParams.get("name");
 
-let currentGenrePage = 1;
+// baca page dari query (?page=3), default 1
+const initialGenrePage =
+  parseInt(urlParams.get("page") || "1", 10) > 0
+    ? parseInt(urlParams.get("page") || "1", 10)
+    : 1;
+
+let currentGenrePage = initialGenrePage;
 let currentGenreLastPage = 1;
 
 async function loadGenreList(page = 1) {
@@ -75,5 +79,5 @@ document.addEventListener("DOMContentLoaded", () => {
   if (genreTitle) {
     genreTitle.textContent = currentGenreName || "Genre";
   }
-  loadGenreList(1);
+  loadGenreList(currentGenrePage);
 });
