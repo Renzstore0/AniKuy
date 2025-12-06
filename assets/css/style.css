@@ -211,6 +211,52 @@ img {
   color: #e5e7eb;
 }
 
+/* row berisi poster sebelum - utama - sesudah */
+.today-hero-poster-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0 32px; /* kasih ruang untuk tombol panah kiri/kanan */
+}
+
+.today-hero-poster {
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 16px 35px rgba(15, 23, 42, 0.9);
+}
+
+/* poster utama */
+.today-hero-poster.main img {
+  width: 220px;
+  max-width: 60vw;
+  height: auto;
+  display: block;
+}
+
+/* poster samping (sebelum & sesudah) */
+.today-hero-poster.side {
+  opacity: 0.7;
+  transform: scale(0.82);
+}
+
+.today-hero-poster.side img {
+  width: 150px;
+  max-width: 35vw;
+  height: auto;
+  display: block;
+}
+
+/* override supaya poster rilis hari ini bisa diklik */
+.today-hero-poster img,
+#todayPoster,
+#todayPosterPrev,
+#todayPosterNext {
+  pointer-events: auto;
+}
+
+/* fallback style lama (tidak dipakai tapi aman dibiarkan) */
 .today-hero-poster-wrap {
   border-radius: 18px;
   overflow: hidden;
@@ -1119,6 +1165,16 @@ img {
   .anime-row .anime-card {
     min-width: 19%;
     max-width: 19%;
+  }
+}
+
+/* kecil banget: sembunyikan poster samping biar nggak terlalu sempit */
+@media (max-width: 360px) {
+  .today-hero-poster-row {
+    padding: 0 12px;
+  }
+  .today-hero-poster.side {
+    display: none;
   }
 }
 
