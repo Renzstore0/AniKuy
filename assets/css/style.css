@@ -209,6 +209,7 @@ img {
   align-items: center;
   gap: 8px;
   color: #e5e7eb;
+  min-height: 330px; /* biar tinggi kartu stabil */
 }
 
 /* row berisi poster sebelum - utama - sesudah */
@@ -226,6 +227,7 @@ img {
   border-radius: 18px;
   overflow: hidden;
   box-shadow: 0 16px 35px rgba(15, 23, 42, 0.9);
+  aspect-ratio: 2 / 3; /* tinggi poster fix */
 }
 
 /* share lebar pakai persentase biar muat di HP */
@@ -242,7 +244,8 @@ img {
 /* gambar di dalam poster */
 .today-hero-poster img {
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
   display: block;
 }
 
@@ -263,7 +266,7 @@ img {
 
 #todayPoster {
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
 }
 
@@ -276,6 +279,12 @@ img {
   font-size: 18px;
   font-weight: 700;
   margin-bottom: 8px;
+  max-width: 260px;
+  min-height: 44px; /* reservasi tinggi 2 baris */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;      /* max 2 baris */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .today-hero-btn {
