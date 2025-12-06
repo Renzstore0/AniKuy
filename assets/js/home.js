@@ -8,7 +8,9 @@ const seeAllCompleteBtn = document.getElementById("seeAllCompleteBtn");
 // elemen "Rilis Hari Ini" (hero)
 const todaySection = document.getElementById("todaySection");
 const todayHeaderTitle = document.getElementById("todayHeaderTitle");
+const todayPosterPrev = document.getElementById("todayPosterPrev");
 const todayPoster = document.getElementById("todayPoster");
+const todayPosterNext = document.getElementById("todayPosterNext");
 const todayTitle = document.getElementById("todayTitle");
 const todayDots = document.getElementById("todayDots");
 const todayWatchBtn = document.getElementById("todayWatchBtn");
@@ -41,9 +43,29 @@ function updateTodayHero() {
   const current = todayAnimeList[todayIndex];
   if (!current) return;
 
+  const len = todayAnimeList.length;
+  const prevIndex = (todayIndex - 1 + len) % len;
+  const nextIndex = (todayIndex + 1) % len;
+
+  const prev = todayAnimeList[prevIndex];
+  const next = todayAnimeList[nextIndex];
+
+  // poster utama
   todayPoster.src = current.poster;
   todayPoster.alt = current.title;
   todayTitle.textContent = current.title;
+
+  // poster sebelum
+  if (todayPosterPrev && prev) {
+    todayPosterPrev.src = prev.poster;
+    todayPosterPrev.alt = prev.title;
+  }
+
+  // poster sesudah
+  if (todayPosterNext && next) {
+    todayPosterNext.src = next.poster;
+    todayPosterNext.alt = next.title;
+  }
 
   // dots
   todayDots.innerHTML = "";
@@ -61,6 +83,13 @@ function goToTodayDetail() {
   window.location.href = url;
 }
 
+function goTodayStep(delta) {
+  if (!todayAnimeList.length) return;
+  const len = todayAnimeList.length;
+  todayIndex = (todayIndex + delta + len) % len;
+  updateTodayHero();
+}
+
 async function loadTodayAnime() {
   if (!todaySection) return;
 
@@ -76,7 +105,11 @@ async function loadTodayAnime() {
   const todayName = getTodayName();
   const todayObj = json.data.find((d) => d.day === todayName);
 
-  if (!todayObj || !Array.isArray(todayObj.anime_list) || !todayObj.anime_list.length) {
+  if (
+    !todayObj ||
+    !Array.isArray(todayObj.anime_list) ||
+    !todayObj.anime_list.length
+  ) {
     return;
   }
 
@@ -105,19 +138,20 @@ async function loadTodayAnime() {
   if (todayPoster) {
     todayPoster.addEventListener("click", goToTodayDetail);
   }
+
+  // klik poster samping untuk pindah slide
+  if (todayPosterPrev) {
+    todayPosterPrev.addEventListener("click", () => goTodayStep(-1));
+  }
+  if (todayPosterNext) {
+    todayPosterNext.addEventListener("click", () => goTodayStep(1));
+  }
+
   if (todayPrevBtn) {
-    todayPrevBtn.addEventListener("click", () => {
-      if (!todayAnimeList.length) return;
-      todayIndex = (todayIndex - 1 + todayAnimeList.length) % todayAnimeList.length;
-      updateTodayHero();
-    });
+    todayPrevBtn.addEventListener("click", () => goTodayStep(-1));
   }
   if (todayNextBtn) {
-    todayNextBtn.addEventListener("click", () => {
-      if (!todayAnimeList.length) return;
-      todayIndex = (todayIndex + 1) % todayAnimeList.length;
-      updateTodayHero();
-    });
+    todayNextBtn.addEventListener("click", () => goTodayStep(1));
   }
 }
 
