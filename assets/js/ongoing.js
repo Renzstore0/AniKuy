@@ -7,25 +7,41 @@ const ongoingPageInfo = document.getElementById("ongoingPageInfo");
 
 let ongoingPage = 1;
 let ongoingLastPage = 1;
+let ongoingLoading = false;
 
-async function loadOngoingList(page = 1) {
-  if (!ongoingGridFull) return;
+// sembunyikan control pagination lama
+if (ongoingPrevBtn) ongoingPrevBtn.style.display = "none";
+if (ongoingNextBtn) ongoingNextBtn.style.display = "none";
+if (ongoingPageInfo) ongoingPageInfo.style.display = "none";
+
+async function loadOngoingList(page = 1, append = false) {
+  if (!ongoingGridFull || ongoingLoading) return;
+
+  ongoingLoading = true;
 
   let json;
   try {
     json = await apiGet(`/anime/ongoing-anime?page=${page}`);
   } catch {
+    ongoingLoading = false;
     return;
   }
-  if (!json || json.status !== "success") return;
+
+  if (!json || json.status !== "success") {
+    ongoingLoading = false;
+    return;
+  }
 
   const pag = json.data.paginationData;
   ongoingPage = pag.current_page;
   ongoingLastPage = pag.last_visible_page || ongoingLastPage;
 
-  ongoingGridFull.innerHTML = "";
+  // kalau bukan append, berarti load pertama / refresh
+  if (!append) {
+    ongoingGridFull.innerHTML = "";
+  }
+
   (json.data.ongoingAnimeData || []).forEach((a) => {
-    // pendekkan "Episode 10" -> "Eps 10"
     const episodeRaw = a.current_episode || "";
     const episodeShort =
       episodeRaw.replace(/^Episode\s*/i, "Eps ").trim() || "";
@@ -38,33 +54,27 @@ async function loadOngoingList(page = 1) {
     ongoingGridFull.appendChild(card);
   });
 
-  if (ongoingPageInfo) {
-    ongoingPageInfo.textContent = `Page ${ongoingPage} / ${ongoingLastPage}`;
-  }
-  if (ongoingPrevBtn) {
-    ongoingPrevBtn.disabled = ongoingPage <= 1;
-  }
-  if (ongoingNextBtn) {
-    ongoingNextBtn.disabled = !pag.has_next_page;
-  }
+  ongoingLoading = false;
 }
 
-if (ongoingNextBtn) {
-  ongoingNextBtn.addEventListener("click", () => {
-    if (ongoingPage < ongoingLastPage) {
-      loadOngoingList(ongoingPage + 1);
-    }
-  });
-}
-
-if (ongoingPrevBtn) {
-  ongoingPrevBtn.addEventListener("click", () => {
-    if (ongoingPage > 1) {
-      loadOngoingList(ongoingPage - 1);
-    }
-  });
-}
-
+// infinite scroll pakai mainContent
 document.addEventListener("DOMContentLoaded", () => {
-  loadOngoingList(1);
+  loadOngoingList(1, false); // page 1
+
+  const mainContent = document.getElementById("mainContent");
+  if (!mainContent) return;
+
+  mainContent.addEventListener("scroll", () => {
+    const nearBottom =
+      mainContent.scrollTop + mainContent.clientHeight >=
+      mainContent.scrollHeight - 200; // 200px sebelum mentok
+
+    if (
+      nearBottom &&
+      !ongoingLoading &&
+      ongoingPage < ongoingLastPage
+    ) {
+      loadOngoingList(ongoingPage + 1, true); // append page berikutnya
+    }
+  });
 });
