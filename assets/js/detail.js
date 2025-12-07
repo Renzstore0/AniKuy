@@ -63,7 +63,6 @@ function makeSeasonDisplayTitle(rawTitle, baseTitle) {
 
   t = t.trim();
 
-  // kalau hasilnya kosong pakai baseTitle
   if (!t) return baseTitle || rawTitle;
 
   return t;
@@ -84,13 +83,9 @@ function isSameFranchise(baseNorm, otherNorm) {
   const baseFirst2 = baseWords.slice(0, 2).join(" ");
   const otherFirst2 = otherWords.slice(0, 2).join(" ");
 
-  // sama kata pertama (Kingdom vs Kingdom Season 2)
   if (baseFirst && baseFirst === otherFirst) return true;
-
-  // sama dua kata pertama (Nageki no vs Nageki no Bourei ...)
   if (baseFirst2 && baseFirst2 === otherFirst2) return true;
 
-  // salah satu judul adalah ekstensi dari yang lain
   if (otherNorm.startsWith(baseNorm + " ")) return true;
   if (baseNorm.startsWith(otherNorm + " ")) return true;
 
@@ -124,7 +119,7 @@ function formatShortDate(dateStr) {
 // Tampilkan tab Episode
 function showEpisodeTab() {
   if (episodeList) {
-    episodeList.style.display = "flex"; // list episode = kolom
+    episodeList.style.display = "flex";
   }
   if (seasonList) {
     seasonList.style.display = "none";
@@ -139,7 +134,7 @@ function showSeasonTab() {
     episodeList.style.display = "none";
   }
   if (seasonList) {
-    seasonList.style.display = "grid"; // grid 3 kolom
+    seasonList.style.display = "grid";
   }
   if (tabEpisodes) tabEpisodes.classList.remove("active");
   if (tabSeasons) tabSeasons.classList.add("active");
@@ -155,6 +150,7 @@ async function loadSeasonList(animeData) {
   if (!baseTitle) return;
 
   const baseNorm = normalizeTitleForCompare(baseTitle);
+  const currentFullNorm = normalizeTitleForCompare(animeData.title || "");
 
   let json;
   try {
@@ -167,20 +163,27 @@ async function loadSeasonList(animeData) {
 
   const listRaw = json.data || [];
 
-  // filter:
-  // - buang anime yang sama dengan yang sedang dibuka (slug sama)
-  // - hanya yang 1 franchise
   const list = listRaw.filter((a) => {
     if (!a) return false;
 
-    // jangan masukkan anime yang sedang dipilih
+    // 1) jangan masukkan anime yang sedang dipilih berdasarkan slug
     if (a.slug && animeData.slug && a.slug === animeData.slug) return false;
 
     const otherBase = getBaseTitleForSeasonSearch(a.title || "");
-    const otherNorm = normalizeTitleForCompare(otherBase);
-    if (!otherNorm || !baseNorm) return false;
+    const otherNormBase = normalizeTitleForCompare(otherBase);
+    if (!otherNormBase || !baseNorm) return false;
 
-    return isSameFranchise(baseNorm, otherNorm);
+    const otherFullNorm = normalizeTitleForCompare(a.title || "");
+
+    // 2) kalau judul 100% sama dan TIDAK ada kata "season" -> itu anime yang sama (season 1), skip
+    const sameExactTitle =
+      currentFullNorm && otherFullNorm && currentFullNorm === otherFullNorm;
+    const hasSeasonWord = /season\s*\d*/i.test(a.title || "");
+
+    if (sameExactTitle && !hasSeasonWord) return false;
+
+    // 3) sisanya harus satu franchise
+    return isSameFranchise(baseNorm, otherNormBase);
   });
 
   if (!list.length) {
@@ -262,12 +265,10 @@ async function loadAnimeDetail(slug) {
   const card = document.createElement("div");
   card.className = "anime-detail-card";
 
-  // set poster blur sebagai background kartu (via CSS var)
   if (d.poster) {
     card.style.setProperty("--detail-bg", `url("${d.poster}")`);
   }
 
-  // poster
   const posterCol = document.createElement("div");
   posterCol.className = "detail-poster";
   const img = document.createElement("img");
@@ -322,14 +323,12 @@ async function loadAnimeDetail(slug) {
   card.appendChild(posterCol);
   card.appendChild(metaCol);
 
-  // tempel kartu ke wrapper utama
   animeDetailContent.appendChild(card);
 
-  // ================== TOMBOL PLAY + FAVORIT (DI LUAR BOX) ==================
+  // ================== TOMBOL PLAY + FAVORIT ==================
   const actionWrap = document.createElement("div");
   actionWrap.className = "detail-actions";
 
-  // tombol putar
   const playBtn = document.createElement("button");
   playBtn.type = "button";
   playBtn.className = "btn-play";
@@ -360,7 +359,6 @@ async function loadAnimeDetail(slug) {
     window.location.href = url;
   });
 
-  // tombol favorit
   const favBtn = document.createElement("button");
   favBtn.type = "button";
   favBtn.className = "btn-fav";
@@ -417,7 +415,7 @@ async function loadAnimeDetail(slug) {
 
   animeDetailContent.appendChild(actionWrap);
 
-  // ================== SINOPSIS (DI LUAR BOX) ==================
+  // ================== SINOPSIS ==================
   const syn = document.createElement("p");
   syn.className = "synopsis";
   let cleanSynopsis = (d.synopsis || "")
@@ -430,11 +428,10 @@ async function loadAnimeDetail(slug) {
   syn.textContent = cleanSynopsis;
   animeDetailContent.appendChild(syn);
 
-  // ================== EPISODE LIST (URUT BARU -> LAMA) ==================
+  // ================== EPISODE LIST (baru -> lama) ==================
   if (episodeList) {
     episodeList.innerHTML = "";
 
-    // copy + reverse supaya episode terbaru (angka terbesar) muncul di atas
     const eps = (d.episode_lists || []).slice().reverse();
     const total = eps.length;
 
@@ -442,7 +439,7 @@ async function loadAnimeDetail(slug) {
       const item = document.createElement("div");
       item.className = "episode-item";
 
-      const displayNumber = total - index; // tetap Episode N yang sesuai
+      const displayNumber = total - index;
 
       const left = document.createElement("span");
       left.textContent = `Episode ${displayNumber}`;
@@ -458,7 +455,7 @@ async function loadAnimeDetail(slug) {
     });
   }
 
-  // ================== SEASON LIST (AUTO SEARCH) ==================
+  // ================== SEASON LIST ==================
   await loadSeasonList(d);
 
   // rekomendasi
@@ -470,7 +467,6 @@ async function loadAnimeDetail(slug) {
     });
   }
 
-  // judul tab
   document.title = `AniKuy - ${d.title}`;
 }
 
@@ -480,14 +476,11 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // init tab
   if (tabEpisodes && tabSeasons) {
     tabEpisodes.addEventListener("click", showEpisodeTab);
     tabSeasons.addEventListener("click", showSeasonTab);
   }
 
-  // default: Episode tab aktif
   showEpisodeTab();
-
   loadAnimeDetail(detailSlugFromUrl);
 });
