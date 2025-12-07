@@ -25,9 +25,14 @@ async function loadCompleteList(page = 1) {
 
   completeGridFull.innerHTML = "";
   (json.data.completeAnimeData || []).forEach((a) => {
+    // TIDAK pakai rating, cuma tampilkan jumlah episode: "Eps 12"
+    const epsLabel = a.episode_count
+      ? `Eps ${a.episode_count}`
+      : "";
+
     const card = createAnimeCard(a, {
-      rating: a.rating && a.rating !== "" ? a.rating : "N/A",
-      badgeBottom: `${a.episode_count || "?"} Eps`,
+      // rating dihilangkan
+      badgeBottom: epsLabel,
       meta: a.last_release_date || "",
     });
     completeGridFull.appendChild(card);
