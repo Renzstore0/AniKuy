@@ -435,8 +435,14 @@ async function loadAnimeDetail(slug) {
       const item = document.createElement("div");
       item.className = "episode-item";
 
+      // pakai nomor dari REST API
+      const epNum =
+        ep.episode_number != null
+          ? ep.episode_number
+          : ep.episode ?? i + 1;
+
       const left = document.createElement("span");
-      left.textContent = `Episode ${i + 1}`;
+      left.textContent = `Episode ${epNum}`;
       item.appendChild(left);
 
       item.addEventListener("click", () => {
