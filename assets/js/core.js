@@ -45,10 +45,8 @@ function bindThemeControls(currentTheme) {
     }
   }
 
-  // label awal di tombol
   updateCurrentLabel(currentTheme);
 
-  // buka/tutup dropdown tema
   if (themeToggle && themeCard && themeList) {
     themeToggle.addEventListener("click", () => {
       const isOpen = themeCard.classList.toggle("open");
@@ -58,7 +56,6 @@ function bindThemeControls(currentTheme) {
 
   if (!radios.length) return;
 
-  // binding radio
   radios.forEach((radio) => {
     radio.checked = radio.value === currentTheme;
     radio.addEventListener("change", (e) => {
@@ -115,12 +112,11 @@ function saveFavorites() {
   try {
     localStorage.setItem(LS_KEY_FAVORITES, JSON.stringify(favorites || []));
   } catch {
-    // abaikan (private mode / storage penuh)
+    // abaikan
   }
 }
 
 function getFavorites() {
-  // dipakai di my-list.js
   return Array.isArray(favorites) ? favorites.slice() : [];
 }
 
@@ -133,7 +129,6 @@ function addFavorite(anime) {
   if (!anime || !anime.slug) return;
   if (isFavorite(anime.slug)) return;
 
-  // normalisasi data yang disimpan
   const fav = {
     slug: anime.slug,
     title: anime.title || "",
@@ -215,7 +210,6 @@ function createAnimeCard(item, opts = {}) {
     card.appendChild(m);
   }
 
-  // pindah ke halaman detail
   card.addEventListener("click", () => {
     if (!item.slug) return;
     const url = `/anime/detail?slug=${encodeURIComponent(item.slug)}`;
@@ -225,7 +219,7 @@ function createAnimeCard(item, opts = {}) {
   return card;
 }
 
-// GLOBAL UI (back button, search, navbar scroll, anti copy)
+// GLOBAL UI
 document.addEventListener("DOMContentLoaded", () => {
   const currentTheme = initThemeFromStorage();
   bindThemeControls(currentTheme);
@@ -235,7 +229,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const pageType = document.body.dataset.page || "";
   const basePages = new Set(["home", "explore", "my-list", "profile"]);
 
-  // tombol back (disembunyiin di base pages)
   if (backButton) {
     backButton.style.visibility = basePages.has(pageType)
       ? "hidden"
@@ -251,14 +244,12 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // tombol search → halaman /search
   if (searchButton) {
     searchButton.addEventListener("click", () => {
       window.location.href = "/search";
     });
   }
 
-  // navbar hide/show saat scroll
   const mainContent = document.getElementById("mainContent");
   const bottomNav = document.querySelector(".bottom-nav");
   if (mainContent && bottomNav) {
@@ -280,7 +271,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // anti copy / devtools
   document.addEventListener("contextmenu", (e) => {
     e.preventDefault();
   });
