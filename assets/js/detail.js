@@ -172,6 +172,7 @@ async function loadSeasonList(animeData) {
   // - hanya yang 1 franchise
   const list = listRaw.filter((a) => {
     if (!a) return false;
+
     // jangan masukkan anime yang sedang dipilih
     if (a.slug && animeData.slug && a.slug === animeData.slug) return false;
 
@@ -185,9 +186,7 @@ async function loadSeasonList(animeData) {
   if (!list.length) {
     const empty = document.createElement("div");
     empty.className = "season-item season-empty";
-    const span = document.createElement("span");
-    span.textContent = "Tidak ada season lain.";
-    empty.appendChild(span);
+    empty.textContent = "Season belum ada";
     seasonList.appendChild(empty);
     return;
   }
@@ -443,7 +442,7 @@ async function loadAnimeDetail(slug) {
       const item = document.createElement("div");
       item.className = "episode-item";
 
-      const displayNumber = total - index; // jadi tetap Episode N yang sesuai
+      const displayNumber = total - index; // tetap Episode N yang sesuai
 
       const left = document.createElement("span");
       left.textContent = `Episode ${displayNumber}`;
