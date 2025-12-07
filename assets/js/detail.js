@@ -69,10 +69,38 @@ function makeSeasonDisplayTitle(rawTitle, baseTitle) {
   return t;
 }
 
+// cek apakah dua judul (sudah dinormalisasi) kemungkinan besar satu franchise
+function isSameFranchise(baseNorm, otherNorm) {
+  if (!baseNorm || !otherNorm) return false;
+
+  if (baseNorm === otherNorm) return true;
+
+  const baseWords = baseNorm.split(" ");
+  const otherWords = otherNorm.split(" ");
+
+  const baseFirst = baseWords[0] || "";
+  const otherFirst = otherWords[0] || "";
+
+  const baseFirst2 = baseWords.slice(0, 2).join(" ");
+  const otherFirst2 = otherWords.slice(0, 2).join(" ");
+
+  // sama kata pertama (Kingdom vs Kingdom Season 2)
+  if (baseFirst && baseFirst === otherFirst) return true;
+
+  // sama dua kata pertama (Nageki no vs Nageki no Bourei ...)
+  if (baseFirst2 && baseFirst2 === otherFirst2) return true;
+
+  // salah satu judul adalah ekstensi dari yang lain
+  if (otherNorm.startsWith(baseNorm + " ")) return true;
+  if (baseNorm.startsWith(otherNorm + " ")) return true;
+
+  return false;
+}
+
 // Tampilkan tab Episode
 function showEpisodeTab() {
   if (episodeList) {
-    episodeList.style.display = "flex";
+    episodeList.style.display = "flex"; // list episode = kolom
   }
   if (seasonList) {
     seasonList.style.display = "none";
@@ -87,7 +115,8 @@ function showSeasonTab() {
     episodeList.style.display = "none";
   }
   if (seasonList) {
-    seasonList.style.display = "flex";
+    // important: grid 3 kolom
+    seasonList.style.display = "grid";
   }
   if (tabEpisodes) tabEpisodes.classList.remove("active");
   if (tabSeasons) tabSeasons.classList.add("active");
@@ -115,15 +144,13 @@ async function loadSeasonList(animeData) {
 
   const listRaw = json.data || [];
 
-  // filter longgar: base title saling mengandung (untuk kasus Season 1 beda sedikit)
+  // filter supaya yang masuk benar2 satu franchise
   const list = listRaw.filter((a) => {
     const otherBase = getBaseTitleForSeasonSearch(a.title || "");
     const otherNorm = normalizeTitleForCompare(otherBase);
     if (!otherNorm || !baseNorm) return false;
-    return (
-      otherNorm.includes(baseNorm) ||
-      baseNorm.includes(otherNorm)
-    );
+
+    return isSameFranchise(baseNorm, otherNorm);
   });
 
   if (!list.length) {
