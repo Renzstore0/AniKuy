@@ -64,6 +64,7 @@ async function loadGenreList(page = 1) {
     genreAnimeGrid.appendChild(card);
   });
 
+  // kita tetap update text (opsional), tapi nanti elemen-nya di-hide
   if (genrePageInfo) {
     genrePageInfo.textContent = `Page ${currentGenrePage} / ${currentGenreLastPage}`;
   }
@@ -101,6 +102,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // sembunyikan tombol Back / Next kalau masih ada di HTML
   if (genrePrevBtn) genrePrevBtn.style.display = "none";
   if (genreNextBtn) genreNextBtn.style.display = "none";
+
+  // SEMBUNYIKAN INFO PAGE
+  if (genrePageInfo) {
+    genrePageInfo.style.display = "none";
+  }
 
   loadGenreList(1);
 
