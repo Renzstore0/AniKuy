@@ -700,6 +700,36 @@ img {
   white-space: normal;
 }
 
+/* EPISODE / SEASON TABS */
+
+.section-header-episodes {
+  margin-top: 12px;
+  margin-bottom: 6px;
+}
+
+.episode-tabs {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.episode-tab {
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(15, 23, 42, 0.95);
+  color: #e5e7eb;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+}
+
+.episode-tab.active {
+  background: linear-gradient(135deg, #1d4ed8, #22d3ee);
+  color: #f9fafb;
+}
+
 /* EPISODE LIST */
 
 .episode-list {
@@ -1532,4 +1562,14 @@ body.theme-light .genre-pill {
   background: #f3f4f6;
   border-color: rgba(156, 163, 175, 0.8);
   color: #1f2937;
+}
+
+body.theme-light .episode-tab {
+  background: #e5e7eb;
+  color: #111827;
+}
+
+body.theme-light .episode-tab.active {
+  background: linear-gradient(135deg, #1d4ed8, #22d3ee);
+  color: #f9fafb;
 }
