@@ -167,8 +167,14 @@ async function loadSeasonList(animeData) {
 
   const listRaw = json.data || [];
 
-  // filter supaya yang masuk benar2 satu franchise
+  // filter:
+  // - buang anime yang sama dengan yang sedang dibuka (slug sama)
+  // - hanya yang 1 franchise
   const list = listRaw.filter((a) => {
+    if (!a) return false;
+    // jangan masukkan anime yang sedang dipilih
+    if (a.slug && animeData.slug && a.slug === animeData.slug) return false;
+
     const otherBase = getBaseTitleForSeasonSearch(a.title || "");
     const otherNorm = normalizeTitleForCompare(otherBase);
     if (!otherNorm || !baseNorm) return false;
@@ -425,15 +431,22 @@ async function loadAnimeDetail(slug) {
   syn.textContent = cleanSynopsis;
   animeDetailContent.appendChild(syn);
 
-  // ================== EPISODE LIST ==================
+  // ================== EPISODE LIST (URUT BARU -> LAMA) ==================
   if (episodeList) {
     episodeList.innerHTML = "";
-    (d.episode_lists || []).forEach((ep, index) => {
+
+    // copy + reverse supaya episode terbaru (angka terbesar) muncul di atas
+    const eps = (d.episode_lists || []).slice().reverse();
+    const total = eps.length;
+
+    eps.forEach((ep, index) => {
       const item = document.createElement("div");
       item.className = "episode-item";
 
+      const displayNumber = total - index; // jadi tetap Episode N yang sesuai
+
       const left = document.createElement("span");
-      left.textContent = `Episode ${index + 1}`;
+      left.textContent = `Episode ${displayNumber}`;
       item.appendChild(left);
 
       item.addEventListener("click", () => {
