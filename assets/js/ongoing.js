@@ -25,9 +25,14 @@ async function loadOngoingList(page = 1) {
 
   ongoingGridFull.innerHTML = "";
   (json.data.ongoingAnimeData || []).forEach((a) => {
+    // pendekkan "Episode 10" -> "Eps 10"
+    const episodeRaw = a.current_episode || "";
+    const episodeShort =
+      episodeRaw.replace(/^Episode\s*/i, "Eps ").trim() || "";
+
     const card = createAnimeCard(a, {
       badgeTop: a.release_day || "",
-      badgeBottom: a.current_episode || "",
+      badgeBottom: episodeShort,
       meta: a.newest_release_date || "",
     });
     ongoingGridFull.appendChild(card);
