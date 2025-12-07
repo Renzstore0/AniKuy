@@ -150,7 +150,6 @@ async function loadSeasonList(animeData) {
   if (!baseTitle) return;
 
   const baseNorm = normalizeTitleForCompare(baseTitle);
-  const currentFullNorm = normalizeTitleForCompare(animeData.title || "");
 
   let json;
   try {
@@ -169,20 +168,17 @@ async function loadSeasonList(animeData) {
     // 1) jangan masukkan anime yang sedang dipilih berdasarkan slug
     if (a.slug && animeData.slug && a.slug === animeData.slug) return false;
 
-    const otherBase = getBaseTitleForSeasonSearch(a.title || "");
+    const title = a.title || "";
+
+    // 2) hanya ambil judul yang memang ada kata "Season"
+    const isSeasonTitle = /season/i.test(title);
+    if (!isSeasonTitle) return false;
+
+    // 3) pastikan masih satu franchise
+    const otherBase = getBaseTitleForSeasonSearch(title);
     const otherNormBase = normalizeTitleForCompare(otherBase);
-    if (!otherNormBase || !baseNorm) return false;
+    if (!baseNorm || !otherNormBase) return false;
 
-    const otherFullNorm = normalizeTitleForCompare(a.title || "");
-
-    // 2) kalau judul 100% sama dan TIDAK ada kata "season" -> itu anime yang sama (season 1), skip
-    const sameExactTitle =
-      currentFullNorm && otherFullNorm && currentFullNorm === otherFullNorm;
-    const hasSeasonWord = /season\s*\d*/i.test(a.title || "");
-
-    if (sameExactTitle && !hasSeasonWord) return false;
-
-    // 3) sisanya harus satu franchise
     return isSameFranchise(baseNorm, otherNormBase);
   });
 
