@@ -354,11 +354,11 @@ img {
   padding: 4px 8px;
   max-width: 100%;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  scrollbar-width: none; /* Firefox */
 }
 
 .today-hero-dots::-webkit-scrollbar {
-  display: none;
+  display: none; /* Chrome/Safari */
 }
 
 .today-hero-dots span {
@@ -693,11 +693,31 @@ img {
 
 /* synopsis – di luar box */
 .synopsis {
-  margin-top: 10px;
   font-size: 13px;
   line-height: 1.5;
   color: #e5e7eb;
   white-space: normal;
+}
+
+/* wrapper sinopsis + tombol */
+.synopsis-wrap {
+  margin-top: 10px;
+}
+
+/* tombol "Baca selengkapnya" */
+.synopsis-toggle {
+  margin-top: 6px;
+  border: none;
+  background: transparent;
+  color: #38bdf8;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+}
+
+.synopsis-toggle:active {
+  transform: scale(0.97);
 }
 
 /* EPISODE / SEASON TABS */
@@ -784,12 +804,9 @@ img {
 
 .season-empty {
   grid-column: 1 / -1;
-  padding: 16px 12px;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 10px 12px;
   text-align: center;
+  font-size: 13px;
 }
 
 /* poster season */
@@ -1644,6 +1661,10 @@ body.theme-light .detail-meta span.label {
 
 body.theme-light .synopsis {
   color: #111827;
+}
+
+body.theme-light .synopsis-toggle {
+  color: #2563eb;
 }
 
 body.theme-light .genre-pill {
