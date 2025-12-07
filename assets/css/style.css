@@ -354,16 +354,13 @@ img {
   padding: 4px 8px;
   max-width: 100%;
   -webkit-overflow-scrolling: touch;
+
+  /* sembunyikan scrollbar hanya di dots */
+  scrollbar-width: none;        /* Firefox */
 }
 
-/* opsional: sembunyiin scrollbar di WebKit */
 .today-hero-dots::-webkit-scrollbar {
-  height: 3px;
-}
-
-.today-hero-dots::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.6);
-  border-radius: 999px;
+  display: none;                /* Chrome/Safari */
 }
 
 .today-hero-dots span {
