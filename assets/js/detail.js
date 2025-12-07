@@ -12,7 +12,7 @@ const detailParams = new URLSearchParams(window.location.search);
 const detailSlugFromUrl = detailParams.get("slug");
 
 // =========================
-//  HELPER SEASON SEARCH
+//  HELPER UNTUK SEASON
 // =========================
 
 // Ambil judul dasar untuk search season
@@ -30,6 +30,42 @@ function getBaseTitleForSeasonSearch(title) {
 
   t = t.trim();
   if (!t) return title.trim();
+  return t;
+}
+
+// Normalisasi untuk perbandingan longgar
+function normalizeTitleForCompare(t) {
+  if (!t) return "";
+  return t
+    .toLowerCase()
+    .replace(/\(.*?\)/g, "") // buang isi dalam kurung
+    .replace(/[\s\W_]+/g, " ")
+    .trim();
+}
+
+// Bersihkan judul untuk tampilan di list season
+// - hilangkan "(Episode 1 - xx)"
+// - hilangkan "Subtitle Indonesia" dan sejenisnya
+function makeSeasonDisplayTitle(rawTitle, baseTitle) {
+  if (!rawTitle) return baseTitle || "";
+
+  let t = rawTitle;
+
+  // buang info episode di dalam kurung
+  t = t.replace(/\(.*?episode.*?\)/gi, "");
+  t = t.replace(/\(episode.*?\)/gi, "");
+
+  // buang "Episode 1 - xx" walau tanpa kurung
+  t = t.replace(/episode\s*\d+\s*[-–]\s*\d+/gi, "");
+
+  // buang "Subtitle ..." di akhir
+  t = t.replace(/subtitle.+$/i, "");
+
+  t = t.trim();
+
+  // kalau hasilnya kosong pakai baseTitle
+  if (!t) return baseTitle || rawTitle;
+
   return t;
 }
 
@@ -66,6 +102,8 @@ async function loadSeasonList(animeData) {
   const baseTitle = getBaseTitleForSeasonSearch(animeData.title || "");
   if (!baseTitle) return;
 
+  const baseNorm = normalizeTitleForCompare(baseTitle);
+
   let json;
   try {
     const enc = encodeURIComponent(baseTitle);
@@ -77,15 +115,20 @@ async function loadSeasonList(animeData) {
 
   const listRaw = json.data || [];
 
-  // filter hanya anime yang base title-nya sama
+  // filter longgar: base title saling mengandung (untuk kasus Season 1 beda sedikit)
   const list = listRaw.filter((a) => {
     const otherBase = getBaseTitleForSeasonSearch(a.title || "");
-    return otherBase.toLowerCase() === baseTitle.toLowerCase();
+    const otherNorm = normalizeTitleForCompare(otherBase);
+    if (!otherNorm || !baseNorm) return false;
+    return (
+      otherNorm.includes(baseNorm) ||
+      baseNorm.includes(otherNorm)
+    );
   });
 
   if (!list.length) {
     const empty = document.createElement("div");
-    empty.className = "episode-item";
+    empty.className = "episode-item season-item";
     const span = document.createElement("span");
     span.textContent = "Tidak ada season lain.";
     empty.appendChild(span);
@@ -93,13 +136,30 @@ async function loadSeasonList(animeData) {
     return;
   }
 
+  // bikin item season dengan thumbnail
   list.forEach((a) => {
     const item = document.createElement("div");
-    item.className = "episode-item";
+    item.className = "episode-item season-item";
 
-    const left = document.createElement("span");
-    left.textContent = a.title;
-    item.appendChild(left);
+    const thumbWrap = document.createElement("div");
+    thumbWrap.className = "season-thumb";
+
+    const img = document.createElement("img");
+    img.src = a.poster || animeData.poster || "";
+    img.alt = a.title || baseTitle;
+    thumbWrap.appendChild(img);
+
+    const infoWrap = document.createElement("div");
+    infoWrap.className = "season-info";
+
+    const titleSpan = document.createElement("span");
+    titleSpan.className = "season-title";
+    titleSpan.textContent = makeSeasonDisplayTitle(a.title || "", baseTitle);
+
+    infoWrap.appendChild(titleSpan);
+
+    item.appendChild(thumbWrap);
+    item.appendChild(infoWrap);
 
     item.addEventListener("click", () => {
       if (!a.slug) return;
