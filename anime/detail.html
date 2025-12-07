@@ -45,9 +45,27 @@
           <!-- detail poster + meta -->
           <div id="animeDetailContent" class="anime-detail"></div>
 
+          <!-- TAB EPISODE / SEASON -->
+          <div class="section-header section-header-episodes">
+            <div class="episode-tabs">
+              <button
+                type="button"
+                id="tabEpisodes"
+                class="episode-tab active"
+              >
+                Episode
+              </button>
+              <button type="button" id="tabSeasons" class="episode-tab">
+                Season
+              </button>
+            </div>
+          </div>
+
           <!-- list episode -->
-          <h3 class="section-title small-title">Episode</h3>
           <div id="episodeList" class="episode-list"></div>
+
+          <!-- list season (auto search berdasarkan judul) -->
+          <div id="seasonList" class="episode-list"></div>
 
           <!-- rekomendasi horizontal scroll -->
           <h3 class="section-title small-title">Rekomendasi</h3>
