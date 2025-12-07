@@ -150,6 +150,8 @@ async function loadSeasonList(animeData) {
   if (!baseTitle) return;
 
   const baseNorm = normalizeTitleForCompare(baseTitle);
+  const currentTitle = animeData.title || "";
+  const currentHasSeasonWord = /season/i.test(currentTitle);
 
   let json;
   try {
@@ -165,21 +167,29 @@ async function loadSeasonList(animeData) {
   const list = listRaw.filter((a) => {
     if (!a) return false;
 
-    // 1) jangan masukkan anime yang sedang dipilih berdasarkan slug
+    // jangan masukkan anime yang sedang dipilih
     if (a.slug && animeData.slug && a.slug === animeData.slug) return false;
 
     const title = a.title || "";
+    const titleHasSeason = /season/i.test(title);
 
-    // 2) hanya ambil judul yang memang ada kata "Season"
-    const isSeasonTitle = /season/i.test(title);
-    if (!isSeasonTitle) return false;
-
-    // 3) pastikan masih satu franchise
+    // pastikan masih satu franchise (pakai judul dasar)
     const otherBase = getBaseTitleForSeasonSearch(title);
     const otherNormBase = normalizeTitleForCompare(otherBase);
-    if (!baseNorm || !otherNormBase) return false;
+    if (!isSameFranchise(baseNorm, otherNormBase)) return false;
 
-    return isSameFranchise(baseNorm, otherNormBase);
+    if (!currentHasSeasonWord) {
+      // anime sekarang TIDAK ada kata "Season" (anggap Season 1)
+      // ⇒ hanya ambil judul yang ada kata "Season"
+      if (!titleHasSeason) return false;
+    } else {
+      // anime sekarang ada kata "Season"
+      // ⇒ boleh ambil judul ber-"Season" dan juga judul dasar tanpa "Season"
+      // (judul dasar sudah difilter isSameFranchise di atas)
+      // jadi tidak perlu filter tambahan di sini
+    }
+
+    return true;
   });
 
   if (!list.length) {
@@ -376,6 +386,46 @@ async function loadAnimeDetail(slug) {
   favIcon.appendChild(favPath);
 
   const favText = document.createElement("span");
+
+  function isFavorite(slug) {
+    const raw = localStorage.getItem("anikuy_favorites") || "[]";
+    try {
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) && arr.some((x) => x.slug === slug);
+    } catch {
+      return false;
+    }
+  }
+
+  function addFavorite(data) {
+    const raw = localStorage.getItem("anikuy_favorites") || "[]";
+    let arr;
+    try {
+      arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) arr = [];
+    } catch {
+      arr = [];
+    }
+    if (!arr.some((x) => x.slug === data.slug)) {
+      arr.push(data);
+      localStorage.setItem("anikuy_favorites", JSON.stringify(arr));
+      showToast("Ditambahkan ke Favorit");
+    }
+  }
+
+  function removeFavorite(slug) {
+    const raw = localStorage.getItem("anikuy_favorites") || "[]";
+    let arr;
+    try {
+      arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) arr = [];
+    } catch {
+      arr = [];
+    }
+    const next = arr.filter((x) => x.slug !== slug);
+    localStorage.setItem("anikuy_favorites", JSON.stringify(next));
+    showToast("Dihapus dari Favorit");
+  }
 
   function refreshFavBtn() {
     if (isFavorite(detailSlug)) {
