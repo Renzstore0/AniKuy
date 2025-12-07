@@ -6,6 +6,10 @@ const genrePrevBtn = document.getElementById("genrePrevBtn");
 const genreNextBtn = document.getElementById("genreNextBtn");
 const genrePageInfo = document.getElementById("genrePageInfo");
 
+// container scroll utama (di layout kamu ini #mainContent)
+const genreScrollContainer =
+  document.getElementById("mainContent") || window;
+
 const urlParams = new URLSearchParams(window.location.search);
 const currentGenreSlug = urlParams.get("slug");
 const currentGenreName = urlParams.get("name");
@@ -14,7 +18,8 @@ let currentGenrePage = 1;
 let currentGenreLastPage = 1;
 let genreHasMore = true;
 let genreIsLoading = false;
-const GENRE_SCROLL_OFFSET = 400; // jarak 400px dari bawah sebelum load berikutnya
+
+const GENRE_SCROLL_OFFSET = 400; // jarak 400px sebelum mentok bawah
 
 async function loadGenreList(page = 1) {
   if (!currentGenreSlug || !genreAnimeGrid) return;
@@ -23,7 +28,7 @@ async function loadGenreList(page = 1) {
 
   genreIsLoading = true;
 
-  // kalau page 1, kosongkan grid dulu
+  // kalau pertama kali load, kosongkan grid
   if (page === 1) {
     genreAnimeGrid.innerHTML = "";
   }
@@ -35,6 +40,7 @@ async function loadGenreList(page = 1) {
     genreIsLoading = false;
     return;
   }
+
   if (!json || json.status !== "success") {
     genreIsLoading = false;
     return;
@@ -69,10 +75,20 @@ async function loadGenreList(page = 1) {
 function handleGenreInfiniteScroll() {
   if (!genreHasMore || genreIsLoading) return;
 
-  const scrollPos = window.innerHeight + window.scrollY;
-  const threshold = document.body.offsetHeight - GENRE_SCROLL_OFFSET;
+  let scrollTop, scrollHeight, clientHeight;
 
-  if (scrollPos >= threshold) {
+  if (genreScrollContainer === window) {
+    const doc = document.documentElement;
+    scrollTop = window.scrollY || doc.scrollTop;
+    scrollHeight = doc.scrollHeight;
+    clientHeight = window.innerHeight;
+  } else {
+    scrollTop = genreScrollContainer.scrollTop;
+    scrollHeight = genreScrollContainer.scrollHeight;
+    clientHeight = genreScrollContainer.clientHeight;
+  }
+
+  if (scrollTop + clientHeight >= scrollHeight - GENRE_SCROLL_OFFSET) {
     loadGenreList(currentGenrePage + 1);
   }
 }
@@ -87,7 +103,16 @@ document.addEventListener("DOMContentLoaded", () => {
   if (genreNextBtn) genreNextBtn.style.display = "none";
 
   loadGenreList(1);
-  window.addEventListener("scroll", handleGenreInfiniteScroll, {
-    passive: true,
-  });
+
+  if (genreScrollContainer === window) {
+    window.addEventListener("scroll", handleGenreInfiniteScroll, {
+      passive: true,
+    });
+  } else {
+    genreScrollContainer.addEventListener(
+      "scroll",
+      handleGenreInfiniteScroll,
+      { passive: true }
+    );
+  }
 });
