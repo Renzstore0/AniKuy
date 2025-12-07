@@ -11,7 +11,6 @@ const tabSeasons = document.getElementById("tabSeasons");
 const detailParams = new URLSearchParams(window.location.search);
 const detailSlugFromUrl = detailParams.get("slug");
 
-// simpan ref ke search episode supaya gampang di-show/hide
 let episodeSearchWrap = null;
 
 // ---------- UTIL SEASON ----------
@@ -28,12 +27,11 @@ function normalizeBaseTitle(title) {
     .trim();
 }
 
-// ada kata "Season xx"?
 function hasSeasonKeyword(title) {
   if (!title) return false;
   const t = title.toLowerCase();
-  if (/season\s*\d+/.test(t)) return true; // "Season 2"
-  if (/\d+(st|nd|rd|th)\s*season/.test(t)) return true; // "2nd Season"
+  if (/season\s*\d+/.test(t)) return true;
+  if (/\d+(st|nd|rd|th)\s*season/.test(t)) return true;
   return false;
 }
 
@@ -49,7 +47,6 @@ function extractSeasonNumber(title) {
     const n = parseInt(m[1], 10);
     if (!Number.isNaN(n) && n > 0) return n;
   }
-  // tidak ada "Season xx" → anggap Season 1
   return 1;
 }
 
@@ -72,7 +69,6 @@ function showEpisodeTab() {
   episodeList.classList.remove("hidden");
   seasonList.classList.add("hidden");
 
-  // search episode muncul hanya di tab Episode
   if (episodeSearchWrap) {
     episodeSearchWrap.classList.remove("hidden");
   }
@@ -85,7 +81,6 @@ function showSeasonTab() {
   episodeList.classList.add("hidden");
   seasonList.classList.remove("hidden");
 
-  // search episode disembunyikan di tab Season
   if (episodeSearchWrap) {
     episodeSearchWrap.classList.add("hidden");
   }
@@ -133,7 +128,6 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
     }
   });
 
-  // kalau tidak ada judul yang mengandung "Season xx" sama sekali
   if (!hasSeasonLike) {
     const empty = document.createElement("div");
     empty.className = "season-empty";
@@ -145,7 +139,6 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
   const seasons = [];
 
   relatedAll.forEach((a) => {
-    // jangan masukin anime yang sedang dibuka
     if (a.slug === detailSlug) return;
 
     const seasonNumber = extractSeasonNumber(a.title);
@@ -165,7 +158,6 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
     return;
   }
 
-  // urut dari season kecil ke besar
   seasons.sort((a, b) => (a.seasonNumber || 0) - (b.seasonNumber || 0));
 
   seasons.forEach((s) => {
@@ -213,7 +205,7 @@ async function loadAnimeDetail(slug) {
   if (!json || json.status !== "success") return;
 
   const d = json.data;
-  const detailSlug = d.slug || slug;
+  const apiSlug = slug; // slug dari URL, dipakai untuk My List
 
   animeDetailContent.innerHTML = "";
 
@@ -338,7 +330,7 @@ async function loadAnimeDetail(slug) {
   const favText = document.createElement("span");
 
   function refreshFavBtn() {
-    if (isFavorite(detailSlug)) {
+    if (isFavorite(apiSlug)) {
       favText.textContent = "Hapus dari Favorit";
     } else {
       favText.textContent = "Favorit";
@@ -351,15 +343,15 @@ async function loadAnimeDetail(slug) {
 
   favBtn.addEventListener("click", () => {
     const favData = {
-      slug: detailSlug,
+      slug: apiSlug, // pakai slug dari URL
       title: d.title,
       poster: d.poster,
       rating: d.rating || "",
       episode_count: d.episode_count || "",
       status: d.status || "",
     };
-    if (isFavorite(detailSlug)) {
-      removeFavorite(detailSlug);
+    if (isFavorite(apiSlug)) {
+      removeFavorite(apiSlug);
     } else {
       addFavorite(favData);
     }
@@ -370,7 +362,7 @@ async function loadAnimeDetail(slug) {
   actionWrap.appendChild(favBtn);
   animeDetailContent.appendChild(actionWrap);
 
-  // ===== SINOPSIS + TOGGLE =====
+  // ===== SINOPSIS =====
   const syn = document.createElement("p");
   syn.id = "synopsisText";
   syn.className = "synopsis";
@@ -400,18 +392,16 @@ async function loadAnimeDetail(slug) {
     animeDetailContent.appendChild(synToggle);
   }
 
-  // ===== EPISODE LIST (TERBARU DI ATAS + SEARCH) =====
+  // ===== EPISODE LIST + SEARCH =====
   if (episodeList) {
     const eps = d.episode_lists || [];
 
-    // hapus search lama kalau ada (kalau user pindah detail tanpa refresh)
     const existingSearch = document.getElementById("episodeSearchWrap");
     if (existingSearch && existingSearch.parentNode) {
       existingSearch.parentNode.removeChild(existingSearch);
     }
     episodeSearchWrap = null;
 
-    // bikin input search kalau ada episode
     if (eps.length) {
       const searchWrap = document.createElement("div");
       searchWrap.id = "episodeSearchWrap";
@@ -425,15 +415,12 @@ async function loadAnimeDetail(slug) {
 
       searchWrap.appendChild(input);
 
-      // taruh di atas episodeList
       if (episodeList.parentNode) {
         episodeList.parentNode.insertBefore(searchWrap, episodeList);
       }
 
-      // simpan ref global
       episodeSearchWrap = searchWrap;
 
-      // kalau saat ini tab Season aktif, langsung sembunyikan
       if (tabSeasons && tabSeasons.classList.contains("active")) {
         episodeSearchWrap.classList.add("hidden");
       }
@@ -448,7 +435,6 @@ async function loadAnimeDetail(slug) {
       });
     }
 
-    // render semua episode (full, tidak dipotong)
     episodeList.innerHTML = "";
     for (let i = eps.length - 1; i >= 0; i--) {
       const ep = eps[i];
@@ -457,11 +443,8 @@ async function loadAnimeDetail(slug) {
       const item = document.createElement("div");
       item.className = "episode-item";
 
-      // pakai nomor dari REST API
       const epNum =
-        ep.episode_number != null
-          ? ep.episode_number
-          : ep.episode ?? i + 1;
+        ep.episode_number != null ? ep.episode_number : ep.episode ?? i + 1;
 
       const left = document.createElement("span");
       left.textContent = `Episode ${epNum}`;
@@ -478,7 +461,7 @@ async function loadAnimeDetail(slug) {
   }
 
   // ===== SEASON LIST =====
-  loadSeasonListForAnime(d, detailSlug);
+  loadSeasonListForAnime(d, apiSlug);
 
   // ===== REKOMENDASI =====
   if (recommendationGrid) {
@@ -503,7 +486,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (tabEpisodes && tabSeasons && episodeList && seasonList) {
     tabEpisodes.addEventListener("click", showEpisodeTab);
     tabSeasons.addEventListener("click", showSeasonTab);
-    showEpisodeTab(); // default
+    showEpisodeTab();
   }
 
   loadAnimeDetail(detailSlugFromUrl);
