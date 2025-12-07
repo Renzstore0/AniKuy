@@ -1,5 +1,3 @@
-Ini full update untuk assets/js/detail.js saja.
-
 // assets/js/detail.js
 
 const animeDetailContent = document.getElementById("animeDetailContent");
@@ -12,6 +10,9 @@ const tabSeasons = document.getElementById("tabSeasons");
 
 const detailParams = new URLSearchParams(window.location.search);
 const detailSlugFromUrl = detailParams.get("slug");
+
+// simpan ref ke search episode supaya gampang di-show/hide
+let episodeSearchWrap = null;
 
 // ---------- UTIL SEASON ----------
 
@@ -71,10 +72,9 @@ function showEpisodeTab() {
   episodeList.classList.remove("hidden");
   seasonList.classList.add("hidden");
 
-  // Tampilkan search episode hanya di tab Episode
-  const searchWrap = document.getElementById("episodeSearchWrap");
-  if (searchWrap) {
-    searchWrap.style.display = "";
+  // search episode muncul hanya di tab Episode
+  if (episodeSearchWrap) {
+    episodeSearchWrap.classList.remove("hidden");
   }
 }
 
@@ -85,10 +85,9 @@ function showSeasonTab() {
   episodeList.classList.add("hidden");
   seasonList.classList.remove("hidden");
 
-  // Sembunyikan search episode saat tab Season aktif
-  const searchWrap = document.getElementById("episodeSearchWrap");
-  if (searchWrap) {
-    searchWrap.style.display = "none";
+  // search episode disembunyikan di tab Season
+  if (episodeSearchWrap) {
+    episodeSearchWrap.classList.add("hidden");
   }
 }
 
@@ -405,11 +404,12 @@ async function loadAnimeDetail(slug) {
   if (episodeList) {
     const eps = d.episode_lists || [];
 
-    // hapus search lama kalau ada (kalau user reload detail lain tanpa refresh)
+    // hapus search lama kalau ada (kalau user pindah detail tanpa refresh)
     const existingSearch = document.getElementById("episodeSearchWrap");
     if (existingSearch && existingSearch.parentNode) {
       existingSearch.parentNode.removeChild(existingSearch);
     }
+    episodeSearchWrap = null;
 
     // bikin input search kalau ada episode
     if (eps.length) {
@@ -430,9 +430,12 @@ async function loadAnimeDetail(slug) {
         episodeList.parentNode.insertBefore(searchWrap, episodeList);
       }
 
-      // kalau saat ini tab Season aktif, langsung sembunyikan search
+      // simpan ref global
+      episodeSearchWrap = searchWrap;
+
+      // kalau saat ini tab Season aktif, langsung sembunyikan
       if (tabSeasons && tabSeasons.classList.contains("active")) {
-        searchWrap.style.display = "none";
+        episodeSearchWrap.classList.add("hidden");
       }
 
       input.addEventListener("input", () => {
