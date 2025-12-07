@@ -29,7 +29,7 @@ function normalizeBaseTitle(title) {
 function hasSeasonKeyword(title) {
   if (!title) return false;
   const t = title.toLowerCase();
-  if (/season\s*\d+/.test(t)) return true;          // "Season 2"
+  if (/season\s*\d+/.test(t)) return true; // "Season 2"
   if (/\d+(st|nd|rd|th)\s*season/.test(t)) return true; // "2nd Season"
   return false;
 }
@@ -105,7 +105,6 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
   const list = json.data || [];
   const currentBase = normalizeBaseTitle(detailData.title);
 
-  // kumpulkan semua judul yang base-nya sama
   const relatedAll = [];
   let hasSeasonLike = hasSeasonKeyword(detailData.title);
 
@@ -121,9 +120,7 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
     }
   });
 
-  // Kalau TIDAK ada satupun judul yang mengandung "Season xx"
-  // (baik anime ini maupun hasil search lain)
-  // → anggap nggak punya season, jangan pakai daftar ini.
+  // kalau tidak ada judul yang mengandung "Season xx" sama sekali
   if (!hasSeasonLike) {
     const empty = document.createElement("div");
     empty.className = "season-empty";
@@ -135,7 +132,7 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
   const seasons = [];
 
   relatedAll.forEach((a) => {
-    // jangan masukin anime yang sedang dibuka (biar daftar season isinya yang lain)
+    // jangan masukin anime yang sedang dibuka
     if (a.slug === detailSlug) return;
 
     const seasonNumber = extractSeasonNumber(a.title);
@@ -155,7 +152,7 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
     return;
   }
 
-  // urutkan berdasarkan nomor season (tertinggi di atas atau bawah, bebas)
+  // urut dari season kecil ke besar
   seasons.sort((a, b) => (a.seasonNumber || 0) - (b.seasonNumber || 0));
 
   seasons.forEach((s) => {
@@ -390,10 +387,47 @@ async function loadAnimeDetail(slug) {
     animeDetailContent.appendChild(synToggle);
   }
 
-  // ===== EPISODE LIST (TERBARU DI ATAS) =====
+  // ===== EPISODE LIST (TERBARU DI ATAS + SEARCH) =====
   if (episodeList) {
-    episodeList.innerHTML = "";
     const eps = d.episode_lists || [];
+
+    // hapus search lama kalau ada (kalau user reload detail lain tanpa refresh)
+    const existingSearch = document.getElementById("episodeSearchWrap");
+    if (existingSearch && existingSearch.parentNode) {
+      existingSearch.parentNode.removeChild(existingSearch);
+    }
+
+    // bikin input search kalau ada episode
+    if (eps.length) {
+      const searchWrap = document.createElement("div");
+      searchWrap.id = "episodeSearchWrap";
+      searchWrap.className = "episode-search-wrap";
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.id = "episodeSearchInput";
+      input.className = "episode-search-input";
+      input.placeholder = "Cari episode... (misal: 5 atau 12)";
+
+      searchWrap.appendChild(input);
+
+      // taruh di atas episodeList
+      if (episodeList.parentNode) {
+        episodeList.parentNode.insertBefore(searchWrap, episodeList);
+      }
+
+      input.addEventListener("input", () => {
+        const q = input.value.trim().toLowerCase();
+        const items = episodeList.querySelectorAll(".episode-item");
+        items.forEach((item) => {
+          const text = item.textContent.toLowerCase();
+          item.style.display = text.includes(q) ? "" : "none";
+        });
+      });
+    }
+
+    // render semua episode (full, tidak dipotong)
+    episodeList.innerHTML = "";
     for (let i = eps.length - 1; i >= 0; i--) {
       const ep = eps[i];
       if (!ep) continue;
