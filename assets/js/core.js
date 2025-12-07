@@ -103,8 +103,7 @@ function loadFavoritesFromStorage() {
     const raw = localStorage.getItem(LS_KEY_FAVORITES);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
@@ -114,32 +113,52 @@ let favorites = loadFavoritesFromStorage();
 
 function saveFavorites() {
   try {
-    localStorage.setItem(LS_KEY_FAVORITES, JSON.stringify(favorites));
+    localStorage.setItem(LS_KEY_FAVORITES, JSON.stringify(favorites || []));
   } catch {
-    // ignore
+    // abaikan (private mode / storage penuh)
   }
 }
 
+function getFavorites() {
+  // dipakai di my-list.js
+  return Array.isArray(favorites) ? favorites.slice() : [];
+}
+
 function isFavorite(slug) {
-  return favorites.some((a) => a.slug === slug);
+  if (!slug) return false;
+  return getFavorites().some((a) => a.slug === slug);
 }
 
 function addFavorite(anime) {
   if (!anime || !anime.slug) return;
   if (isFavorite(anime.slug)) return;
-  favorites.push(anime);
+
+  // normalisasi data yang disimpan
+  const fav = {
+    slug: anime.slug,
+    title: anime.title || "",
+    poster: anime.poster || "",
+    rating: anime.rating || "",
+    episode_count: anime.episode_count || "",
+    status: anime.status || "",
+  };
+
+  favorites.push(fav);
   saveFavorites();
-  showToast("Ditambahkan ke My List");
+
+  if (typeof showToast === "function") {
+    showToast("Ditambahkan ke My List");
+  }
 }
 
 function removeFavorite(slug) {
-  favorites = favorites.filter((a) => a.slug !== slug);
+  if (!slug) return;
+  favorites = getFavorites().filter((a) => a.slug !== slug);
   saveFavorites();
-  showToast("Dihapus dari My List");
-}
 
-function getFavorites() {
-  return favorites.slice();
+  if (typeof showToast === "function") {
+    showToast("Dihapus dari My List");
+  }
 }
 
 // BIKIN KARTU ANIME (dipakai di semua page)
