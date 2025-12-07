@@ -97,6 +97,30 @@ function isSameFranchise(baseNorm, otherNorm) {
   return false;
 }
 
+// format tanggal "YYYY-MM-DD" => "03 Des"
+function formatShortDate(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d)) return "";
+  const bulan = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "Mei",
+    "Jun",
+    "Jul",
+    "Agu",
+    "Sep",
+    "Okt",
+    "Nov",
+    "Des",
+  ];
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = bulan[d.getMonth()] || "";
+  return `${day} ${month}`;
+}
+
 // Tampilkan tab Episode
 function showEpisodeTab() {
   if (episodeList) {
@@ -115,8 +139,7 @@ function showSeasonTab() {
     episodeList.style.display = "none";
   }
   if (seasonList) {
-    // important: grid 3 kolom
-    seasonList.style.display = "grid";
+    seasonList.style.display = "grid"; // grid 3 kolom
   }
   if (tabEpisodes) tabEpisodes.classList.remove("active");
   if (tabSeasons) tabSeasons.classList.add("active");
@@ -155,7 +178,7 @@ async function loadSeasonList(animeData) {
 
   if (!list.length) {
     const empty = document.createElement("div");
-    empty.className = "episode-item season-item";
+    empty.className = "season-item season-empty";
     const span = document.createElement("span");
     span.textContent = "Tidak ada season lain.";
     empty.appendChild(span);
@@ -163,10 +186,10 @@ async function loadSeasonList(animeData) {
     return;
   }
 
-  // bikin item season dengan thumbnail
+  // bikin kartu season (poster, badge eps, judul, tanggal)
   list.forEach((a) => {
     const item = document.createElement("div");
-    item.className = "episode-item season-item";
+    item.className = "season-item";
 
     const thumbWrap = document.createElement("div");
     thumbWrap.className = "season-thumb";
@@ -176,14 +199,30 @@ async function loadSeasonList(animeData) {
     img.alt = a.title || baseTitle;
     thumbWrap.appendChild(img);
 
+    const epsCount = a.episode_count || a.episode || "";
+    if (epsCount) {
+      const badge = document.createElement("div");
+      badge.className = "season-ep-badge";
+      badge.textContent = `Eps ${epsCount}`;
+      thumbWrap.appendChild(badge);
+    }
+
     const infoWrap = document.createElement("div");
     infoWrap.className = "season-info";
 
-    const titleSpan = document.createElement("span");
+    const titleSpan = document.createElement("div");
     titleSpan.className = "season-title";
     titleSpan.textContent = makeSeasonDisplayTitle(a.title || "", baseTitle);
 
     infoWrap.appendChild(titleSpan);
+
+    const dateText = formatShortDate(a.release_date);
+    if (dateText) {
+      const dateSpan = document.createElement("div");
+      dateSpan.className = "season-date";
+      dateSpan.textContent = dateText;
+      infoWrap.appendChild(dateSpan);
+    }
 
     item.appendChild(thumbWrap);
     item.appendChild(infoWrap);
