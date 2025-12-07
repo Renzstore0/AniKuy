@@ -240,11 +240,10 @@ async function loadHome() {
     ongoingGridHome.appendChild(card);
   });
 
-  // SELESAI DITAYANGKAN (home)
+  // SELESAI DITAYANGKAN (home) – pakai rating
   complete.slice(0, 15).forEach((a) => {
-    const epsLabel = formatEpisodeLabel(a.episode_count || "");
     const card = createAnimeCard(a, {
-      badgeBottom: epsLabel,
+      rating: a.rating && a.rating !== "" ? a.rating : "N/A",
       meta: a.last_release_date || "",
     });
     completeRowHome.appendChild(card);
