@@ -814,6 +814,27 @@ img {
   max-width: 70%;
 }
 
+/* EPISODE SEARCH */
+
+.episode-search-wrap {
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.episode-search-input {
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  padding: 6px 12px;
+  background: rgba(15, 23, 42, 0.95);
+  color: #e5e7eb;
+  font-size: 13px;
+}
+
+.episode-search-input::placeholder {
+  color: #6b7280;
+}
+
 /* SEASON GRID */
 
 .season-list {
@@ -1730,4 +1751,14 @@ body.theme-light .season-item {
 
 body.theme-light .season-empty {
   color: #6b7280;
+}
+
+body.theme-light .episode-search-input {
+  background: #ffffff;
+  border-color: rgba(156, 163, 175, 0.7);
+  color: #111827;
+}
+
+body.theme-light .episode-search-input::placeholder {
+  color: #9ca3af;
 }
