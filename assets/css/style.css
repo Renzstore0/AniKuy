@@ -691,7 +691,7 @@ img {
   box-shadow: 0 3px 8px rgba(15, 23, 42, 0.6);
 }
 
-/* synopsis – dengan toggle */
+/* synopsis – with Baca selengkapnya */
 
 .synopsis {
   margin-top: 10px;
@@ -700,7 +700,7 @@ img {
   color: #e5e7eb;
   white-space: normal;
   position: relative;
-  max-height: 5.5em; /* ~3 baris */
+  max-height: 5.5em; /* kira-kira 3 baris */
   overflow: hidden;
 }
 
@@ -814,12 +814,12 @@ img {
   max-width: 70%;
 }
 
-/* SEASON GRID */
+/* SEASON GRID (3 kolom di HP) */
 
 .season-list {
   margin-top: 6px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)); /* HP: 3 kolom */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px 8px;
 }
 
