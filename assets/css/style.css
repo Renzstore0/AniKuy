@@ -754,27 +754,47 @@ img {
   max-width: 70%;
 }
 
-/* SEASON ITEM (DENGAN THUMBNAIL) */
-/* grid 3 kolom */
+/* SEASON GRID (3 kolom) */
 
 .season-list {
   margin-top: 6px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px 8px;
 }
+
+/* kartu season mirip anime-card */
 
 .season-item {
-  gap: 8px;
-  justify-content: flex-start;
+  cursor: pointer;
+  border-radius: 18px;
+  padding: 6px;
+  background: #020817;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.9);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
+.season-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.95);
+}
+
+.season-empty {
+  grid-column: 1 / -1;
+  padding: 10px 12px;
+  text-align: center;
+  font-size: 13px;
+}
+
+/* poster season */
+
 .season-thumb {
-  width: 48px;
-  aspect-ratio: 2 / 3;
-  border-radius: 8px;
+  position: relative;
+  border-radius: 14px;
   overflow: hidden;
-  flex-shrink: 0;
+  aspect-ratio: 2 / 3;
 }
 
 .season-thumb img {
@@ -783,15 +803,38 @@ img {
   object-fit: cover;
 }
 
+/* badge Eps */
+
+.season-ep-badge {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.96);
+  color: #f9fafb;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* info judul + tanggal */
+
 .season-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 13px;
 }
 
 .season-title {
+  font-size: 12px;
   font-weight: 600;
+  line-height: 1.3;
+}
+
+.season-date {
+  font-size: 11px;
+  color: #9ca3af;
 }
 
 /* PLAYER */
