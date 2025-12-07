@@ -343,7 +343,7 @@ img {
   right: 8px;
 }
 
-/* Dots: scroll horizontal, semua muncul */
+/* Dots: scroll horizontal, semua muncul + tanpa scrollbar */
 .today-hero-dots {
   margin-top: 8px;
   display: flex;
@@ -354,13 +354,11 @@ img {
   padding: 4px 8px;
   max-width: 100%;
   -webkit-overflow-scrolling: touch;
-
-  /* sembunyikan scrollbar hanya di dots */
-  scrollbar-width: none;        /* Firefox */
+  scrollbar-width: none; /* Firefox */
 }
 
 .today-hero-dots::-webkit-scrollbar {
-  display: none;                /* Chrome/Safari */
+  display: none; /* Chrome/Safari */
 }
 
 .today-hero-dots span {
@@ -1137,6 +1135,15 @@ img {
   transform: translateY(100%);
 }
 
+/* link nav: hilangin underline di semua state */
+.bottom-nav a,
+.bottom-nav a:link,
+.bottom-nav a:visited,
+.bottom-nav a:hover,
+.bottom-nav a:active {
+  text-decoration: none;
+}
+
 .nav-item {
   border: none;
   background: none;
@@ -1148,6 +1155,7 @@ img {
   justify-content: center;
   gap: 2px;
   cursor: pointer;
+  font-weight: 600; /* font lebih tebal */
 }
 
 .nav-item.active {
@@ -1157,6 +1165,12 @@ img {
 .nav-icon {
   width: 20px;
   height: 20px;
+}
+
+/* label teks nav, dibuat tebal juga */
+.nav-label {
+  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
 /* TOAST */
