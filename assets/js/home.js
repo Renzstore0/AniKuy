@@ -27,23 +27,21 @@ function getTodayName() {
   return days[new Date().getDay()];
 }
 
-// --- HELPER: AUTO SCROLL DOTS ---
+// --- BANTUAN: AUTO SCROLL DOT AKTIF ---
 
-function scrollTodayDotsToActive(activeIndex) {
+function scrollTodayDotsToActive() {
   if (!todayDots) return;
 
-  const dots = todayDots.querySelectorAll("span");
-  const active = dots[activeIndex];
+  const active = todayDots.querySelector("span.active");
   if (!active) return;
 
-  const cRect = todayDots.getBoundingClientRect();
-  const aRect = active.getBoundingClientRect();
+  const containerRect = todayDots.getBoundingClientRect();
+  const activeRect = active.getBoundingClientRect();
 
-  // geser sehingga dot aktif kira-kira di tengah kontainer
   const offset =
-    aRect.left -
-    cRect.left -
-    (cRect.width / 2 - aRect.width / 2);
+    activeRect.left -
+    containerRect.left -
+    (containerRect.width - activeRect.width) / 2;
 
   todayDots.scrollBy({
     left: offset,
@@ -96,18 +94,11 @@ function updateTodayHero() {
   todayAnimeList.forEach((_, i) => {
     const dot = document.createElement("span");
     if (i === todayIndex) dot.classList.add("active");
-
-    // klik dot buat lompat ke slide
-    dot.addEventListener("click", () => {
-      todayIndex = i;
-      updateTodayHero();
-    });
-
     todayDots.appendChild(dot);
   });
 
-  // auto-scroll ke dot aktif
-  scrollTodayDotsToActive(todayIndex);
+  // auto scroll ke dot aktif
+  scrollTodayDotsToActive();
 }
 
 function goToTodayDetail() {
@@ -212,15 +203,21 @@ async function loadHome() {
   ongoingGridHome.innerHTML = "";
   completeRowHome.innerHTML = "";
 
+  // --- SEDANG TAYANG ---
   ongoing.slice(0, 9).forEach((a) => {
+    const episodeLabelRaw = a.current_episode || "";
+    const episodeLabelShort =
+      episodeLabelRaw.replace(/^Episode\s*/i, "Ep ").trim() || "";
+
     const card = createAnimeCard(a, {
       badgeTop: "Baru",
-      badgeBottom: a.current_episode || "",
+      badgeBottom: episodeLabelShort,
       meta: a.release_day || "",
     });
     ongoingGridHome.appendChild(card);
   });
 
+  // --- SELESAI DITAYANGKAN ---
   complete.slice(0, 15).forEach((a) => {
     const card = createAnimeCard(a, {
       rating: a.rating && a.rating !== "" ? a.rating : "N/A",
