@@ -691,33 +691,47 @@ img {
   box-shadow: 0 3px 8px rgba(15, 23, 42, 0.6);
 }
 
-/* synopsis – di luar box */
+/* synopsis – di luar box + read more */
+
 .synopsis {
+  margin-top: 10px;
   font-size: 13px;
   line-height: 1.5;
   color: #e5e7eb;
   white-space: normal;
+  position: relative;
+  overflow: hidden;
+  max-height: 5.5em; /* kira2 3–4 baris */
 }
 
-/* wrapper sinopsis + tombol */
-.synopsis-wrap {
-  margin-top: 10px;
+.synopsis::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2.2em;
+  background: linear-gradient(
+    to bottom,
+    rgba(2, 6, 23, 0),
+    rgba(2, 6, 23, 0.96)
+  );
 }
 
-/* tombol "Baca selengkapnya" */
+.synopsis.expanded {
+  max-height: none;
+}
+
+.synopsis.expanded::after {
+  opacity: 0;
+}
+
 .synopsis-toggle {
-  margin-top: 6px;
-  border: none;
-  background: transparent;
-  color: #38bdf8;
+  margin-top: 4px;
   font-size: 13px;
-  font-weight: 600;
-  padding: 0;
+  color: #22d3ee;
   cursor: pointer;
-}
-
-.synopsis-toggle:active {
-  transform: scale(0.97);
+  display: inline-block;
 }
 
 /* EPISODE / SEASON TABS */
@@ -725,7 +739,8 @@ img {
 .section-header-episodes {
   margin-top: 16px;
   margin-bottom: 8px;
-  text-align: center;
+  display: flex;
+  justify-content: center;
 }
 
 .episode-tabs {
@@ -852,7 +867,7 @@ img {
   font-weight: 600;
 }
 
-/* info judul + tanggal */
+/* info judul */
 
 .season-info {
   display: flex;
@@ -865,11 +880,6 @@ img {
   font-weight: 600;
   line-height: 1.3;
   color: inherit;
-}
-
-.season-date {
-  font-size: 11px;
-  color: #9ca3af;
 }
 
 /* PLAYER */
@@ -1674,10 +1684,19 @@ body.theme-light .detail-meta span.label {
 
 body.theme-light .synopsis {
   color: #111827;
+  background: transparent;
+}
+
+body.theme-light .synopsis::after {
+  background: linear-gradient(
+    to bottom,
+    rgba(249, 250, 251, 0),
+    rgba(249, 250, 251, 0.98)
+  );
 }
 
 body.theme-light .synopsis-toggle {
-  color: #2563eb;
+  color: #1d4ed8;
 }
 
 body.theme-light .genre-pill {
@@ -1686,6 +1705,7 @@ body.theme-light .genre-pill {
   color: #1f2937;
 }
 
+/* light: tabs Episode / Season */
 body.theme-light .episode-tab {
   color: #6b7280;
 }
