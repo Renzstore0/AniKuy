@@ -723,31 +723,44 @@ img {
 /* EPISODE / SEASON TABS */
 
 .section-header-episodes {
-  margin-top: 12px;
-  margin-bottom: 6px;
+  margin-top: 16px;
+  margin-bottom: 8px;
+  text-align: center;
 }
 
 .episode-tabs {
-  display: inline-flex;
-  gap: 8px;
+  display: flex;
+  justify-content: center;
+  gap: 32px;
   align-items: center;
 }
 
 .episode-tab {
-  padding: 6px 16px;
-  border-radius: 999px;
+  position: relative;
   border: none;
-  background: rgba(15, 23, 42, 0.95);
-  color: #e5e7eb;
-  font-size: 14px;
-  font-weight: 600;
+  background: transparent;
+  padding: 4px 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #9ca3af;
   cursor: pointer;
-  letter-spacing: 0.04em;
 }
 
 .episode-tab.active {
-  background: linear-gradient(135deg, #1d4ed8, #22d3ee);
   color: #f9fafb;
+}
+
+.episode-tab.active::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
+  width: 40px;
+  height: 3px;
+  border-radius: 999px;
+  background: #f9fafb;
 }
 
 /* EPISODE LIST */
@@ -1674,11 +1687,13 @@ body.theme-light .genre-pill {
 }
 
 body.theme-light .episode-tab {
-  background: #e5e7eb;
-  color: #111827;
+  color: #6b7280;
 }
 
 body.theme-light .episode-tab.active {
-  background: linear-gradient(135deg, #1d4ed8, #22d3ee);
-  color: #f9fafb;
+  color: #111827;
+}
+
+body.theme-light .episode-tab.active::after {
+  background: #111827;
 }
