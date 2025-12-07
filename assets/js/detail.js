@@ -16,9 +16,6 @@ const detailSlugFromUrl = detailParams.get("slug");
 // =========================
 
 // Ambil judul dasar untuk search season
-// - buang teks setelah "Season"
-// - buang teks setelah "Episode"
-// - buang teks setelah "Subtitle"
 function getBaseTitleForSeasonSearch(title) {
   if (!title) return "";
 
@@ -44,21 +41,14 @@ function normalizeTitleForCompare(t) {
 }
 
 // Bersihkan judul untuk tampilan di list season
-// - hilangkan "(Episode 1 - xx)"
-// - hilangkan "Subtitle Indonesia" dan sejenisnya
 function makeSeasonDisplayTitle(rawTitle, baseTitle) {
   if (!rawTitle) return baseTitle || "";
 
   let t = rawTitle;
 
-  // buang info episode di dalam kurung
   t = t.replace(/\(.*?episode.*?\)/gi, "");
   t = t.replace(/\(episode.*?\)/gi, "");
-
-  // buang "Episode 1 - xx" walau tanpa kurung
   t = t.replace(/episode\s*\d+\s*[-–]\s*\d+/gi, "");
-
-  // buang "Subtitle ..." di akhir
   t = t.replace(/subtitle.+$/i, "");
 
   t = t.trim();
@@ -185,8 +175,6 @@ async function loadSeasonList(animeData) {
     } else {
       // anime sekarang ada kata "Season"
       // ⇒ boleh ambil judul ber-"Season" dan juga judul dasar tanpa "Season"
-      // (judul dasar sudah difilter isSameFranchise di atas)
-      // jadi tidak perlu filter tambahan di sini
     }
 
     return true;
@@ -461,18 +449,53 @@ async function loadAnimeDetail(slug) {
 
   animeDetailContent.appendChild(actionWrap);
 
-  // ================== SINOPSIS ==================
-  const syn = document.createElement("p");
-  syn.className = "synopsis";
+  // ================== SINOPSIS + "Baca selengkapnya" ==================
+  const synWrap = document.createElement("div");
+  synWrap.className = "synopsis-wrap";
+
   let cleanSynopsis = (d.synopsis || "")
     .replace(/\r\n/g, "\n")
     .split("\n")
     .map((s) => s.trim())
     .filter(Boolean)
     .join(" ");
+
   if (!cleanSynopsis) cleanSynopsis = "Tidak ada sinopsis.";
-  syn.textContent = cleanSynopsis;
-  animeDetailContent.appendChild(syn);
+
+  const MAX_SYNOPSIS_CHARS = 260;
+  const shouldTruncate = cleanSynopsis.length > MAX_SYNOPSIS_CHARS;
+  const shortText = shouldTruncate
+    ? cleanSynopsis.slice(0, MAX_SYNOPSIS_CHARS).trimEnd() + "..."
+    : cleanSynopsis;
+
+  const syn = document.createElement("p");
+  syn.className = "synopsis";
+  syn.textContent = shortText;
+  synWrap.appendChild(syn);
+
+  if (shouldTruncate) {
+    const toggleBtn = document.createElement("button");
+    toggleBtn.type = "button";
+    toggleBtn.className = "synopsis-toggle";
+    toggleBtn.textContent = "Baca selengkapnya";
+
+    let expanded = false;
+
+    toggleBtn.addEventListener("click", () => {
+      expanded = !expanded;
+      if (expanded) {
+        syn.textContent = cleanSynopsis;
+        toggleBtn.textContent = "Tutup";
+      } else {
+        syn.textContent = shortText;
+        toggleBtn.textContent = "Baca selengkapnya";
+      }
+    });
+
+    synWrap.appendChild(toggleBtn);
+  }
+
+  animeDetailContent.appendChild(synWrap);
 
   // ================== EPISODE LIST (baru -> lama) ==================
   if (episodeList) {
