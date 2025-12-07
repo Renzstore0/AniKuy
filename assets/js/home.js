@@ -19,6 +19,8 @@ const todayNextBtn = document.getElementById("todayNextBtn");
 
 let todayAnimeList = [];
 let todayIndex = 0;
+let todayAutoTimer = null;
+const TODAY_AUTO_MS = 7000;
 
 // --- UTIL HARI ---
 
@@ -27,29 +29,43 @@ function getTodayName() {
   return days[new Date().getDay()];
 }
 
-// --- BANTUAN: AUTO SCROLL DOT AKTIF ---
+// --- FORMAT LABEL EPISODE (dipakai Home & Ongoing) ---
 
-function scrollTodayDotsToActive() {
-  if (!todayDots) return;
+function formatEpisodeLabel(text) {
+  if (!text) return "";
 
-  const active = todayDots.querySelector("span.active");
-  if (!active) return;
+  let t = String(text).trim();
 
-  const containerRect = todayDots.getBoundingClientRect();
-  const activeRect = active.getBoundingClientRect();
+  // "Total 10 Episode" / "Total 10 Eps"
+  let m = t.match(/^Total\s+(\d+)\s*(Episode|Eps?)?/i);
+  if (m) return `Eps ${m[1]}`;
 
-  const offset =
-    activeRect.left -
-    containerRect.left -
-    (containerRect.width - activeRect.width) / 2;
+  // "Episode 10"
+  m = t.match(/^Episode\s+(\d+)/i);
+  if (m) return `Eps ${m[1]}`;
 
-  todayDots.scrollBy({
-    left: offset,
-    behavior: "smooth",
-  });
+  // "10 Episode" / "10 Eps" / "10"
+  m = t.match(/^(\d+)\s*(Episode|Eps?)?$/i);
+  if (m) return `Eps ${m[1]}`;
+
+  // fallback: ganti kata Episode → Eps
+  return t.replace(/Episode/gi, "Eps");
 }
 
 // --- RILIS HARI INI (HERO) ---
+
+function scrollTodayDotsIntoView() {
+  if (!todayDots) return;
+  const active = todayDots.querySelector("span.active");
+  if (!active) return;
+
+  const wrapRect = todayDots.getBoundingClientRect();
+  const dotRect = active.getBoundingClientRect();
+  const offset =
+    dotRect.left - wrapRect.left - wrapRect.width / 2 + dotRect.width / 2;
+
+  todayDots.scrollBy({ left: offset, behavior: "smooth" });
+}
 
 function updateTodayHero() {
   if (
@@ -97,8 +113,17 @@ function updateTodayHero() {
     todayDots.appendChild(dot);
   });
 
-  // auto scroll ke dot aktif
-  scrollTodayDotsToActive();
+  // auto-scroll dots supaya titik kuning selalu kelihatan
+  scrollTodayDotsIntoView();
+}
+
+function restartTodayAuto() {
+  if (todayAutoTimer) clearInterval(todayAutoTimer);
+  if (!todayAnimeList.length) return;
+
+  todayAutoTimer = setInterval(() => {
+    goTodayStep(1, false);
+  }, TODAY_AUTO_MS);
 }
 
 function goToTodayDetail() {
@@ -108,11 +133,12 @@ function goToTodayDetail() {
   window.location.href = url;
 }
 
-function goTodayStep(delta) {
+function goTodayStep(delta, fromUser = true) {
   if (!todayAnimeList.length) return;
   const len = todayAnimeList.length;
   todayIndex = (todayIndex + delta + len) % len;
   updateTodayHero();
+  if (fromUser) restartTodayAuto();
 }
 
 async function loadTodayAnime() {
@@ -155,28 +181,29 @@ async function loadTodayAnime() {
 
   todayIndex = 0;
   updateTodayHero();
+  restartTodayAuto();
 
   // event tombol
   if (todayWatchBtn) {
-    todayWatchBtn.addEventListener("click", goToTodayDetail);
+    todayWatchBtn.addEventListener("click", () => goToTodayDetail());
   }
   if (todayPoster) {
-    todayPoster.addEventListener("click", goToTodayDetail);
+    todayPoster.addEventListener("click", () => goToTodayDetail());
   }
 
   // klik poster samping untuk pindah slide
   if (todayPosterPrev) {
-    todayPosterPrev.addEventListener("click", () => goTodayStep(-1));
+    todayPosterPrev.addEventListener("click", () => goTodayStep(-1, true));
   }
   if (todayPosterNext) {
-    todayPosterNext.addEventListener("click", () => goTodayStep(1));
+    todayPosterNext.addEventListener("click", () => goTodayStep(1, true));
   }
 
   if (todayPrevBtn) {
-    todayPrevBtn.addEventListener("click", () => goTodayStep(-1));
+    todayPrevBtn.addEventListener("click", () => goTodayStep(-1, true));
   }
   if (todayNextBtn) {
-    todayNextBtn.addEventListener("click", () => goTodayStep(1));
+    todayNextBtn.addEventListener("click", () => goTodayStep(1, true));
   }
 }
 
@@ -203,25 +230,21 @@ async function loadHome() {
   ongoingGridHome.innerHTML = "";
   completeRowHome.innerHTML = "";
 
-  // --- SEDANG TAYANG ---
+  // SEDANG TAYANG (home) – badge bawah: Eps ..
   ongoing.slice(0, 9).forEach((a) => {
-    const episodeLabelRaw = a.current_episode || "";
-    const episodeLabelShort =
-      episodeLabelRaw.replace(/^Episode\s*/i, "Ep ").trim() || "";
-
     const card = createAnimeCard(a, {
       badgeTop: "Baru",
-      badgeBottom: episodeLabelShort,
+      badgeBottom: formatEpisodeLabel(a.current_episode || ""),
       meta: a.release_day || "",
     });
     ongoingGridHome.appendChild(card);
   });
 
-  // --- SELESAI DITAYANGKAN ---
+  // SELESAI DITAYANGKAN (home)
   complete.slice(0, 15).forEach((a) => {
+    const epsLabel = formatEpisodeLabel(a.episode_count || "");
     const card = createAnimeCard(a, {
-      rating: a.rating && a.rating !== "" ? a.rating : "N/A",
-      badgeBottom: `${a.episode_count || "?"} Eps`,
+      badgeBottom: epsLabel,
       meta: a.last_release_date || "",
     });
     completeRowHome.appendChild(card);
