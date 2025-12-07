@@ -755,13 +755,17 @@ img {
 }
 
 /* SEASON ITEM (DENGAN THUMBNAIL) */
+/* grid 3 kolom */
 
 .season-list {
   margin-top: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .season-item {
-  gap: 10px;
+  gap: 8px;
   justify-content: flex-start;
 }
 
