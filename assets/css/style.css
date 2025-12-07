@@ -763,7 +763,7 @@ img {
   gap: 10px 8px;
 }
 
-/* kartu season mirip anime-card */
+/* kartu season */
 
 .season-item {
   cursor: pointer;
@@ -774,6 +774,7 @@ img {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  color: #e5e7eb; /* teks terang supaya kebaca di dark/light */
 }
 
 .season-item:hover {
@@ -830,6 +831,7 @@ img {
   font-size: 12px;
   font-weight: 600;
   line-height: 1.3;
+  color: inherit; /* ikut warna .season-item */
 }
 
 .season-date {
@@ -1268,7 +1270,7 @@ img {
   justify-content: center;
   gap: 2px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 600; /* font lebih tebal */
 }
 
 .nav-item.active {
@@ -1280,6 +1282,7 @@ img {
   height: 20px;
 }
 
+/* label teks nav, dibuat tebal juga */
 .nav-label {
   font-weight: 600;
   letter-spacing: 0.04em;
