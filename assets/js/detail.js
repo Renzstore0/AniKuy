@@ -1,3 +1,5 @@
+Ini full update untuk assets/js/detail.js saja.
+
 // assets/js/detail.js
 
 const animeDetailContent = document.getElementById("animeDetailContent");
@@ -68,6 +70,12 @@ function showEpisodeTab() {
   tabSeasons.classList.remove("active");
   episodeList.classList.remove("hidden");
   seasonList.classList.add("hidden");
+
+  // Tampilkan search episode hanya di tab Episode
+  const searchWrap = document.getElementById("episodeSearchWrap");
+  if (searchWrap) {
+    searchWrap.style.display = "";
+  }
 }
 
 function showSeasonTab() {
@@ -76,6 +84,12 @@ function showSeasonTab() {
   tabSeasons.classList.add("active");
   episodeList.classList.add("hidden");
   seasonList.classList.remove("hidden");
+
+  // Sembunyikan search episode saat tab Season aktif
+  const searchWrap = document.getElementById("episodeSearchWrap");
+  if (searchWrap) {
+    searchWrap.style.display = "none";
+  }
 }
 
 // ---------- LOAD SEASON LIST ----------
@@ -414,6 +428,11 @@ async function loadAnimeDetail(slug) {
       // taruh di atas episodeList
       if (episodeList.parentNode) {
         episodeList.parentNode.insertBefore(searchWrap, episodeList);
+      }
+
+      // kalau saat ini tab Season aktif, langsung sembunyikan search
+      if (tabSeasons && tabSeasons.classList.contains("active")) {
+        searchWrap.style.display = "none";
       }
 
       input.addEventListener("input", () => {
