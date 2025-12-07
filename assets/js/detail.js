@@ -2,10 +2,114 @@
 
 const animeDetailContent = document.getElementById("animeDetailContent");
 const episodeList = document.getElementById("episodeList");
+const seasonList = document.getElementById("seasonList");
 const recommendationGrid = document.getElementById("recommendationGrid");
+
+const tabEpisodes = document.getElementById("tabEpisodes");
+const tabSeasons = document.getElementById("tabSeasons");
 
 const detailParams = new URLSearchParams(window.location.search);
 const detailSlugFromUrl = detailParams.get("slug");
+
+// =========================
+//  HELPER SEASON SEARCH
+// =========================
+
+// Ambil judul dasar untuk search season
+// - buang teks setelah "Season"
+// - buang teks setelah "Episode"
+// - buang teks setelah "Subtitle"
+function getBaseTitleForSeasonSearch(title) {
+  if (!title) return "";
+
+  let t = title;
+
+  t = t.replace(/season.*$/i, "");
+  t = t.replace(/episode.*$/i, "");
+  t = t.replace(/subtitle.*$/i, "");
+
+  t = t.trim();
+  if (!t) return title.trim();
+  return t;
+}
+
+// Tampilkan tab Episode
+function showEpisodeTab() {
+  if (episodeList) {
+    episodeList.style.display = "flex";
+  }
+  if (seasonList) {
+    seasonList.style.display = "none";
+  }
+  if (tabEpisodes) tabEpisodes.classList.add("active");
+  if (tabSeasons) tabSeasons.classList.remove("active");
+}
+
+// Tampilkan tab Season
+function showSeasonTab() {
+  if (episodeList) {
+    episodeList.style.display = "none";
+  }
+  if (seasonList) {
+    seasonList.style.display = "flex";
+  }
+  if (tabEpisodes) tabEpisodes.classList.remove("active");
+  if (tabSeasons) tabSeasons.classList.add("active");
+}
+
+// Load daftar season lain yang punya judul dasar sama
+async function loadSeasonList(animeData) {
+  if (!seasonList || !animeData || !animeData.title) return;
+
+  seasonList.innerHTML = "";
+
+  const baseTitle = getBaseTitleForSeasonSearch(animeData.title || "");
+  if (!baseTitle) return;
+
+  let json;
+  try {
+    const enc = encodeURIComponent(baseTitle);
+    json = await apiGet(`/anime/search/${enc}`);
+  } catch {
+    return;
+  }
+  if (!json || json.status !== "success") return;
+
+  const listRaw = json.data || [];
+
+  // filter hanya anime yang base title-nya sama
+  const list = listRaw.filter((a) => {
+    const otherBase = getBaseTitleForSeasonSearch(a.title || "");
+    return otherBase.toLowerCase() === baseTitle.toLowerCase();
+  });
+
+  if (!list.length) {
+    const empty = document.createElement("div");
+    empty.className = "episode-item";
+    const span = document.createElement("span");
+    span.textContent = "Tidak ada season lain.";
+    empty.appendChild(span);
+    seasonList.appendChild(empty);
+    return;
+  }
+
+  list.forEach((a) => {
+    const item = document.createElement("div");
+    item.className = "episode-item";
+
+    const left = document.createElement("span");
+    left.textContent = a.title;
+    item.appendChild(left);
+
+    item.addEventListener("click", () => {
+      if (!a.slug) return;
+      const url = `/anime/detail?slug=${encodeURIComponent(a.slug)}`;
+      window.location.href = url;
+    });
+
+    seasonList.appendChild(item);
+  });
+}
 
 async function loadAnimeDetail(slug) {
   if (!animeDetailContent) return;
@@ -216,6 +320,9 @@ async function loadAnimeDetail(slug) {
     });
   }
 
+  // ================== SEASON LIST (AUTO SEARCH) ==================
+  await loadSeasonList(d);
+
   // rekomendasi
   if (recommendationGrid) {
     recommendationGrid.innerHTML = "";
@@ -234,5 +341,15 @@ document.addEventListener("DOMContentLoaded", () => {
     showToast("Slug anime tidak ditemukan");
     return;
   }
+
+  // init tab
+  if (tabEpisodes && tabSeasons) {
+    tabEpisodes.addEventListener("click", showEpisodeTab);
+    tabSeasons.addEventListener("click", showSeasonTab);
+  }
+
+  // default: Episode tab aktif
+  showEpisodeTab();
+
   loadAnimeDetail(detailSlugFromUrl);
 });
