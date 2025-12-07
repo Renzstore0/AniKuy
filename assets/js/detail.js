@@ -25,6 +25,15 @@ function normalizeBaseTitle(title) {
     .trim();
 }
 
+// ada kata "Season xx"?
+function hasSeasonKeyword(title) {
+  if (!title) return false;
+  const t = title.toLowerCase();
+  if (/season\s*\d+/.test(t)) return true;          // "Season 2"
+  if (/\d+(st|nd|rd|th)\s*season/.test(t)) return true; // "2nd Season"
+  return false;
+}
+
 function getSeasonSearchQuery(title) {
   const base = normalizeBaseTitle(title);
   return base || title || "";
@@ -37,6 +46,7 @@ function extractSeasonNumber(title) {
     const n = parseInt(m[1], 10);
     if (!Number.isNaN(n) && n > 0) return n;
   }
+  // tidak ada "Season xx" → anggap Season 1
   return 1;
 }
 
@@ -95,14 +105,38 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
   const list = json.data || [];
   const currentBase = normalizeBaseTitle(detailData.title);
 
-  const seasons = [];
+  // kumpulkan semua judul yang base-nya sama
+  const relatedAll = [];
+  let hasSeasonLike = hasSeasonKeyword(detailData.title);
 
   list.forEach((a) => {
     if (!a || !a.slug || !a.title) return;
-    if (a.slug === detailSlug) return; // JANGAN masukin anime yang sedang dibuka
 
     const base = normalizeBaseTitle(a.title);
     if (!base || base !== currentBase) return;
+
+    relatedAll.push(a);
+    if (hasSeasonKeyword(a.title)) {
+      hasSeasonLike = true;
+    }
+  });
+
+  // Kalau TIDAK ada satupun judul yang mengandung "Season xx"
+  // (baik anime ini maupun hasil search lain)
+  // → anggap nggak punya season, jangan pakai daftar ini.
+  if (!hasSeasonLike) {
+    const empty = document.createElement("div");
+    empty.className = "season-empty";
+    empty.textContent = "Season belum ada";
+    seasonList.appendChild(empty);
+    return;
+  }
+
+  const seasons = [];
+
+  relatedAll.forEach((a) => {
+    // jangan masukin anime yang sedang dibuka (biar daftar season isinya yang lain)
+    if (a.slug === detailSlug) return;
 
     const seasonNumber = extractSeasonNumber(a.title);
     seasons.push({
@@ -121,7 +155,8 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
     return;
   }
 
-  seasons.sort((a, b) => (b.seasonNumber || 0) - (a.seasonNumber || 0));
+  // urutkan berdasarkan nomor season (tertinggi di atas atau bawah, bebas)
+  seasons.sort((a, b) => (a.seasonNumber || 0) - (b.seasonNumber || 0));
 
   seasons.forEach((s) => {
     const item = document.createElement("div");
@@ -340,7 +375,6 @@ async function loadAnimeDetail(slug) {
   syn.textContent = cleanSynopsis;
   animeDetailContent.appendChild(syn);
 
-  // tampilkan tombol hanya kalau sinopsis ada
   if (cleanSynopsis && cleanSynopsis !== "Tidak ada sinopsis.") {
     const synToggle = document.createElement("button");
     synToggle.id = "synopsisToggle";
