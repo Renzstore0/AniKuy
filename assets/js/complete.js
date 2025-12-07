@@ -7,64 +7,74 @@ const completePageInfo = document.getElementById("completePageInfo");
 
 let completePage = 1;
 let completeLastPage = 1;
+let completeLoading = false;
 
-async function loadCompleteList(page = 1) {
-  if (!completeGridFull) return;
+// sembunyikan control pagination lama
+if (completePrevBtn) completePrevBtn.style.display = "none";
+if (completeNextBtn) completeNextBtn.style.display = "none";
+if (completePageInfo) completePageInfo.style.display = "none";
+
+async function loadCompleteList(page = 1, append = false) {
+  if (!completeGridFull || completeLoading) return;
+
+  completeLoading = true;
 
   let json;
   try {
     json = await apiGet(`/anime/complete-anime/${page}`);
   } catch {
+    completeLoading = false;
     return;
   }
-  if (!json || json.status !== "success") return;
+
+  if (!json || json.status !== "success") {
+    completeLoading = false;
+    return;
+  }
 
   const pag = json.data.paginationData;
   completePage = pag.current_page;
   completeLastPage = pag.last_visible_page || completeLastPage;
 
-  completeGridFull.innerHTML = "";
+  // kalau bukan append, berarti load pertama / refresh
+  if (!append) {
+    completeGridFull.innerHTML = "";
+  }
+
   (json.data.completeAnimeData || []).forEach((a) => {
-    // TIDAK pakai rating, cuma tampilkan jumlah episode: "Eps 12"
     const epsLabel = a.episode_count
       ? `Eps ${a.episode_count}`
-      : "";
+      : "Eps ?";
 
     const card = createAnimeCard(a, {
-      // rating dihilangkan
+      // tidak pakai rating di halaman "Semua Selesai"
       badgeBottom: epsLabel,
       meta: a.last_release_date || "",
     });
     completeGridFull.appendChild(card);
   });
 
-  if (completePageInfo) {
-    completePageInfo.textContent = `Page ${completePage} / ${completeLastPage}`;
-  }
-  if (completePrevBtn) {
-    completePrevBtn.disabled = completePage <= 1;
-  }
-  if (completeNextBtn) {
-    completeNextBtn.disabled = !pag.has_next_page;
-  }
+  completeLoading = false;
 }
 
-if (completeNextBtn) {
-  completeNextBtn.addEventListener("click", () => {
-    if (completePage < completeLastPage) {
-      loadCompleteList(completePage + 1);
-    }
-  });
-}
-
-if (completePrevBtn) {
-  completePrevBtn.addEventListener("click", () => {
-    if (completePage > 1) {
-      loadCompleteList(completePage - 1);
-    }
-  });
-}
-
+// infinite scroll pakai mainContent
 document.addEventListener("DOMContentLoaded", () => {
-  loadCompleteList(1);
+  loadCompleteList(1, false); // page 1
+
+  const mainContent = document.getElementById("mainContent");
+  if (!mainContent) return;
+
+  mainContent.addEventListener("scroll", () => {
+    const nearBottom =
+      mainContent.scrollTop + mainContent.clientHeight >=
+      mainContent.scrollHeight - 200;
+
+    if (
+      nearBottom &&
+      !completeLoading &&
+      completePage < completeLastPage
+    ) {
+      loadCompleteList(completePage + 1, true); // append page berikutnya
+    }
+  });
 });
