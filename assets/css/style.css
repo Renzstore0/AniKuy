@@ -754,6 +754,42 @@ img {
   max-width: 70%;
 }
 
+/* SEASON ITEM (DENGAN THUMBNAIL) */
+
+.season-list {
+  margin-top: 6px;
+}
+
+.season-item {
+  gap: 10px;
+  justify-content: flex-start;
+}
+
+.season-thumb {
+  width: 48px;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.season-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.season-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.season-title {
+  font-weight: 600;
+}
+
 /* PLAYER */
 
 .player-wrapper {
@@ -1185,7 +1221,7 @@ img {
   justify-content: center;
   gap: 2px;
   cursor: pointer;
-  font-weight: 600; /* font lebih tebal */
+  font-weight: 600;
 }
 
 .nav-item.active {
@@ -1197,7 +1233,6 @@ img {
   height: 20px;
 }
 
-/* label teks nav, dibuat tebal juga */
 .nav-label {
   font-weight: 600;
   letter-spacing: 0.04em;
