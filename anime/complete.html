@@ -22,13 +22,17 @@
           </svg>
         </button>
 
-        <div class="logo-wrap">
+        <a
+          href="/"
+          class="logo-wrap"
+          aria-label="Kembali ke Home"
+        >
           <img
             src="https://pomf2.lain.la/f/22yuvdrk.png"
             alt="AniKuy Logo"
             class="logo-img"
           />
-        </div>
+        </a>
 
         <button class="icon-button" id="searchButton" aria-label="Cari Anime">
           <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
@@ -104,6 +108,27 @@
     </div>
 
     <div id="toast" class="toast"></div>
+
+    <!-- GLOBAL THEME LOADER -->
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const THEME_KEY = "anikuy-theme";
+        const body = document.body;
+
+        function applyTheme(theme) {
+          const mode = theme === "light" ? "theme-light" : "theme-dark";
+          body.classList.remove("theme-light", "theme-dark");
+          body.classList.add(mode);
+        }
+
+        let saved = null;
+        try {
+          saved = localStorage.getItem(THEME_KEY);
+        } catch (e) {}
+        if (saved !== "light" && saved !== "dark") saved = "dark";
+        applyTheme(saved);
+      });
+    </script>
 
     <script src="/assets/js/core.js"></script>
     <script src="/assets/js/complete.js"></script>
