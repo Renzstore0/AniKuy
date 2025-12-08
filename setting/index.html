@@ -78,7 +78,7 @@
           />
         </div>
 
-        <!-- Search di halaman setting -->
+        <!-- Tombol search tetap ada tapi disembunyikan via CSS khusus halaman setting -->
         <button
           class="icon-button"
           id="searchButton"
@@ -319,8 +319,8 @@
           let startY = 0;
           let currentY = 0;
 
-          const MAX_TRANSLATE = 180; // seberapa jauh bisa ditarik
-          const CLOSE_THRESHOLD = 60; // makin kecil → lebih mudah nutup
+          const MAX_TRANSLATE = 180;
+          const CLOSE_THRESHOLD = 60;
 
           const startDrag = (clientY) => {
             dragging = true;
