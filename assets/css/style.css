@@ -354,11 +354,11 @@ img {
   padding: 4px 8px;
   max-width: 100%;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+  scrollbar-width: none; /* Firefox */
 }
 
 .today-hero-dots::-webkit-scrollbar {
-  display: none;
+  display: none; /* Chrome/Safari */
 }
 
 .today-hero-dots span {
@@ -438,9 +438,8 @@ img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
-
-/* badges */
 
 .badge-top-left {
   position: absolute;
@@ -701,7 +700,7 @@ img {
   color: #e5e7eb;
   white-space: normal;
   position: relative;
-  max-height: 5.5em;
+  max-height: 5.5em; /* ~3 baris */
   overflow: hidden;
 }
 
@@ -846,7 +845,7 @@ img {
 .season-list {
   margin-top: 6px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr)); /* HP: 3 kolom */
   gap: 10px 8px;
 }
 
@@ -907,6 +906,7 @@ img {
   font-size: 12px;
   font-weight: 600;
   line-height: 1.3;
+  color: inherit;
 }
 
 /* PLAYER */
@@ -1267,19 +1267,45 @@ img {
 /* PROFILE */
 
 .profile-card {
-  margin-top: 24px;
-  padding: 20px 16px;
-  border-radius: 16px;
+  margin-top: 10px;
+  padding: 16px 14px;
+  border-radius: 20px;
   background: rgba(15, 23, 42, 0.95);
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.9);
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .profile-text {
   margin-top: 6px;
   font-size: 13px;
+  color: #e5e7eb;
+}
+
+/* kartu "Segera Hadir" di tengah */
+.profile-soon-card {
+  margin-top: 32px;
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-soon-text {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+/* teks versi di bawah */
+.profile-version {
+  margin-top: 40px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  text-align: center;
+  color: #9ca3af;
+}
+
+.profile-version span {
+  font-weight: 600;
   color: #e5e7eb;
 }
 
@@ -1293,30 +1319,6 @@ img {
   font-size: 14px;
   font-weight: 600;
   color: #e5e7eb;
-}
-
-.profile-footer {
-  margin-top: 10px;
-  font-size: 11px;
-  text-align: center;
-  color: #9ca3af;
-  opacity: 0.8;
-}
-
-/* teks "Segera Hadir" di tengah card */
-.profile-coming-soon {
-  font-size: 18px;
-  font-weight: 600;
-  text-align: center;
-}
-
-/* versi di bawah, di luar kotak */
-.profile-version-bottom {
-  margin-top: 80px;
-  font-size: 12px;
-  text-align: center;
-  color: #9ca3af;
-  opacity: 0.8;
 }
 
 /* BOTTOM NAV */
@@ -1447,6 +1449,7 @@ img {
     margin-top: 10px;
   }
 
+  /* DESKTOP: season 5 kolom */
   .season-list {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
@@ -1492,19 +1495,48 @@ body.theme-light .profile-card {
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
 }
 
-body.theme-light .version-value {
-  color: #1f2937;
+body.theme-light .profile-version span {
+  color: #111827;
 }
 
-body.theme-light .profile-footer {
-  color: #6b7280;
+/* =========================
+   THEME CARD & POPUP (settings)
+   ========================= */
+
+.theme-card {
+  margin-top: 24px;
+  padding: 18px 16px 18px;
+  border-radius: 20px;
+  background: radial-gradient(circle at top left, #020617, #020617 55%)
+      padding-box,
+    linear-gradient(135deg, rgba(56, 189, 248, 0.4), rgba(37, 99, 235, 0.7))
+      border-box;
+  border: 1px solid transparent;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.95);
 }
 
-body.theme-light .profile-version-bottom {
-  color: #6b7280;
+.theme-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
 }
 
-/* Theme options (profile/setting) */
+.theme-card-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.theme-card-header .section-title.small-title {
+  margin: 0 0 4px;
+}
+
+.theme-card-header .profile-text {
+  margin-top: 0;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
 .theme-options {
   margin-top: 8px;
   display: flex;
@@ -1515,15 +1547,27 @@ body.theme-light .profile-version-bottom {
 .theme-option {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: rgba(15, 23, 42, 0.9);
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.96);
   cursor: pointer;
 }
 
 .theme-option input {
-  margin-top: 4px;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid rgba(148, 163, 184, 0.9);
+  margin-top: 2px;
+  flex-shrink: 0;
+  background: transparent;
+}
+
+.theme-option input:checked {
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.25);
 }
 
 .theme-option-main {
@@ -1536,33 +1580,27 @@ body.theme-light .profile-version-bottom {
   color: #9ca3af;
 }
 
-body.theme-light .theme-option {
-  background: #f3f4f6;
-}
-
-body.theme-light .theme-option-sub {
-  color: #6b7280;
-}
-
 /* THEME CARD BUTTON */
 
-.theme-card {
-  position: relative;
-}
-
 .theme-toggle-btn {
-  margin-top: 8px;
-  width: 100%;
-  border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.6);
-  background: rgba(15, 23, 42, 0.95);
+  margin-top: 0;
+  min-width: 140px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  background: rgba(15, 23, 42, 0.98);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
+  padding: 8px 12px;
   font-size: 13px;
   color: #e5e7eb;
   cursor: pointer;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.9);
+}
+
+.theme-toggle-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.9);
 }
 
 .theme-toggle-main {
@@ -1578,14 +1616,6 @@ body.theme-light .theme-option-sub {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
-}
-
-/* list tema (dipakai di popup) */
-.theme-list {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 }
 
 /* POPUP TEMA */
@@ -1606,37 +1636,60 @@ body.theme-light .theme-option-sub {
 .theme-modal-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.85);
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(6px);
 }
 
 .theme-modal-dialog {
   position: relative;
   z-index: 1;
   width: calc(100% - 48px);
-  max-width: 420px;
-  border-radius: 16px;
-  background: rgba(15, 23, 42, 0.98);
-  padding: 14px 14px 12px;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.9);
+  max-width: 400px;
+  border-radius: 18px;
+  background: radial-gradient(circle at top left, #020617, #020617 60%);
+  padding: 16px 16px 14px;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.9);
+}
+
+.theme-modal-dialog .section-title.small-title {
+  margin-top: 0;
+  margin-bottom: 10px;
 }
 
 .theme-modal-close {
-  margin-top: 10px;
+  margin-top: 12px;
   width: 100%;
   border-radius: 999px;
   border: none;
   padding: 8px 12px;
-  background: rgba(15, 23, 42, 1);
+  background: #0b1120;
   color: #e5e7eb;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
 
+/* light theme untuk card & modal */
+
+body.theme-light .theme-card {
+  background: #ffffff;
+  border-color: rgba(209, 213, 219, 0.9);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.1);
+}
+
+body.theme-light .theme-option {
+  background: #f3f4f6;
+}
+
+body.theme-light .theme-option-sub {
+  color: #6b7280;
+}
+
 body.theme-light .theme-toggle-btn {
   background: #ffffff;
   border-color: rgba(156, 163, 175, 0.9);
   color: #111827;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
 }
 
 body.theme-light .theme-toggle-current {
@@ -1760,6 +1813,7 @@ body.theme-light .anime-detail-card {
   border: 1px solid rgba(209, 213, 219, 0.9);
 }
 
+/* overlay di light theme */
 body.theme-light .anime-detail-card::after {
   background: radial-gradient(
     circle at top left,
@@ -1819,6 +1873,7 @@ body.theme-light .episode-tab.active {
   color: #111827;
 }
 
+/* penting: samakan season-item dengan kartu rekomendasi di tema putih */
 body.theme-light .season-item {
   background: #020817;
   color: #e5e7eb;
