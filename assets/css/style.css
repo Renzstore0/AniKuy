@@ -1302,7 +1302,7 @@ img {
 
 /* TEKS "SEGERA HADIR" DI TENGAH PROFIL */
 .profile-coming {
-  margin-top: 15vh;
+  margin-top: 30vh;
   font-size: 20px;
   font-weight: 600;
   text-align: center;
@@ -1411,6 +1411,7 @@ img {
   font-weight: 700;
   letter-spacing: 0.06em;
   margin-bottom: 12px;
+  color: #e5e7eb;          /* lebih terang di tema biru hitam */
 }
 
 .settings-pill {
@@ -1429,12 +1430,13 @@ img {
 .settings-pill-left {
   font-size: 16px;
   font-weight: 600;
+  color: #e5e7eb;          /* teks kiri putih */
 }
 
 .settings-pill-right {
   font-size: 14px;
   font-weight: 500;
-  color: #cbd5f5;
+  color: #bfdbfe;          /* teks kanan biru muda */
 }
 
 /* BOTTOM SHEET TEMA */
@@ -1469,6 +1471,7 @@ img {
   box-shadow: 0 -12px 40px rgba(15, 23, 42, 0.95);
   transform: translateY(100%);
   transition: transform 0.22s ease;
+  color: #e5e7eb;
 }
 
 .theme-sheet.show .theme-sheet-panel {
@@ -1522,6 +1525,7 @@ img {
 .theme-option-main {
   font-size: 14px;
   font-weight: 600;
+  color: #e5e7eb;
 }
 
 .theme-option-sub {
