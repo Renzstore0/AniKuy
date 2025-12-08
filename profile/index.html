@@ -7,7 +7,7 @@
 
     <meta
       name="description"
-      content="Halaman profil AniKuy."
+      content="Halaman profil AniKuy: lihat versi website dan info singkat seputar pengaturan akunmu."
     />
 
     <!-- Open Graph -->
@@ -16,7 +16,7 @@
     <meta property="og:title" content="Profil - AniKuy" />
     <meta
       property="og:description"
-      content="Halaman profil AniKuy."
+      content="Halaman profil AniKuy: lihat versi website dan info singkat seputar pengaturan akunmu."
     />
     <meta property="og:url" content="https://anikuy.my.id/profile" />
     <meta
@@ -30,7 +30,7 @@
     <meta name="twitter:title" content="Profil - AniKuy" />
     <meta
       name="twitter:description"
-      content="Halaman profil AniKuy."
+      content="Halaman profil AniKuy: lihat versi website dan info singkat seputar pengaturan akunmu."
     />
     <meta
       name="twitter:image"
@@ -70,29 +70,19 @@
           </svg>
         </button>
 
-        <a
-          href="/"
-          class="logo-wrap"
-          aria-label="Kembali ke Home"
-        >
+        <div class="logo-wrap">
           <img
             src="https://pomf2.lain.la/f/22yuvdrk.png"
             alt="AniKuy Logo"
             class="logo-img"
           />
-        </a>
+        </div>
 
-        <!-- TOMBOL SETTING: LINK KE /setting -->
-        <button
-          class="icon-button"
-          id="settingsButton"
-          aria-label="Pengaturan"
-          onclick="window.location.href='/setting';"
-        >
+        <button class="icon-button" id="searchButton" aria-label="Cari Anime">
           <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="currentColor"
-              d="M19.43 12.98c.04-.32.07-.65.07-.98s-.03-.66-.07-.98l2.11-1.65a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.14 7.14 0 0 0-1.7-.98l-.38-2.65A.5.5 0 0 0 13 2h-4a.5.5 0 0 0-.49.42l-.38 2.65c-.63.24-1.21.57-1.74.97l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64L3.57 11c-.04.32-.07.66-.07.99 0 .33.03.66.07.98L1.46 14.6a.5.5 0 0 0-.12.64l2 3.46a.5.5 0 0 0 .61.22l2.49-1c.53.4 1.11.73 1.74.97l.38 2.65A.5.5 0 0 0 9 22h4a.5.5 0 0 0 .49-.42l.38-2.65c.63-.24 1.21-.57 1.74-.97l2.49 1a.5.5 0 0 0 .61-.22l2-3.46a.5.5 0 0 0-.12-.64zm-7.43 1.77a3.25 3.25 0 1 1 0-6.5 3.25 3.25 0 0 1 0 6.5z"
+              d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L19 20.49 20.49 19 15.5 14zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
             />
           </svg>
         </button>
@@ -102,20 +92,88 @@
         <div class="page-container">
           <h2 class="page-title">Profil</h2>
 
-          <!-- HANYA TEKS SEGERA HADIR -->
-          <div class="profile-coming-soon">
-            <p class="profile-coming-soon-text">SEGERA HADIR</p>
+          <div class="profile-card">
+            <h3 class="section-title small-title version-title">
+              <span>Versi</span>
+              <span class="version-value">1.4.4.x</span>
+            </h3>
           </div>
 
-          <footer class="profile-footer">
-            <div class="profile-version-row">
-              <span class="profile-version-label">VERSI</span>
-              <span class="profile-version-value">1.4.4.x</span>
-            </div>
-            <p class="profilecopyright">
-              © 2025 AniKuy. All rights reserved.
+          <!-- KARTU TEMA -->
+          <div class="profile-card theme-card" id="themeCard">
+            <h3 class="section-title small-title">Tema</h3>
+            <p class="profile-text">
+              Pilih tampilan yang kamu suka. Pengaturan ini berlaku untuk semua
+              halaman.
             </p>
-          </footer>
+
+            <!-- Tombol utama -->
+            <button
+              type="button"
+              class="theme-toggle-btn"
+              id="themeToggle"
+              aria-expanded="false"
+              aria-controls="themeList"
+            >
+              <div>
+                <div class="theme-toggle-main">Change Theme</div>
+                <div
+                  class="theme-toggle-current"
+                  id="currentThemeLabel"
+                >
+                  Biru &amp; Hitam (Default)
+                </div>
+              </div>
+              <svg
+                class="theme-toggle-icon"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  fill="currentColor"
+                  d="M7 10l5 5 5-5H7z"
+                />
+              </svg>
+            </button>
+
+            <!-- List tema (dropdown) -->
+            <div class="theme-list" id="themeList">
+              <div class="theme-options">
+                <label class="theme-option">
+                  <input
+                    type="radio"
+                    name="theme-option"
+                    value="dark"
+                    id="themeDark"
+                  />
+                  <div>
+                    <div class="theme-option-main">
+                      Biru &amp; Hitam (Default)
+                    </div>
+                    <div class="theme-option-sub">
+                      Tampilan gelap dengan aksen biru.
+                    </div>
+                  </div>
+                </label>
+                <label class="theme-option">
+                  <input
+                    type="radio"
+                    name="theme-option"
+                    value="light"
+                    id="themeLight"
+                  />
+                  <div>
+                    <div class="theme-option-main">Putih &amp; Hitam</div>
+                    <div class="theme-option-sub">
+                      Tampilan terang dengan latar putih dan hitam.
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <p class="profile-footer">© 2025 AniKuy. All rights reserved.</p>
         </div>
       </main>
 
@@ -162,80 +220,5 @@
     <div id="toast" class="toast"></div>
 
     <script src="/assets/js/core.js"></script>
-
-    <!-- SCRIPT THEME (buat load tema yang disimpan) -->
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        const THEME_KEY = "anikuy-theme";
-        const body = document.body;
-
-        const modal = document.getElementById("themeModal");
-        const openBtn = document.getElementById("openThemeModal");
-        const closeBtn = document.getElementById("closeThemeModal");
-        const currentLabel = document.getElementById("currentThemeLabel");
-        const choiceButtons =
-          modal?.querySelectorAll("[data-theme-option]") || [];
-
-        function applyTheme(theme) {
-          const mode = theme === "light" ? "theme-light" : "theme-dark";
-          body.classList.remove("theme-light", "theme-dark");
-          body.classList.add(mode);
-          try {
-            localStorage.setItem(THEME_KEY, theme);
-          } catch (e) {}
-
-          if (currentLabel) {
-            currentLabel.textContent =
-              theme === "light"
-                ? "Putih & Hitam"
-                : "Biru & Hitam (Default)";
-          }
-
-          choiceButtons.forEach((btn) => {
-            const isActive =
-              btn.getAttribute("data-theme-option") === theme;
-            btn.classList.toggle("active", isActive);
-          });
-        }
-
-        function loadTheme() {
-          let saved = null;
-          try {
-            saved = localStorage.getItem(THEME_KEY);
-          } catch (e) {}
-          if (saved !== "light" && saved !== "dark") saved = "dark";
-          applyTheme(saved);
-        }
-
-        function openModal() {
-          if (!modal) return;
-          modal.classList.add("show");
-        }
-
-        function closeModal() {
-          if (!modal) return;
-          modal.classList.remove("show");
-        }
-
-        if (openBtn) openBtn.addEventListener("click", openModal);
-        if (closeBtn) closeBtn.addEventListener("click", closeModal);
-
-        if (modal) {
-          modal.addEventListener("click", function (e) {
-            if (e.target === modal) closeModal();
-          });
-        }
-
-        choiceButtons.forEach((btn) => {
-          btn.addEventListener("click", function () {
-            const theme = btn.getAttribute("data-theme-option");
-            applyTheme(theme);
-            closeModal();
-          });
-        });
-
-        loadTheme();
-      });
-    </script>
   </body>
 </html>
