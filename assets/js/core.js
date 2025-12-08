@@ -26,10 +26,11 @@ function initThemeFromStorage() {
 
 function bindThemeControls(currentTheme) {
   const radios = document.querySelectorAll('input[name="theme-option"]');
-  const themeCard = document.getElementById("themeCard");
   const themeToggle = document.getElementById("themeToggle");
-  const themeList = document.getElementById("themeList");
   const currentLabelEl = document.getElementById("currentThemeLabel");
+  const themeModal = document.getElementById("themeModal");
+  const themeModalClose = document.getElementById("themeModalClose");
+  const themeModalOverlay = document.getElementById("themeModalOverlay");
 
   function labelText(theme) {
     return theme === THEME_LIGHT
@@ -45,11 +46,32 @@ function bindThemeControls(currentTheme) {
 
   updateCurrentLabel(currentTheme);
 
-  if (themeToggle && themeCard && themeList) {
-    themeToggle.addEventListener("click", () => {
-      const isOpen = themeCard.classList.toggle("open");
-      themeToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
-    });
+  function openModal() {
+    if (!themeModal) return;
+    themeModal.classList.add("show");
+    themeModal.setAttribute("aria-hidden", "false");
+    if (themeToggle) {
+      themeToggle.setAttribute("aria-expanded", "true");
+    }
+  }
+
+  function closeModal() {
+    if (!themeModal) return;
+    themeModal.classList.remove("show");
+    themeModal.setAttribute("aria-hidden", "true");
+    if (themeToggle) {
+      themeToggle.setAttribute("aria-expanded", "false");
+    }
+  }
+
+  if (themeToggle && themeModal) {
+    themeToggle.addEventListener("click", openModal);
+  }
+  if (themeModalClose) {
+    themeModalClose.addEventListener("click", closeModal);
+  }
+  if (themeModalOverlay) {
+    themeModalOverlay.addEventListener("click", closeModal);
   }
 
   if (!radios.length) return;
@@ -64,6 +86,7 @@ function bindThemeControls(currentTheme) {
       if (typeof showToast === "function") {
         showToast("Tema berhasil diubah");
       }
+      closeModal();
     });
   });
 }
@@ -225,9 +248,17 @@ document.addEventListener("DOMContentLoaded", () => {
   const backButton = document.getElementById("backButton");
   const searchButton = document.getElementById("searchButton");
   const settingsButton = document.getElementById("settingsButton");
-  const logoWrap = document.querySelector(".logo-wrap");
   const pageType = document.body.dataset.page || "";
   const basePages = new Set(["home", "explore", "my-list", "profile"]);
+
+  // klik logo -> home
+  const logoWrap = document.querySelector(".logo-wrap");
+  if (logoWrap) {
+    logoWrap.style.cursor = "pointer";
+    logoWrap.addEventListener("click", () => {
+      window.location.href = "/";
+    });
+  }
 
   if (backButton) {
     backButton.style.visibility = basePages.has(pageType)
@@ -252,13 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (settingsButton) {
     settingsButton.addEventListener("click", () => {
-      window.location.href = "/settings";
-    });
-  }
-
-  if (logoWrap) {
-    logoWrap.addEventListener("click", () => {
-      window.location.href = "/";
+      window.location.href = "/setting";
     });
   }
 
