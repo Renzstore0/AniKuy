@@ -25,21 +25,22 @@ function initThemeFromStorage() {
 }
 
 /**
- * Kontrol tema (dipakai di halaman settings)
- * - Button pill: #themeToggle
+ * Kontrol tema (dipakai di halaman Settings)
+ * - Tombol pill: #themeToggle
  * - Bottom sheet: #themeSheet
  *   - overlay: #themeSheetOverlay
- *   - tombol tutup: #themeSheetClose
+ *   - tombol Tutup: #themeSheetClose
  *   - radio: input[name="theme-option"]
  */
 function bindThemeControls(currentTheme) {
   const radios = document.querySelectorAll('input[name="theme-option"]');
 
   const themeToggle = document.getElementById("themeToggle");
-  const themeSheet = document.getElementById("themeSheet");
-  const sheetOverlay = document.getElementById("themeSheetOverlay");
-  const sheetClose = document.getElementById("themeSheetClose");
   const currentLabelEl = document.getElementById("currentThemeLabel");
+
+  const themeSheet = document.getElementById("themeSheet");
+  const themeSheetClose = document.getElementById("themeSheetClose");
+  const themeSheetOverlay = document.getElementById("themeSheetOverlay");
 
   function labelText(theme) {
     return theme === THEME_LIGHT
@@ -73,7 +74,7 @@ function bindThemeControls(currentTheme) {
     }
   }
 
-  // buka bottom sheet dari pill
+  // buka / tutup bottom sheet dari tombol pill
   if (themeToggle && themeSheet) {
     themeToggle.addEventListener("click", () => {
       const isOpen = themeSheet.classList.contains("show");
@@ -85,18 +86,18 @@ function bindThemeControls(currentTheme) {
     });
   }
 
-  // tutup dari overlay / tombol
-  if (sheetOverlay) {
-    sheetOverlay.addEventListener("click", closeSheet);
+  // tutup dari tombol dan overlay
+  if (themeSheetClose) {
+    themeSheetClose.addEventListener("click", closeSheet);
   }
-  if (sheetClose) {
-    sheetClose.addEventListener("click", closeSheet);
+  if (themeSheetOverlay) {
+    themeSheetOverlay.addEventListener("click", closeSheet);
   }
 
   // kalau tidak ada radio, selesai
   if (!radios.length) return;
 
-  // set radio & handler perubahan tema
+  // set radio & handle perubahan tema
   radios.forEach((radio) => {
     radio.checked = radio.value === currentTheme;
     radio.addEventListener("change", (e) => {
@@ -107,7 +108,6 @@ function bindThemeControls(currentTheme) {
       if (typeof showToast === "function") {
         showToast("Tema berhasil diubah");
       }
-      // setelah pilih tema, tutup sheet
       closeSheet();
     });
   });
@@ -269,8 +269,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const backButton = document.getElementById("backButton");
   const searchButton = document.getElementById("searchButton");
+  const settingsButton = document.getElementById("settingsButton");
   const pageType = document.body.dataset.page || "";
   const basePages = new Set(["home", "explore", "my-list", "profile"]);
+
+  // klik logo -> home
+  const logoWrap = document.querySelector(".logo-wrap");
+  if (logoWrap) {
+    logoWrap.style.cursor = "pointer";
+    logoWrap.addEventListener("click", () => {
+      window.location.href = "/";
+    });
+  }
 
   if (backButton) {
     backButton.style.visibility = basePages.has(pageType)
@@ -290,6 +300,12 @@ document.addEventListener("DOMContentLoaded", () => {
   if (searchButton) {
     searchButton.addEventListener("click", () => {
       window.location.href = "/search";
+    });
+  }
+
+  if (settingsButton) {
+    settingsButton.addEventListener("click", () => {
+      window.location.href = "/settings";
     });
   }
 
