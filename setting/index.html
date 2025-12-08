@@ -78,7 +78,7 @@
           />
         </div>
 
-        <!-- DI HALAMAN SETTING PAKAI SEARCH LAGI -->
+        <!-- Search di halaman setting -->
         <button
           class="icon-button"
           id="searchButton"
@@ -219,13 +219,16 @@
 
     <script src="/assets/js/core.js"></script>
 
-    <!-- SCRIPT TEMA -->
+    <!-- SCRIPT TEMA + DRAG SHEET -->
     <script>
       document.addEventListener("DOMContentLoaded", function () {
         const THEME_KEY = "anikuy-theme";
         const body = document.body;
 
         const modal = document.getElementById("themeModal");
+        const sheet = modal ? modal.querySelector(".theme-modal-sheet") : null;
+        const handle = modal ? modal.querySelector(".theme-modal-handle") : null;
+
         const openBtn = document.getElementById("openThemeModal");
         const closeBtn = document.getElementById("closeThemeModal");
         const currentLabel = document.getElementById("currentThemeLabel");
@@ -266,11 +269,17 @@
         function openModal() {
           if (!modal) return;
           modal.classList.add("show");
+          if (sheet) {
+            sheet.style.transform = "translateY(0px)";
+          }
         }
 
         function closeModal() {
           if (!modal) return;
           modal.classList.remove("show");
+          if (sheet) {
+            sheet.style.transform = "translateY(0px)";
+          }
         }
 
         if (openBtn) openBtn.addEventListener("click", openModal);
@@ -289,6 +298,68 @@
             closeModal();
           });
         });
+
+        /* ===== DRAG / SWIPE BOTTOM SHEET ===== */
+        if (sheet && handle) {
+          let dragging = false;
+          let startY = 0;
+          let currentY = 0;
+
+          const startDrag = (clientY) => {
+            dragging = true;
+            startY = clientY;
+            currentY = clientY;
+            sheet.classList.add("dragging");
+          };
+
+          const moveDrag = (clientY) => {
+            if (!dragging) return;
+            currentY = clientY;
+            const delta = currentY - startY;
+            // cuma geser kalau ke bawah
+            const translate = delta > 0 ? delta : 0;
+            sheet.style.transform = "translateY(" + translate + "px)";
+          };
+
+          const endDrag = () => {
+            if (!dragging) return;
+            dragging = false;
+            sheet.classList.remove("dragging");
+            const delta = currentY - startY;
+
+            if (delta > 80) {
+              // geser cukup jauh → tutup
+              closeModal();
+            } else {
+              // balikin ke posisi awal
+              sheet.style.transform = "translateY(0px)";
+            }
+          };
+
+          // Touch
+          handle.addEventListener("touchstart", (e) => {
+            if (e.touches.length > 0) {
+              startDrag(e.touches[0].clientY);
+            }
+          });
+          handle.addEventListener("touchmove", (e) => {
+            if (e.touches.length > 0) {
+              moveDrag(e.touches[0].clientY);
+            }
+          });
+          handle.addEventListener("touchend", endDrag);
+          handle.addEventListener("touchcancel", endDrag);
+
+          // Mouse
+          handle.addEventListener("mousedown", (e) => {
+            startDrag(e.clientY);
+          });
+          window.addEventListener("mousemove", (e) => {
+            if (!dragging) return;
+            moveDrag(e.clientY);
+          });
+          window.addEventListener("mouseup", endDrag);
+        }
 
         loadTheme();
       });
