@@ -54,7 +54,7 @@
       href="https://pomf2.lain.la/f/leu65s82.png"
     />
   </head>
-  <body data-page="profile">
+  <body data-page="profile" class="theme-dark">
     <div class="app-root">
       <header class="app-header">
         <button
@@ -90,92 +90,86 @@
 
       <main id="mainContent">
         <div class="page-container">
-          <h2 class="page-title">Profil</h2>
+          <h2 class="page-title">Pengaturan</h2>
 
-          <div class="profile-card">
-            <h3 class="section-title small-title version-title">
-              <span>Versi</span>
-              <span class="version-value">1.4.4.x</span>
-            </h3>
-          </div>
-
-          <!-- KARTU TEMA -->
-          <div class="profile-card theme-card" id="themeCard">
-            <h3 class="section-title small-title">Tema</h3>
-            <p class="profile-text">
-              Pilih tampilan yang kamu suka. Pengaturan ini berlaku untuk semua
-              halaman.
-            </p>
-
-            <!-- Tombol utama -->
+          <!-- KARTU PENGATURAN TAMPILAN -->
+          <section class="settings-card">
+            <h3 class="settings-section-title">Tampilan</h3>
             <button
               type="button"
-              class="theme-toggle-btn"
-              id="themeToggle"
-              aria-expanded="false"
-              aria-controls="themeList"
+              class="settings-row"
+              id="openThemeModal"
+              aria-haspopup="dialog"
+              aria-controls="themeModal"
             >
-              <div>
-                <div class="theme-toggle-main">Change Theme</div>
-                <div
-                  class="theme-toggle-current"
-                  id="currentThemeLabel"
-                >
-                  Biru &amp; Hitam (Default)
-                </div>
+              <div class="settings-row-text">
+                <span class="settings-row-title">Tema</span>
+                <span class="settings-row-sub">
+                  Pilih warna tampilan aplikasi.
+                </span>
               </div>
-              <svg
-                class="theme-toggle-icon"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  fill="currentColor"
-                  d="M7 10l5 5 5-5H7z"
-                />
-              </svg>
+              <div class="settings-row-value" id="currentThemeLabel">
+                Biru &amp; Hitam (Default)
+              </div>
             </button>
+          </section>
 
-            <!-- List tema (dropdown) -->
-            <div class="theme-list" id="themeList">
-              <div class="theme-options">
-                <label class="theme-option">
-                  <input
-                    type="radio"
-                    name="theme-option"
-                    value="dark"
-                    id="themeDark"
-                  />
-                  <div>
-                    <div class="theme-option-main">
-                      Biru &amp; Hitam (Default)
-                    </div>
-                    <div class="theme-option-sub">
-                      Tampilan gelap dengan aksen biru.
-                    </div>
-                  </div>
-                </label>
-                <label class="theme-option">
-                  <input
-                    type="radio"
-                    name="theme-option"
-                    value="light"
-                    id="themeLight"
-                  />
-                  <div>
-                    <div class="theme-option-main">Putih &amp; Hitam</div>
-                    <div class="theme-option-sub">
-                      Tampilan terang dengan latar putih dan hitam.
-                    </div>
-                  </div>
-                </label>
-              </div>
+          <!-- FOOTER VERSI DI PALING BAWAH -->
+          <footer class="profile-footer">
+            <div class="profile-version-row">
+              <span class="profile-version-label">Versi</span>
+              <span class="profile-version-value">1.4.4.x</span>
             </div>
-          </div>
-
-          <p class="profile-footer">© 2025 AniKuy. All rights reserved.</p>
+            <p class="profile-copyright">
+              © 2025 AniKuy. All rights reserved.
+            </p>
+          </footer>
         </div>
       </main>
+
+      <!-- MODAL / POPUP PILIH TEMA -->
+      <div
+        class="theme-modal-backdrop"
+        id="themeModal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="themeModalTitle"
+      >
+        <div class="theme-modal-sheet">
+          <div class="theme-modal-handle"></div>
+          <h3 class="theme-modal-title" id="themeModalTitle">Pilih Tema</h3>
+
+          <button
+            type="button"
+            class="theme-choice"
+            data-theme-option="dark"
+          >
+            <div class="theme-choice-main">Biru &amp; Hitam (Default)</div>
+            <div class="theme-choice-sub">
+              Tampilan gelap dengan aksen biru.
+            </div>
+          </button>
+
+          <button
+            type="button"
+            class="theme-choice"
+            data-theme-option="light"
+          >
+            <div class="theme-choice-main">Putih &amp; Hitam</div>
+            <div class="theme-choice-sub">
+              Tampilan terang dengan latar putih dan teks gelap.
+            </div>
+          </button>
+
+          <button
+            type="button"
+            class="theme-modal-close"
+            id="closeThemeModal"
+          >
+            Batal
+          </button>
+        </div>
+      </div>
 
       <nav class="bottom-nav">
         <a class="nav-item" data-tab="home" href="/">
@@ -220,5 +214,80 @@
     <div id="toast" class="toast"></div>
 
     <script src="/assets/js/core.js"></script>
+
+    <!-- SCRIPT TEMA SEDERHANA -->
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const THEME_KEY = "anikuy-theme";
+        const body = document.body;
+
+        const modal = document.getElementById("themeModal");
+        const openBtn = document.getElementById("openThemeModal");
+        const closeBtn = document.getElementById("closeThemeModal");
+        const currentLabel = document.getElementById("currentThemeLabel");
+        const choiceButtons =
+          modal?.querySelectorAll("[data-theme-option]") || [];
+
+        function applyTheme(theme) {
+          const mode = theme === "light" ? "theme-light" : "theme-dark";
+          body.classList.remove("theme-light", "theme-dark");
+          body.classList.add(mode);
+          try {
+            localStorage.setItem(THEME_KEY, theme);
+          } catch (e) {}
+
+          if (currentLabel) {
+            currentLabel.textContent =
+              theme === "light"
+                ? "Putih & Hitam"
+                : "Biru & Hitam (Default)";
+          }
+
+          choiceButtons.forEach((btn) => {
+            const isActive =
+              btn.getAttribute("data-theme-option") === theme;
+            btn.classList.toggle("active", isActive);
+          });
+        }
+
+        function loadTheme() {
+          let saved = null;
+          try {
+            saved = localStorage.getItem(THEME_KEY);
+          } catch (e) {}
+          if (saved !== "light" && saved !== "dark") saved = "dark";
+          applyTheme(saved);
+        }
+
+        function openModal() {
+          if (!modal) return;
+          modal.classList.add("show");
+        }
+
+        function closeModal() {
+          if (!modal) return;
+          modal.classList.remove("show");
+        }
+
+        if (openBtn) openBtn.addEventListener("click", openModal);
+        if (closeBtn) closeBtn.addEventListener("click", closeModal);
+
+        if (modal) {
+          modal.addEventListener("click", function (e) {
+            if (e.target === modal) closeModal();
+          });
+        }
+
+        choiceButtons.forEach((btn) => {
+          btn.addEventListener("click", function () {
+            const theme = btn.getAttribute("data-theme-option");
+            applyTheme(theme);
+            closeModal();
+          });
+        });
+
+        loadTheme();
+      });
+    </script>
   </body>
 </html>
