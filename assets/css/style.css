@@ -70,7 +70,6 @@ img {
   display: flex;
   align-items: center;
   gap: 8px;
-  cursor: pointer;
 }
 
 /* logo header */
@@ -1268,11 +1267,14 @@ img {
 /* PROFILE */
 
 .profile-card {
-  margin-top: 10px;
-  padding: 12px;
+  margin-top: 24px;
+  padding: 20px 16px;
   border-radius: 16px;
   background: rgba(15, 23, 42, 0.95);
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .profile-text {
@@ -1301,12 +1303,20 @@ img {
   opacity: 0.8;
 }
 
+/* teks "Segera Hadir" di tengah card */
 .profile-coming-soon {
-  margin-top: 40px;
-  text-align: center;
   font-size: 18px;
   font-weight: 600;
-  color: #e5e7eb;
+  text-align: center;
+}
+
+/* versi di bawah, di luar kotak */
+.profile-version-bottom {
+  margin-top: 80px;
+  font-size: 12px;
+  text-align: center;
+  color: #9ca3af;
+  opacity: 0.8;
 }
 
 /* BOTTOM NAV */
@@ -1491,11 +1501,11 @@ body.theme-light .profile-footer {
   color: #6b7280;
 }
 
-body.theme-light .profile-coming-soon {
-  color: #111827;
+body.theme-light .profile-version-bottom {
+  color: #6b7280;
 }
 
-/* Theme options (profile/settings) */
+/* Theme options (profile) */
 .theme-options {
   margin-top: 8px;
   display: flex;
