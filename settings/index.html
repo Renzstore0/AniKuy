@@ -44,7 +44,7 @@
           />
         </div>
 
-        <!-- dummy icon buat balance supaya logo tetap di tengah -->
+        <!-- dummy biar logo tetap center -->
         <div class="icon-button" aria-hidden="true" style="visibility: hidden;"></div>
       </header>
 
@@ -64,7 +64,7 @@
               class="theme-toggle-btn"
               id="themeToggle"
               aria-expanded="false"
-              aria-controls="themeList"
+              aria-controls="themeModal"
             >
               <div>
                 <div class="theme-toggle-main">Change Theme</div>
@@ -86,44 +86,68 @@
                 />
               </svg>
             </button>
-
-            <div class="theme-list" id="themeList">
-              <div class="theme-options">
-                <label class="theme-option">
-                  <input
-                    type="radio"
-                    name="theme-option"
-                    value="dark"
-                    id="themeDark"
-                  />
-                  <div>
-                    <div class="theme-option-main">
-                      Biru &amp; Hitam (Default)
-                    </div>
-                    <div class="theme-option-sub">
-                      Tampilan gelap dengan aksen biru.
-                    </div>
-                  </div>
-                </label>
-                <label class="theme-option">
-                  <input
-                    type="radio"
-                    name="theme-option"
-                    value="light"
-                    id="themeLight"
-                  />
-                  <div>
-                    <div class="theme-option-main">Putih &amp; Hitam</div>
-                    <div class="theme-option-sub">
-                      Tampilan terang dengan latar putih dan hitam.
-                    </div>
-                  </div>
-                </label>
-              </div>
-            </div>
           </div>
         </div>
       </main>
+
+      <!-- POPUP TEMA -->
+      <div id="themeModal" class="theme-modal" aria-hidden="true">
+        <div class="theme-modal-overlay" id="themeModalOverlay"></div>
+        <div
+          class="theme-modal-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="themeModalTitle"
+        >
+          <h3 class="section-title small-title" id="themeModalTitle">
+            Pilih Tema
+          </h3>
+
+          <div class="theme-list">
+            <div class="theme-options">
+              <label class="theme-option">
+                <input
+                  type="radio"
+                  name="theme-option"
+                  value="dark"
+                  id="themeDark"
+                />
+                <div>
+                  <div class="theme-option-main">
+                    Biru &amp; Hitam (Default)
+                  </div>
+                  <div class="theme-option-sub">
+                    Tampilan gelap dengan aksen biru.
+                  </div>
+                </div>
+              </label>
+
+              <label class="theme-option">
+                <input
+                  type="radio"
+                  name="theme-option"
+                  value="light"
+                  id="themeLight"
+                />
+                <div>
+                  <div class="theme-option-main">Putih &amp; Hitam</div>
+                  <div class="theme-option-sub">
+                    Tampilan terang dengan latar putih dan hitam.
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="theme-modal-close"
+            id="themeModalClose"
+          >
+            Tutup
+          </button>
+        </div>
+      </div>
 
       <div id="toast" class="toast"></div>
 
