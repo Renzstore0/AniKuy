@@ -24,13 +24,22 @@ function initThemeFromStorage() {
   }
 }
 
+/**
+ * Kontrol tema (dipakai di halaman settings)
+ * - Button pill: #themeToggle
+ * - Bottom sheet: #themeSheet
+ *   - overlay: #themeSheetOverlay
+ *   - tombol tutup: #themeSheetClose
+ *   - radio: input[name="theme-option"]
+ */
 function bindThemeControls(currentTheme) {
   const radios = document.querySelectorAll('input[name="theme-option"]');
+
   const themeToggle = document.getElementById("themeToggle");
+  const themeSheet = document.getElementById("themeSheet");
+  const sheetOverlay = document.getElementById("themeSheetOverlay");
+  const sheetClose = document.getElementById("themeSheetClose");
   const currentLabelEl = document.getElementById("currentThemeLabel");
-  const themeModal = document.getElementById("themeModal");
-  const themeModalClose = document.getElementById("themeModalClose");
-  const themeModalOverlay = document.getElementById("themeModalOverlay");
 
   function labelText(theme) {
     return theme === THEME_LIGHT
@@ -46,36 +55,48 @@ function bindThemeControls(currentTheme) {
 
   updateCurrentLabel(currentTheme);
 
-  function openModal() {
-    if (!themeModal) return;
-    themeModal.classList.add("show");
-    themeModal.setAttribute("aria-hidden", "false");
+  function openSheet() {
+    if (!themeSheet) return;
+    themeSheet.classList.add("show");
+    themeSheet.setAttribute("aria-hidden", "false");
     if (themeToggle) {
       themeToggle.setAttribute("aria-expanded", "true");
     }
   }
 
-  function closeModal() {
-    if (!themeModal) return;
-    themeModal.classList.remove("show");
-    themeModal.setAttribute("aria-hidden", "true");
+  function closeSheet() {
+    if (!themeSheet) return;
+    themeSheet.classList.remove("show");
+    themeSheet.setAttribute("aria-hidden", "true");
     if (themeToggle) {
       themeToggle.setAttribute("aria-expanded", "false");
     }
   }
 
-  if (themeToggle && themeModal) {
-    themeToggle.addEventListener("click", openModal);
-  }
-  if (themeModalClose) {
-    themeModalClose.addEventListener("click", closeModal);
-  }
-  if (themeModalOverlay) {
-    themeModalOverlay.addEventListener("click", closeModal);
+  // buka bottom sheet dari pill
+  if (themeToggle && themeSheet) {
+    themeToggle.addEventListener("click", () => {
+      const isOpen = themeSheet.classList.contains("show");
+      if (isOpen) {
+        closeSheet();
+      } else {
+        openSheet();
+      }
+    });
   }
 
+  // tutup dari overlay / tombol
+  if (sheetOverlay) {
+    sheetOverlay.addEventListener("click", closeSheet);
+  }
+  if (sheetClose) {
+    sheetClose.addEventListener("click", closeSheet);
+  }
+
+  // kalau tidak ada radio, selesai
   if (!radios.length) return;
 
+  // set radio & handler perubahan tema
   radios.forEach((radio) => {
     radio.checked = radio.value === currentTheme;
     radio.addEventListener("change", (e) => {
@@ -86,7 +107,8 @@ function bindThemeControls(currentTheme) {
       if (typeof showToast === "function") {
         showToast("Tema berhasil diubah");
       }
-      closeModal();
+      // setelah pilih tema, tutup sheet
+      closeSheet();
     });
   });
 }
@@ -247,18 +269,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const backButton = document.getElementById("backButton");
   const searchButton = document.getElementById("searchButton");
-  const settingsButton = document.getElementById("settingsButton");
   const pageType = document.body.dataset.page || "";
   const basePages = new Set(["home", "explore", "my-list", "profile"]);
-
-  // klik logo -> home
-  const logoWrap = document.querySelector(".logo-wrap");
-  if (logoWrap) {
-    logoWrap.style.cursor = "pointer";
-    logoWrap.addEventListener("click", () => {
-      window.location.href = "/";
-    });
-  }
 
   if (backButton) {
     backButton.style.visibility = basePages.has(pageType)
@@ -278,12 +290,6 @@ document.addEventListener("DOMContentLoaded", () => {
   if (searchButton) {
     searchButton.addEventListener("click", () => {
       window.location.href = "/search";
-    });
-  }
-
-  if (settingsButton) {
-    settingsButton.addEventListener("click", () => {
-      window.location.href = "/settings";
     });
   }
 
