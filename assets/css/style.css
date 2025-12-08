@@ -1748,10 +1748,11 @@ body.theme-light .episode-tab.active {
   color: #111827;
 }
 
+/* penting: samakan season-item dengan kartu rekomendasi di tema putih */
 body.theme-light .season-item {
-  background: #ffffff;
-  color: #111827;
-  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.12);
+  background: #020817;
+  color: #e5e7eb;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.9);
 }
 
 body.theme-light .season-empty {
