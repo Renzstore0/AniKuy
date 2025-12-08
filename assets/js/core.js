@@ -283,7 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (settingsButton) {
     settingsButton.addEventListener("click", () => {
-      window.location.href = "/setting";
+      window.location.href = "/settings";
     });
   }
 
