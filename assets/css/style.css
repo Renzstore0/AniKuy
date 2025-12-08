@@ -1,19 +1,15 @@
-*,
-*::before,
-*::after {
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html,
-body {
+html, body {
   height: 100%;
 }
 
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-    sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   background: #020617;
   color: #e5e7eb;
   overflow: hidden;
@@ -213,9 +209,7 @@ body[data-page="setting"] #searchButton {
   cursor: pointer;
 }
 
-/* =========================
-   RILIS HARI INI HERO
-   ========================= */
+/* ========================= RILIS HARI INI HERO ========================= */
 
 .today-hero-section {
   margin-bottom: 24px;
@@ -416,8 +410,7 @@ body[data-page="setting"] #searchButton {
   gap: 4px;
   box-shadow: 0 10px 25px rgba(15, 23, 42, 0.9);
   cursor: pointer;
-  transition: transform 0.14s ease, box-shadow 0.14s ease,
-    background 0.14s ease;
+  transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
 }
 
 .anime-row .anime-card {
@@ -1269,220 +1262,40 @@ body[data-page="setting"] #searchButton {
   }
 }
 
-/* ======================
-   PROFILE / PENGATURAN
-   ====================== */
+/* PROFILE */
 
-/* kartu pengaturan simpel */
-.settings-card {
+.profile-card {
   margin-top: 10px;
-  padding: 12px 12px 10px;
+  padding: 12px;
   border-radius: 16px;
   background: rgba(15, 23, 42, 0.95);
-  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.9);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.9);
 }
 
-.settings-section-title {
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+.profile-text {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #e5e7eb;
 }
 
-.settings-row {
-  margin-top: 10px;
-  width: 100%;
-  border-radius: 999px;
-  border: none;
-  background: #020817;
-  padding: 10px 14px;
+.version-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  cursor: pointer;
 }
 
-.settings-row-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  text-align: left;
-}
-
-.settings-row-title {
+.version-value {
   font-size: 14px;
   font-weight: 600;
   color: #e5e7eb;
 }
 
-.settings-row-sub {
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-.settings-row-value {
-  font-size: 13px;
-  font-weight: 700;
-  color: #e5f0ff;
-  white-space: nowrap;
-}
-
-/* TULISAN SEGARA HADIR DI TENGAH */
-.profile-coming-soon {
-  margin-top: 32px;
-  min-height: calc(100vh - 56px - 56px - 160px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-
-.profile-coming-soon-text {
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  opacity: 0.9;
-}
-
-/* footer versi di paling bawah */
 .profile-footer {
-  margin-top: 26px;
+  margin-top: 10px;
   font-size: 11px;
   text-align: center;
   color: #9ca3af;
-  opacity: 0.9;
-}
-
-.profile-version-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin-bottom: 4px;
-}
-
-.profile-version-label {
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-weight: 600;
-  font-size: 10px;
-  color: #6b7280;
-}
-
-.profile-version-value {
-  font-weight: 600;
-  font-size: 12px;
-  color: #e5e7eb;
-}
-
-.profile-copyright {
-  font-size: 11px;
-}
-
-/* MODAL PILIH TEMA */
-
-.theme-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.8);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.18s ease;
-  z-index: 40;
-}
-
-.theme-modal-backdrop.show {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.theme-modal-sheet {
-  width: 100%;
-  max-width: 480px;
-  margin: 0 auto;
-  border-radius: 16px 16px 0 0;
-  background: #020617;
-  padding: 10px 16px 16px;
-  box-shadow: 0 -18px 40px rgba(15, 23, 42, 0.95);
-  transform: translateY(0);
-  transition: transform 0.18s ease;
-}
-
-.theme-modal-sheet.dragging {
-  transition: none;
-}
-
-.theme-modal-handle {
-  width: 40px;
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.7);
-  margin: 4px auto 10px;
-  cursor: grab;
-  transition: background 0.15s ease;
-}
-
-.theme-modal-sheet.dragging .theme-modal-handle,
-.theme-modal-handle:active {
-  background: #e5e7eb;
-}
-
-.theme-modal-title {
-  font-size: 16px;
-  font-weight: 700;
-  text-align: center;
-  margin-bottom: 10px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #e5e7eb;
-}
-
-.theme-choice {
-  width: 100%;
-  border-radius: 12px;
-  border: none;
-  background: rgba(15, 23, 42, 0.95);
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  text-align: left;
-  cursor: pointer;
-  margin-top: 8px;
-}
-
-.theme-choice-main {
-  font-size: 14px;
-  font-weight: 600;
-  color: #e5e7eb;
-}
-
-.theme-choice-sub {
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-.theme-choice.active {
-  outline: 2px solid #facc15;
-  outline-offset: 0;
-}
-
-/* tombol batal */
-.theme-modal-close {
-  margin-top: 12px;
-  width: 100%;
-  border-radius: 999px;
-  border: none;
-  padding: 8px 12px;
-  background: rgba(15, 23, 42, 0.95);
-  color: #e5e7eb;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
+  opacity: 0.8;
 }
 
 /* BOTTOM NAV */
@@ -1597,11 +1410,6 @@ body[data-page="setting"] #searchButton {
   .today-hero-poster.side {
     flex-basis: 23%;
   }
-
-  .theme-modal-sheet {
-    border-radius: 18px;
-    margin-bottom: 8px;
-  }
 }
 
 @media (min-width: 900px) {
@@ -1659,74 +1467,119 @@ body.theme-light .toast {
   color: #f9fafb;
 }
 
-/* profile / settings di theme light */
-body.theme-light .settings-card {
+body.theme-light .profile-card {
   background: #ffffff;
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
 }
 
-body.theme-light .settings-row {
-  background: #f3f4f6;
-}
-
-body.theme-light .settings-row-title {
-  color: #111827;
-}
-
-body.theme-light .settings-row-sub {
-  color: #6b7280;
-}
-
-body.theme-light .settings-row-value {
-  color: #111827;
-}
-
-body.theme-light .profile-version-value {
-  color: #111827;
+body.theme-light .version-value {
+  color: #1f2937;
 }
 
 body.theme-light .profile-footer {
   color: #6b7280;
 }
 
-body.theme-light .profile-coming-soon-text {
-  color: #111827;
+/* Theme options (profile) */
+.theme-options {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-/* Theme modal light */
-body.theme-light .theme-modal-sheet {
-  background: #ffffff;
-  box-shadow: 0 -18px 40px rgba(15, 23, 42, 0.12);
+.theme-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.9);
+  cursor: pointer;
 }
 
-body.theme-light .theme-modal-title {
-  color: #111827;
+.theme-option input {
+  margin-top: 4px;
 }
 
-body.theme-light .theme-choice {
+.theme-option-main {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.theme-option-sub {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+body.theme-light .theme-option {
   background: #f3f4f6;
 }
 
-body.theme-light .theme-choice-main {
-  color: #111827;
-}
-
-body.theme-light .theme-choice-sub {
+body.theme-light .theme-option-sub {
   color: #6b7280;
 }
 
-body.theme-light .theme-modal-close {
-  background: #e5e7eb;
+/* THEME CARD DROPDOWN */
+
+.theme-card {
+  position: relative;
+}
+
+.theme-toggle-btn {
+  margin-top: 8px;
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: rgba(15, 23, 42, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: #e5e7eb;
+  cursor: pointer;
+}
+
+.theme-toggle-main {
+  font-weight: 600;
+}
+
+.theme-toggle-current {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.theme-toggle-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.theme-card.open .theme-toggle-icon {
+  transform: rotate(180deg);
+}
+
+.theme-list {
+  margin-top: 8px;
+  display: none;
+}
+
+.theme-card.open .theme-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+body.theme-light .theme-toggle-btn {
+  background: #ffffff;
+  border-color: rgba(156, 163, 175, 0.9);
   color: #111827;
 }
 
-body.theme-light .theme-modal-handle {
-  background: #d1d5db;
-}
-
-body.theme-light .theme-modal-sheet.dragging .theme-modal-handle,
-body.theme-light .theme-modal-handle:active {
-  background: #9ca3af;
+body.theme-light .theme-toggle-current {
+  color: #6b7280;
 }
 
 /* Light theme: player & dropdown dsb */
