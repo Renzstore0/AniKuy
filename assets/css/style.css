@@ -1322,6 +1322,24 @@ img {
   white-space: nowrap;
 }
 
+/* TULISAN SEGARA HADIR DI TENGAH */
+.profile-coming-soon {
+  margin-top: 32px;
+  min-height: calc(100vh - 56px - 56px - 160px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.profile-coming-soon-text {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
 /* footer versi di paling bawah */
 .profile-footer {
   margin-top: 26px;
@@ -1643,6 +1661,10 @@ body.theme-light .profile-version-value {
 
 body.theme-light .profile-footer {
   color: #6b7280;
+}
+
+body.theme-light .profile-coming-soon-text {
+  color: #111827;
 }
 
 /* Theme modal light */
