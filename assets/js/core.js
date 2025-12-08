@@ -1,5 +1,3 @@
-// assets/js/core.js
-
 const BASE_URL = "https://www.sankavollerei.com";
 const LS_KEY_FAVORITES = "anikuy_favorites";
 const LS_KEY_THEME = "anikuy_theme";
@@ -226,6 +224,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const backButton = document.getElementById("backButton");
   const searchButton = document.getElementById("searchButton");
+  const settingsButton = document.getElementById("settingsButton");
+  const logoWrap = document.querySelector(".logo-wrap");
   const pageType = document.body.dataset.page || "";
   const basePages = new Set(["home", "explore", "my-list", "profile"]);
 
@@ -247,6 +247,18 @@ document.addEventListener("DOMContentLoaded", () => {
   if (searchButton) {
     searchButton.addEventListener("click", () => {
       window.location.href = "/search";
+    });
+  }
+
+  if (settingsButton) {
+    settingsButton.addEventListener("click", () => {
+      window.location.href = "/settings";
+    });
+  }
+
+  if (logoWrap) {
+    logoWrap.addEventListener("click", () => {
+      window.location.href = "/";
     });
   }
 
