@@ -1302,7 +1302,7 @@ img {
 
 /* TEKS "SEGERA HADIR" DI TENGAH PROFIL */
 .profile-coming {
-  margin-top: 24px;
+  margin-top: 15vh;
   font-size: 20px;
   font-weight: 600;
   text-align: center;
