@@ -141,7 +141,7 @@
       >
         <div class="theme-modal-sheet">
           <div class="theme-modal-handle"></div>
-          <h3 class="theme-modal-title" id="themeModalTitle">Pilih Tema</h3>
+          <h3 class="theme-modal-title" id="themeModalTitle">PILIH TEMA</h3>
 
           <button
             type="button"
@@ -274,7 +274,7 @@
           }
         }
 
-        function closeModal() {
+        function hideModalDom() {
           if (!modal) return;
           modal.classList.remove("show");
           if (sheet) {
@@ -282,12 +282,26 @@
           }
         }
 
+        function closeModal(withAnimation = false) {
+          if (!modal || !sheet) {
+            hideModalDom();
+            return;
+          }
+          if (withAnimation) {
+            sheet.style.transform = "translateY(120px)";
+            setTimeout(hideModalDom, 160);
+          } else {
+            hideModalDom();
+          }
+        }
+
         if (openBtn) openBtn.addEventListener("click", openModal);
-        if (closeBtn) closeBtn.addEventListener("click", closeModal);
+        if (closeBtn)
+          closeBtn.addEventListener("click", () => closeModal(true));
 
         if (modal) {
           modal.addEventListener("click", function (e) {
-            if (e.target === modal) closeModal();
+            if (e.target === modal) closeModal(true);
           });
         }
 
@@ -295,7 +309,7 @@
           btn.addEventListener("click", function () {
             const theme = btn.getAttribute("data-theme-option");
             applyTheme(theme);
-            closeModal();
+            closeModal(true);
           });
         });
 
@@ -304,6 +318,9 @@
           let dragging = false;
           let startY = 0;
           let currentY = 0;
+
+          const MAX_TRANSLATE = 180; // seberapa jauh bisa ditarik
+          const CLOSE_THRESHOLD = 60; // makin kecil → lebih mudah nutup
 
           const startDrag = (clientY) => {
             dragging = true;
@@ -316,8 +333,8 @@
             if (!dragging) return;
             currentY = clientY;
             const delta = currentY - startY;
-            // cuma geser kalau ke bawah
-            const translate = delta > 0 ? delta : 0;
+            const translate =
+              delta > 0 ? Math.min(delta, MAX_TRANSLATE) : 0;
             sheet.style.transform = "translateY(" + translate + "px)";
           };
 
@@ -327,11 +344,9 @@
             sheet.classList.remove("dragging");
             const delta = currentY - startY;
 
-            if (delta > 80) {
-              // geser cukup jauh → tutup
-              closeModal();
+            if (delta > CLOSE_THRESHOLD) {
+              closeModal(true);
             } else {
-              // balikin ke posisi awal
               sheet.style.transform = "translateY(0px)";
             }
           };
@@ -339,11 +354,13 @@
           // Touch
           handle.addEventListener("touchstart", (e) => {
             if (e.touches.length > 0) {
+              e.preventDefault();
               startDrag(e.touches[0].clientY);
             }
           });
           handle.addEventListener("touchmove", (e) => {
             if (e.touches.length > 0) {
+              e.preventDefault();
               moveDrag(e.touches[0].clientY);
             }
           });
