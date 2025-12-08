@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>AniKuy - Pengaturan</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <meta
+      name="description"
+      content="Halaman pengaturan AniKuy: atur tema tampilan aplikasi."
+    />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="AniKuy" />
+    <meta property="og:title" content="Pengaturan - AniKuy" />
+    <meta
+      property="og:description"
+      content="Halaman pengaturan AniKuy: atur tema tampilan aplikasi."
+    />
+    <meta property="og:url" content="https://anikuy.my.id/setting" />
+    <meta
+      property="og:image"
+      content="https://pomf2.lain.la/f/jut4jh8e.jpg"
+    />
+    <meta property="og:image:alt" content="Logo AniKuy" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Pengaturan - AniKuy" />
+    <meta
+      name="twitter:description"
+      content="Halaman pengaturan AniKuy: atur tema tampilan aplikasi."
+    />
+    <meta
+      name="twitter:image"
+      content="https://pomf2.lain.la/f/jut4jh8e.jpg"
+    />
+
+    <meta name="application-name" content="AniKuy" />
+    <meta name="apple-mobile-web-app-title" content="AniKuy" />
+
+    <link rel="stylesheet" href="/assets/css/style.css" />
+
+    <!-- Favicon / Logo -->
+    <link
+      rel="icon"
+      type="image/png"
+      href="https://pomf2.lain.la/f/leu65s82.png"
+    />
+    <link
+      rel="shortcut icon"
+      type="image/png"
+      href="https://pomf2.lain.la/f/leu65s82.png"
+    />
+  </head>
+  <body data-page="setting" class="theme-dark">
+    <div class="app-root">
+      <header class="app-header">
+        <button
+          class="icon-button back-button"
+          id="backButton"
+          aria-label="Kembali"
+        >
+          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"
+            />
+          </svg>
+        </button>
+
+        <div class="logo-wrap">
+          <img
+            src="https://pomf2.lain.la/f/22yuvdrk.png"
+            alt="AniKuy Logo"
+            class="logo-img"
+          />
+        </div>
+
+        <!-- DI HALAMAN SETTING PAKAI SEARCH LAGI -->
+        <button
+          class="icon-button"
+          id="searchButton"
+          aria-label="Cari Anime"
+        >
+          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L19 20.49 20.49 19 15.5 14zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
+            />
+          </svg>
+        </button>
+      </header>
+
+      <main id="mainContent">
+        <div class="page-container">
+          <h2 class="page-title">Pengaturan</h2>
+
+          <!-- KARTU PENGATURAN TAMPILAN -->
+          <section class="settings-card">
+            <h3 class="settings-section-title">Tampilan</h3>
+            <button
+              type="button"
+              class="settings-row"
+              id="openThemeModal"
+              aria-haspopup="dialog"
+              aria-controls="themeModal"
+            >
+              <div class="settings-row-text">
+                <span class="settings-row-title">Tema</span>
+                <span class="settings-row-sub">
+                  Pilih warna tampilan aplikasi.
+                </span>
+              </div>
+              <div class="settings-row-value" id="currentThemeLabel">
+                Biru &amp; Hitam (Default)
+              </div>
+            </button>
+          </section>
+
+          <footer class="profile-footer">
+            <div class="profile-version-row">
+              <span class="profile-version-label">VERSI</span>
+              <span class="profile-version-value">1.4.4.x</span>
+            </div>
+            <p class="profile-copyright">
+              © 2025 AniKuy. All rights reserved.
+            </p>
+          </footer>
+        </div>
+      </main>
+
+      <!-- MODAL / POPUP PILIH TEMA -->
+      <div
+        class="theme-modal-backdrop"
+        id="themeModal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="themeModalTitle"
+      >
+        <div class="theme-modal-sheet">
+          <div class="theme-modal-handle"></div>
+          <h3 class="theme-modal-title" id="themeModalTitle">Pilih Tema</h3>
+
+          <button
+            type="button"
+            class="theme-choice"
+            data-theme-option="dark"
+          >
+            <div class="theme-choice-main">Biru &amp; Hitam (Default)</div>
+            <div class="theme-choice-sub">
+              Tampilan gelap dengan aksen biru.
+            </div>
+          </button>
+
+          <button
+            type="button"
+            class="theme-choice"
+            data-theme-option="light"
+          >
+            <div class="theme-choice-main">Putih &amp; Hitam</div>
+            <div class="theme-choice-sub">
+              Tampilan terang dengan latar putih dan teks gelap.
+            </div>
+          </button>
+
+          <button
+            type="button"
+            class="theme-modal-close"
+            id="closeThemeModal"
+          >
+            Batal
+          </button>
+        </div>
+      </div>
+
+      <nav class="bottom-nav">
+        <a class="nav-item" data-tab="home" href="/">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"
+            />
+          </svg>
+          <span class="nav-label">Home</span>
+        </a>
+        <a class="nav-item" data-tab="explore" href="/explore">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm3.94 6.06-2.12 5.3a1 1 0 0 1-.56.56l-5.3 2.12a.25.25 0 0 1-.32-.32z"
+            />
+          </svg>
+          <span class="nav-label">Explore</span>
+        </a>
+        <a class="nav-item" data-tab="my-list" href="/my-list">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 12h3v8z"
+            />
+          </svg>
+          <span class="nav-label">My List</span>
+        </a>
+        <a class="nav-item active" data-tab="profile" href="/profile">
+          <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M12 12a5 5 0 1 0-5-5 5.006 5.006 0 0 0 5 5zm0 2c-4.33 0-8 2.17-8 4.5V21h16v-2.5C20 16.17 16.33 14 12 14z"
+            />
+          </svg>
+          <span class="nav-label">Profile</span>
+        </a>
+      </nav>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="/assets/js/core.js"></script>
+
+    <!-- SCRIPT TEMA -->
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const THEME_KEY = "anikuy-theme";
+        const body = document.body;
+
+        const modal = document.getElementById("themeModal");
+        const openBtn = document.getElementById("openThemeModal");
+        const closeBtn = document.getElementById("closeThemeModal");
+        const currentLabel = document.getElementById("currentThemeLabel");
+        const choiceButtons =
+          modal?.querySelectorAll("[data-theme-option]") || [];
+
+        function applyTheme(theme) {
+          const mode = theme === "light" ? "theme-light" : "theme-dark";
+          body.classList.remove("theme-light", "theme-dark");
+          body.classList.add(mode);
+          try {
+            localStorage.setItem(THEME_KEY, theme);
+          } catch (e) {}
+
+          if (currentLabel) {
+            currentLabel.textContent =
+              theme === "light"
+                ? "Putih & Hitam"
+                : "Biru & Hitam (Default)";
+          }
+
+          choiceButtons.forEach((btn) => {
+            const isActive =
+              btn.getAttribute("data-theme-option") === theme;
+            btn.classList.toggle("active", isActive);
+          });
+        }
+
+        function loadTheme() {
+          let saved = null;
+          try {
+            saved = localStorage.getItem(THEME_KEY);
+          } catch (e) {}
+          if (saved !== "light" && saved !== "dark") saved = "dark";
+          applyTheme(saved);
+        }
+
+        function openModal() {
+          if (!modal) return;
+          modal.classList.add("show");
+        }
+
+        function closeModal() {
+          if (!modal) return;
+          modal.classList.remove("show");
+        }
+
+        if (openBtn) openBtn.addEventListener("click", openModal);
+        if (closeBtn) closeBtn.addEventListener("click", closeModal);
+
+        if (modal) {
+          modal.addEventListener("click", function (e) {
+            if (e.target === modal) closeModal();
+          });
+        }
+
+        choiceButtons.forEach((btn) => {
+          btn.addEventListener("click", function () {
+            const theme = btn.getAttribute("data-theme-option");
+            applyTheme(theme);
+            closeModal();
+          });
+        });
+
+        loadTheme();
+      });
+    </script>
+  </body>
+</html>
