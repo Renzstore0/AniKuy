@@ -70,6 +70,7 @@ img {
   display: flex;
   align-items: center;
   gap: 8px;
+  cursor: pointer;
 }
 
 /* logo header */
@@ -1300,6 +1301,14 @@ img {
   opacity: 0.8;
 }
 
+.profile-coming-soon {
+  margin-top: 40px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
 /* BOTTOM NAV */
 
 .bottom-nav {
@@ -1482,7 +1491,11 @@ body.theme-light .profile-footer {
   color: #6b7280;
 }
 
-/* Theme options (profile) */
+body.theme-light .profile-coming-soon {
+  color: #111827;
+}
+
+/* Theme options (profile/settings) */
 .theme-options {
   margin-top: 8px;
   display: flex;
