@@ -7,7 +7,7 @@
 
     <meta
       name="description"
-      content="Halaman profil AniKuy: lihat versi website dan info singkat seputar pengaturan akunmu."
+      content="Halaman profil AniKuy."
     />
 
     <!-- Open Graph -->
@@ -16,7 +16,7 @@
     <meta property="og:title" content="Profil - AniKuy" />
     <meta
       property="og:description"
-      content="Halaman profil AniKuy: lihat versi website dan info singkat seputar pengaturan akunmu."
+      content="Halaman profil AniKuy."
     />
     <meta property="og:url" content="https://anikuy.my.id/profile" />
     <meta
@@ -30,7 +30,7 @@
     <meta name="twitter:title" content="Profil - AniKuy" />
     <meta
       name="twitter:description"
-      content="Halaman profil AniKuy: lihat versi website dan info singkat seputar pengaturan akunmu."
+      content="Halaman profil AniKuy."
     />
     <meta
       name="twitter:image"
@@ -78,11 +78,12 @@
           />
         </div>
 
-        <!-- GANTI SEARCH JADI SETTINGS -->
+        <!-- TOMBOL SETTING: LINK KE /setting -->
         <button
           class="icon-button"
           id="settingsButton"
           aria-label="Pengaturan"
+          onclick="window.location.href='/setting';"
         >
           <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
             <path
@@ -95,36 +96,13 @@
 
       <main id="mainContent">
         <div class="page-container">
-          <h2 class="page-title">Pengaturan</h2>
+          <h2 class="page-title">Profil</h2>
 
-          <!-- KARTU PENGATURAN TAMPILAN -->
-          <section class="settings-card">
-            <h3 class="settings-section-title">Tampilan</h3>
-            <button
-              type="button"
-              class="settings-row"
-              id="openThemeModal"
-              aria-haspopup="dialog"
-              aria-controls="themeModal"
-            >
-              <div class="settings-row-text">
-                <span class="settings-row-title">Tema</span>
-                <span class="settings-row-sub">
-                  Pilih warna tampilan aplikasi.
-                </span>
-              </div>
-              <div class="settings-row-value" id="currentThemeLabel">
-                Biru &amp; Hitam (Default)
-              </div>
-            </button>
-          </section>
-
-          <!-- TULISAN SEGARA HADIR DI TENGAH -->
+          <!-- HANYA TEKS SEGERA HADIR -->
           <div class="profile-coming-soon">
-            <p class="profile-coming-soon-text">Segera hadir</p>
+            <p class="profile-coming-soon-text">SEGERA HADIR</p>
           </div>
 
-          <!-- FOOTER VERSI DI PALING BAWAH -->
           <footer class="profile-footer">
             <div class="profile-version-row">
               <span class="profile-version-label">VERSI</span>
@@ -136,50 +114,6 @@
           </footer>
         </div>
       </main>
-
-      <!-- MODAL / POPUP PILIH TEMA -->
-      <div
-        class="theme-modal-backdrop"
-        id="themeModal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="themeModalTitle"
-      >
-        <div class="theme-modal-sheet">
-          <div class="theme-modal-handle"></div>
-          <h3 class="theme-modal-title" id="themeModalTitle">Pilih Tema</h3>
-
-          <button
-            type="button"
-            class="theme-choice"
-            data-theme-option="dark"
-          >
-            <div class="theme-choice-main">Biru &amp; Hitam (Default)</div>
-            <div class="theme-choice-sub">
-              Tampilan gelap dengan aksen biru.
-            </div>
-          </button>
-
-          <button
-            type="button"
-            class="theme-choice"
-            data-theme-option="light"
-          >
-            <div class="theme-choice-main">Putih &amp; Hitam</div>
-            <div class="theme-choice-sub">
-              Tampilan terang dengan latar putih dan teks gelap.
-            </div>
-          </button>
-
-          <button
-            type="button"
-            class="theme-modal-close"
-            id="closeThemeModal"
-          >
-            Batal
-          </button>
-        </div>
-      </div>
 
       <nav class="bottom-nav">
         <a class="nav-item" data-tab="home" href="/">
@@ -225,7 +159,7 @@
 
     <script src="/assets/js/core.js"></script>
 
-    <!-- SCRIPT TEMA SEDERHANA -->
+    <!-- SCRIPT THEME (buat load tema yang disimpan) -->
     <script>
       document.addEventListener("DOMContentLoaded", function () {
         const THEME_KEY = "anikuy-theme";
