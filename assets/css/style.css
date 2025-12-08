@@ -1411,7 +1411,7 @@ img {
   font-weight: 700;
   letter-spacing: 0.06em;
   margin-bottom: 12px;
-  color: #e5e7eb;          /* lebih terang di tema biru hitam */
+  color: #e5e7eb;        /* jelas di tema gelap */
 }
 
 .settings-pill {
@@ -1430,13 +1430,13 @@ img {
 .settings-pill-left {
   font-size: 16px;
   font-weight: 600;
-  color: #e5e7eb;          /* teks kiri putih */
+  color: #e5e7eb;
 }
 
 .settings-pill-right {
   font-size: 14px;
   font-weight: 500;
-  color: #bfdbfe;          /* teks kanan biru muda */
+  color: #bfdbfe;
 }
 
 /* BOTTOM SHEET TEMA */
@@ -1643,18 +1643,29 @@ body.theme-light .profile-version {
   color: #6b7280;
 }
 
+/* >>> IMPORTANT: teks settings di tema putih <<< */
+body.theme-light .settings-group-title {
+  color: #111827;
+}
+
 body.theme-light .settings-pill {
   background: #ffffff;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+body.theme-light .settings-pill-left {
+  color: #111827;
 }
 
 body.theme-light .settings-pill-right {
   color: #4b5563;
 }
 
+/* bottom sheet tema di light mode */
 body.theme-light .theme-sheet-panel {
   background: #ffffff;
   box-shadow: 0 -12px 30px rgba(15, 23, 42, 0.16);
+  color: #111827;
 }
 
 body.theme-light .theme-sheet-close {
@@ -1664,6 +1675,10 @@ body.theme-light .theme-sheet-close {
 
 body.theme-light .theme-option {
   background: #f3f4f6;
+}
+
+body.theme-light .theme-option-main {
+  color: #111827;
 }
 
 body.theme-light .theme-option-sub {
