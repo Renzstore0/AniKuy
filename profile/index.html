@@ -7,7 +7,7 @@
 
     <meta
       name="description"
-      content="Halaman profil AniKuy: lihat versi website dan info singkat seputar pengaturan akunmu."
+      content="Halaman profil AniKuy: info versi dan pengaturan akunmu."
     />
 
     <!-- Open Graph -->
@@ -16,7 +16,7 @@
     <meta property="og:title" content="Profil - AniKuy" />
     <meta
       property="og:description"
-      content="Halaman profil AniKuy: lihat versi website dan info singkat seputar pengaturan akunmu."
+      content="Halaman profil AniKuy: info versi dan pengaturan akunmu."
     />
     <meta property="og:url" content="https://anikuy.my.id/profile" />
     <meta
@@ -30,7 +30,7 @@
     <meta name="twitter:title" content="Profil - AniKuy" />
     <meta
       name="twitter:description"
-      content="Halaman profil AniKuy: lihat versi website dan info singkat seputar pengaturan akunmu."
+      content="Halaman profil AniKuy: info versi dan pengaturan akunmu."
     />
     <meta
       name="twitter:image"
@@ -65,7 +65,7 @@
           <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="currentColor"
-              d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"
+              d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"
             />
           </svg>
         </button>
@@ -78,11 +78,16 @@
           />
         </div>
 
-        <button class="icon-button" id="settingsButton" aria-label="Pengaturan">
+        <!-- tombol setting di kanan -->
+        <button
+          class="icon-button"
+          id="settingsButton"
+          aria-label="Pengaturan"
+        >
           <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="currentColor"
-              d="M19.14 12.94a7.14 7.14 0 0 0 .05-.94 7.14 7.14 0 0 0-.05-.94l2.11-1.65a.5.5 0 0 0 .12-.63l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a6.93 6.93 0 0 0-1.63-.94l-.38-2.65A.5.5 0 0 0 14.18 2H9.82a.5.5 0 0 0-.5.42L9 5.07a6.93 6.93 0 0 0-1.63.94l-2.49-1a.5.5 0 0 0-.61.22L2.6 8.78a.5.5 0 0 0 .12.63L4.83 11.06a7.14 7.14 0 0 0-.05.94 7.14 7.14 0 0 0 .05.94L2.72 14.59a.5.5 0 0 0-.12.63l1.69 2.94a.5.5 0 0 0 .61.22l2.49-1a6.93 6.93 0 0 0 1.63.94l.38 2.65a.5.5 0 0 0 .5.42h4.36a.5.5 0 0 0 .5-.42l.38-2.65a6.93 6.93 0 0 0 1.63-.94l2.49 1a.5.5 0 0 0 .61-.22l1.69-2.94a.5.5 0 0 0-.12-.63Zm-7.14 2.56A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5Z"
+              d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.05 7.05 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 14 2h-4a.5.5 0 0 0-.49.42l-.36 2.54c-.6.24-1.15.56-1.66.94l-2.39-.96a.5.5 0 0 0-.61.22L2.57 10c-.13.22-.07.5.12.64l2.03 1.58c-.04.31-.06.64-.06.98 0 .3.02.6.06.9l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.23.41.32.65.22l2.39-.96c.5.38 1.06.7 1.66.94l.36 2.54a.5.5 0 0 0 .49.42h4a.5.5 0 0 0 .49-.42l.36-2.54c.6-.24 1.16-.56 1.67-.94l2.39.96c.24.1.51.01.65-.22l1.92-3.32a.5.5 0 0 0-.12-.64zm-7.14 2.06A3 3 0 1 1 15 12a3 3 0 0 1-3 3z"
             />
           </svg>
         </button>
@@ -92,12 +97,12 @@
         <div class="page-container">
           <h2 class="page-title">Profil</h2>
 
-          <div class="profile-card">
-            <div class="profile-coming-soon">Segera Hadir</div>
-          </div>
-
-          <p class="profile-version-bottom">Versi 1.4.4.x</p>
+          <!-- TEKS "SEGERA HADIR" TANPA KOTAK -->
+          <p class="profile-coming">Segera Hadir</p>
         </div>
+
+        <!-- VERSI DI PALING BAWAH, KECIL & CENTER -->
+        <p class="profile-version">Versi 1.4.4.x</p>
       </main>
 
       <nav class="bottom-nav">
