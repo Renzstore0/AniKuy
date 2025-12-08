@@ -45,108 +45,97 @@
         </div>
 
         <!-- dummy biar logo tetap center -->
-        <div class="icon-button" aria-hidden="true" style="visibility: hidden;"></div>
+        <div
+          class="icon-button"
+          aria-hidden="true"
+          style="visibility: hidden;"
+        ></div>
       </header>
 
       <main id="mainContent">
         <div class="page-container">
           <h2 class="page-title">Pengaturan</h2>
 
-          <div class="profile-card theme-card" id="themeCard">
-            <div class="theme-card-header">
-              <div class="theme-card-text">
-                <h3 class="section-title small-title">Tema</h3>
-                <p class="profile-text">
-                  Pilih tampilan yang kamu suka. Pengaturan ini berlaku untuk
-                  semua halaman.
-                </p>
-              </div>
+          <!-- GROUP TEMA (judul + pill besar seperti contoh) -->
+          <div class="settings-group">
+            <h3 class="settings-group-title">Tema</h3>
 
-              <button
-                type="button"
-                class="theme-toggle-btn"
-                id="themeToggle"
-                aria-expanded="false"
-                aria-controls="themeModal"
+            <button
+              type="button"
+              class="settings-pill"
+              id="themeToggle"
+              aria-expanded="false"
+              aria-controls="themeSheet"
+            >
+              <span class="settings-pill-left">Tema</span>
+              <span
+                class="settings-pill-right"
+                id="currentThemeLabel"
               >
-                <div>
-                  <div class="theme-toggle-main">Change Theme</div>
-                  <div
-                    class="theme-toggle-current"
-                    id="currentThemeLabel"
-                  >
-                    Biru &amp; Hitam (Default)
-                  </div>
-                </div>
-                <svg
-                  class="theme-toggle-icon"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    fill="currentColor"
-                    d="M7 10l5 5 5-5H7z"
-                  />
-                </svg>
-              </button>
-            </div>
+                Biru &amp; Hitam (Default)
+              </span>
+            </button>
           </div>
         </div>
       </main>
 
-      <!-- POPUP TEMA -->
-      <div id="themeModal" class="theme-modal" aria-hidden="true">
-        <div class="theme-modal-overlay" id="themeModalOverlay"></div>
+      <!-- BOTTOM SHEET TEMA -->
+      <div id="themeSheet" class="theme-sheet" aria-hidden="true">
         <div
-          class="theme-modal-dialog"
+          class="theme-sheet-overlay"
+          id="themeSheetOverlay"
+        ></div>
+
+        <div
+          class="theme-sheet-panel"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="themeModalTitle"
+          aria-labelledby="themeSheetTitle"
         >
-          <h3 class="section-title small-title" id="themeModalTitle">
+          <div class="theme-sheet-handle"></div>
+
+          <h3 class="section-title small-title" id="themeSheetTitle">
             Pilih Tema
           </h3>
 
-          <div class="theme-list">
-            <div class="theme-options">
-              <label class="theme-option">
-                <input
-                  type="radio"
-                  name="theme-option"
-                  value="dark"
-                  id="themeDark"
-                />
-                <div>
-                  <div class="theme-option-main">
-                    Biru &amp; Hitam (Default)
-                  </div>
-                  <div class="theme-option-sub">
-                    Tampilan gelap dengan aksen biru.
-                  </div>
+          <div class="theme-options">
+            <label class="theme-option">
+              <input
+                type="radio"
+                name="theme-option"
+                value="dark"
+                id="themeDark"
+              />
+              <div>
+                <div class="theme-option-main">
+                  Biru &amp; Hitam (Default)
                 </div>
-              </label>
+                <div class="theme-option-sub">
+                  Tampilan gelap dengan aksen biru.
+                </div>
+              </div>
+            </label>
 
-              <label class="theme-option">
-                <input
-                  type="radio"
-                  name="theme-option"
-                  value="light"
-                  id="themeLight"
-                />
-                <div>
-                  <div class="theme-option-main">Putih &amp; Hitam</div>
-                  <div class="theme-option-sub">
-                    Tampilan terang dengan latar putih dan hitam.
-                  </div>
+            <label class="theme-option">
+              <input
+                type="radio"
+                name="theme-option"
+                value="light"
+                id="themeLight"
+              />
+              <div>
+                <div class="theme-option-main">Putih &amp; Hitam</div>
+                <div class="theme-option-sub">
+                  Tampilan terang dengan latar putih dan hitam.
                 </div>
-              </label>
-            </div>
+              </div>
+            </label>
           </div>
 
           <button
             type="button"
-            class="theme-modal-close"
-            id="themeModalClose"
+            class="theme-sheet-close"
+            id="themeSheetClose"
           >
             Tutup
           </button>
