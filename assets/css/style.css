@@ -1283,7 +1283,6 @@ img {
   letter-spacing: 0.06em;
 }
 
-/* baris tombol ala "Streaming" */
 .settings-row {
   margin-top: 10px;
   width: 100%;
@@ -1308,6 +1307,7 @@ img {
 .settings-row-title {
   font-size: 14px;
   font-weight: 600;
+  color: #e5e7eb;
 }
 
 .settings-row-sub {
@@ -1317,8 +1317,8 @@ img {
 
 .settings-row-value {
   font-size: 13px;
-  font-weight: 600;
-  color: #e5e7eb;
+  font-weight: 700;
+  color: #e5f0ff; /* biru keputihan di tema gelap */
   white-space: nowrap;
 }
 
@@ -1418,10 +1418,12 @@ img {
   background: rgba(148, 163, 184, 0.7);
   margin: 4px auto 10px;
   cursor: grab;
+  transition: background 0.15s ease;
 }
 
-.theme-modal-sheet.dragging .theme-modal-handle {
-  cursor: grabbing;
+.theme-modal-sheet.dragging .theme-modal-handle,
+.theme-modal-handle:active {
+  background: #e5e7eb; /* lebih terang saat ditekan di tema gelap */
 }
 
 .theme-modal-title {
@@ -1429,7 +1431,7 @@ img {
   font-weight: 700;
   text-align: center;
   margin-bottom: 10px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   color: #e5e7eb;
 }
@@ -1451,6 +1453,7 @@ img {
 .theme-choice-main {
   font-size: 14px;
   font-weight: 600;
+  color: #e5e7eb;
 }
 
 .theme-choice-sub {
@@ -1661,6 +1664,10 @@ body.theme-light .settings-row {
   background: #f3f4f6;
 }
 
+body.theme-light .settings-row-title {
+  color: #111827;
+}
+
 body.theme-light .settings-row-sub {
   color: #6b7280;
 }
@@ -1695,6 +1702,10 @@ body.theme-light .theme-choice {
   background: #f3f4f6;
 }
 
+body.theme-light .theme-choice-main {
+  color: #111827;
+}
+
 body.theme-light .theme-choice-sub {
   color: #6b7280;
 }
@@ -1702,6 +1713,15 @@ body.theme-light .theme-choice-sub {
 body.theme-light .theme-modal-close {
   background: #e5e7eb;
   color: #111827;
+}
+
+body.theme-light .theme-modal-handle {
+  background: #d1d5db;
+}
+
+body.theme-light .theme-modal-sheet.dragging .theme-modal-handle,
+body.theme-light .theme-modal-handle:active {
+  background: #9ca3af; /* sedikit lebih gelap saat ditekan di tema putih */
 }
 
 /* Light theme: player & dropdown dsb */
