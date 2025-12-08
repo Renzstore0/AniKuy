@@ -1268,8 +1268,8 @@ img {
 
 .profile-card {
   margin-top: 10px;
-  padding: 16px 14px;
-  border-radius: 20px;
+  padding: 12px;
+  border-radius: 16px;
   background: rgba(15, 23, 42, 0.95);
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.9);
 }
@@ -1277,35 +1277,6 @@ img {
 .profile-text {
   margin-top: 6px;
   font-size: 13px;
-  color: #e5e7eb;
-}
-
-/* kartu "Segera Hadir" di tengah */
-.profile-soon-card {
-  margin-top: 32px;
-  min-height: 120px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.profile-soon-text {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-
-/* teks versi di bawah */
-.profile-version {
-  margin-top: 40px;
-  margin-bottom: 16px;
-  font-size: 12px;
-  text-align: center;
-  color: #9ca3af;
-}
-
-.profile-version span {
-  font-weight: 600;
   color: #e5e7eb;
 }
 
@@ -1319,6 +1290,34 @@ img {
   font-size: 14px;
   font-weight: 600;
   color: #e5e7eb;
+}
+
+.profile-footer {
+  margin-top: 10px;
+  font-size: 11px;
+  text-align: center;
+  color: #9ca3af;
+  opacity: 0.8;
+}
+
+/* TEKS "SEGERA HADIR" DI TENGAH PROFIL */
+.profile-coming {
+  margin-top: 24px;
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* VERSI KECIL DI PALING BAWAH */
+.profile-version {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 70px; /* di atas bottom-nav */
+  text-align: center;
+  font-size: 11px;
+  color: #9ca3af;
+  opacity: 0.9;
 }
 
 /* BOTTOM NAV */
@@ -1399,6 +1398,135 @@ img {
 
 .toast.show {
   opacity: 1;
+}
+
+/* SETTINGS PILL & GROUP */
+
+.settings-group {
+  margin-top: 16px;
+}
+
+.settings-group-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+}
+
+.settings-pill {
+  width: 100%;
+  border-radius: 999px;
+  border: none;
+  padding: 14px 18px;
+  background: rgba(15, 23, 42, 0.98);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.95);
+}
+
+.settings-pill-left {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.settings-pill-right {
+  font-size: 14px;
+  font-weight: 500;
+  color: #cbd5f5;
+}
+
+/* BOTTOM SHEET TEMA */
+
+.theme-sheet {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  z-index: 40;
+}
+
+.theme-sheet.show {
+  pointer-events: auto;
+  opacity: 1;
+}
+
+.theme-sheet-overlay {
+  flex: 1;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(2px);
+}
+
+.theme-sheet-panel {
+  background: #020617;
+  border-radius: 18px 18px 0 0;
+  padding: 14px 16px 18px;
+  box-shadow: 0 -12px 40px rgba(15, 23, 42, 0.95);
+  transform: translateY(100%);
+  transition: transform 0.22s ease;
+}
+
+.theme-sheet.show .theme-sheet-panel {
+  transform: translateY(0);
+}
+
+.theme-sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.8);
+  margin: 0 auto 10px;
+}
+
+.theme-sheet-close {
+  margin-top: 14px;
+  width: 100%;
+  border-radius: 999px;
+  border: none;
+  padding: 8px 12px;
+  background: rgba(15, 23, 42, 0.98);
+  color: #e5e7eb;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* Theme options list */
+
+.theme-options {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.theme-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.9);
+  cursor: pointer;
+}
+
+.theme-option input {
+  margin-top: 4px;
+}
+
+.theme-option-main {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.theme-option-sub {
+  font-size: 12px;
+  color: #9ca3af;
 }
 
 /* RESPONSIVE */
@@ -1495,161 +1623,39 @@ body.theme-light .profile-card {
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.12);
 }
 
-body.theme-light .profile-version span {
+body.theme-light .version-value {
+  color: #1f2937;
+}
+
+body.theme-light .profile-footer {
+  color: #6b7280;
+}
+
+body.theme-light .profile-coming {
   color: #111827;
 }
 
-/* =========================
-   SETTINGS TEMA (seperti contoh gambar)
-   ========================= */
-
-.settings-group {
-  margin-top: 24px;
+body.theme-light .profile-version {
+  color: #6b7280;
 }
-
-.settings-group-title {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  margin-bottom: 12px;
-}
-
-/* bar besar bulat */
-.settings-pill {
-  width: 100%;
-  border: none;
-  border-radius: 999px;
-  padding: 16px 20px;
-  background: #050816;
-  color: #e5e7eb;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75);
-}
-
-.settings-pill-left {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.settings-pill-right {
-  font-size: 14px;
-  opacity: 0.9;
-}
-
-/* opsi tema di dalam bottom sheet */
-.theme-options {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.theme-option {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: rgba(15, 23, 42, 0.96);
-  cursor: pointer;
-}
-
-.theme-option input {
-  appearance: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  border: 2px solid rgba(148, 163, 184, 0.9);
-  margin-top: 2px;
-  flex-shrink: 0;
-  background: transparent;
-}
-
-.theme-option input:checked {
-  border-color: #22d3ee;
-  box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.25);
-}
-
-.theme-option-main {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.theme-option-sub {
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-/* BOTTOM SHEET TEMA */
-
-.theme-sheet {
-  position: fixed;
-  inset: 0;
-  display: none;
-  z-index: 40;
-}
-
-.theme-sheet.show {
-  display: block;
-}
-
-.theme-sheet-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(4px);
-}
-
-.theme-sheet-panel {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border-radius: 18px 18px 0 0;
-  background: #020617;
-  padding: 12px 16px 16px;
-  box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.9);
-  transform: translateY(100%);
-  transition: transform 0.2s ease-out;
-}
-
-.theme-sheet.show .theme-sheet-panel {
-  transform: translateY(0);
-}
-
-.theme-sheet-handle {
-  width: 42px;
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.6);
-  margin: 4px auto 10px;
-}
-
-.theme-sheet-close {
-  margin-top: 12px;
-  width: 100%;
-  border-radius: 999px;
-  border: none;
-  padding: 8px 12px;
-  background: #0b1120;
-  color: #e5e7eb;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* tema light utk settings & sheet */
 
 body.theme-light .settings-pill {
-  background: #e5e7eb;
-  color: #111827;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
 }
 
 body.theme-light .settings-pill-right {
-  opacity: 1;
+  color: #4b5563;
+}
+
+body.theme-light .theme-sheet-panel {
+  background: #ffffff;
+  box-shadow: 0 -12px 30px rgba(15, 23, 42, 0.16);
+}
+
+body.theme-light .theme-sheet-close {
+  background: #111827;
+  color: #f9fafb;
 }
 
 body.theme-light .theme-option {
@@ -1658,19 +1664,6 @@ body.theme-light .theme-option {
 
 body.theme-light .theme-option-sub {
   color: #6b7280;
-}
-
-body.theme-light .theme-sheet-overlay {
-  background: rgba(15, 23, 42, 0.25);
-}
-
-body.theme-light .theme-sheet-panel {
-  background: #ffffff;
-}
-
-body.theme-light .theme-sheet-close {
-  background: #111827;
-  color: #f9fafb;
 }
 
 /* Light theme: player & dropdown dsb */
@@ -1837,6 +1830,7 @@ body.theme-light .episode-tab.active {
   color: #111827;
 }
 
+/* penting: samakan season-item dengan kartu rekomendasi di tema putih */
 body.theme-light .season-item {
   background: #020817;
   color: #e5e7eb;
