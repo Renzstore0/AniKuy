@@ -1403,6 +1403,12 @@ img {
   background: #020617;
   padding: 10px 16px 16px;
   box-shadow: 0 -18px 40px rgba(15, 23, 42, 0.95);
+  transform: translateY(0);
+  transition: transform 0.18s ease;
+}
+
+.theme-modal-sheet.dragging {
+  transition: none;
 }
 
 .theme-modal-handle {
@@ -1411,6 +1417,11 @@ img {
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.7);
   margin: 4px auto 10px;
+  cursor: grab;
+}
+
+.theme-modal-sheet.dragging .theme-modal-handle {
+  cursor: grabbing;
 }
 
 .theme-modal-title {
@@ -1418,6 +1429,9 @@ img {
   font-weight: 700;
   text-align: center;
   margin-bottom: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #e5e7eb;
 }
 
 .theme-choice {
