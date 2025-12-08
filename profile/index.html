@@ -78,11 +78,11 @@
           />
         </div>
 
-        <button class="icon-button" id="searchButton" aria-label="Cari Anime">
+        <button class="icon-button" id="settingsButton" aria-label="Pengaturan">
           <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="currentColor"
-              d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L19 20.49 20.49 19 15.5 14zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
+              d="M19.14 12.94a7.14 7.14 0 0 0 .05-.94 7.14 7.14 0 0 0-.05-.94l2.11-1.65a.5.5 0 0 0 .12-.63l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a6.93 6.93 0 0 0-1.63-.94l-.38-2.65A.5.5 0 0 0 14.18 2H9.82a.5.5 0 0 0-.5.42L9 5.07a6.93 6.93 0 0 0-1.63.94l-2.49-1a.5.5 0 0 0-.61.22L2.6 8.78a.5.5 0 0 0 .12.63L4.83 11.06a7.14 7.14 0 0 0-.05.94 7.14 7.14 0 0 0 .05.94L2.72 14.59a.5.5 0 0 0-.12.63l1.69 2.94a.5.5 0 0 0 .61.22l2.49-1a6.93 6.93 0 0 0 1.63.94l.38 2.65a.5.5 0 0 0 .5.42h4.36a.5.5 0 0 0 .5-.42l.38-2.65a6.93 6.93 0 0 0 1.63-.94l2.49 1a.5.5 0 0 0 .61-.22l1.69-2.94a.5.5 0 0 0-.12-.63Zm-7.14 2.56A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5Z"
             />
           </svg>
         </button>
@@ -92,88 +92,16 @@
         <div class="page-container">
           <h2 class="page-title">Profil</h2>
 
+          <div class="profile-coming-soon">
+            Segera Hadir
+          </div>
+
           <div class="profile-card">
             <h3 class="section-title small-title version-title">
               <span>Versi</span>
               <span class="version-value">1.4.4.x</span>
             </h3>
           </div>
-
-          <!-- KARTU TEMA -->
-          <div class="profile-card theme-card" id="themeCard">
-            <h3 class="section-title small-title">Tema</h3>
-            <p class="profile-text">
-              Pilih tampilan yang kamu suka. Pengaturan ini berlaku untuk semua
-              halaman.
-            </p>
-
-            <!-- Tombol utama -->
-            <button
-              type="button"
-              class="theme-toggle-btn"
-              id="themeToggle"
-              aria-expanded="false"
-              aria-controls="themeList"
-            >
-              <div>
-                <div class="theme-toggle-main">Change Theme</div>
-                <div
-                  class="theme-toggle-current"
-                  id="currentThemeLabel"
-                >
-                  Biru &amp; Hitam (Default)
-                </div>
-              </div>
-              <svg
-                class="theme-toggle-icon"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path
-                  fill="currentColor"
-                  d="M7 10l5 5 5-5H7z"
-                />
-              </svg>
-            </button>
-
-            <!-- List tema (dropdown) -->
-            <div class="theme-list" id="themeList">
-              <div class="theme-options">
-                <label class="theme-option">
-                  <input
-                    type="radio"
-                    name="theme-option"
-                    value="dark"
-                    id="themeDark"
-                  />
-                  <div>
-                    <div class="theme-option-main">
-                      Biru &amp; Hitam (Default)
-                    </div>
-                    <div class="theme-option-sub">
-                      Tampilan gelap dengan aksen biru.
-                    </div>
-                  </div>
-                </label>
-                <label class="theme-option">
-                  <input
-                    type="radio"
-                    name="theme-option"
-                    value="light"
-                    id="themeLight"
-                  />
-                  <div>
-                    <div class="theme-option-main">Putih &amp; Hitam</div>
-                    <div class="theme-option-sub">
-                      Tampilan terang dengan latar putih dan hitam.
-                    </div>
-                  </div>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <p class="profile-footer">© 2025 AniKuy. All rights reserved.</p>
         </div>
       </main>
 
