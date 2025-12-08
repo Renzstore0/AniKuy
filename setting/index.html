@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>AniKuy - Pengaturan</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Halaman pengaturan AniKuy: ubah tema dan sesuaikan tampilan sesuai keinginanmu."
+    />
+    <link rel="stylesheet" href="/assets/css/style.css" />
+    <link
+      rel="shortcut icon"
+      type="image/png"
+      href="https://pomf2.lain.la/f/leu65s82.png"
+    />
+  </head>
+  <body data-page="settings">
+    <div class="app-root">
+      <header class="app-header">
+        <button
+          class="icon-button back-button"
+          id="backButton"
+          aria-label="Kembali"
+        >
+          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M15 18l-6-6 6-6"
+            />
+          </svg>
+        </button>
+
+        <div class="logo-wrap">
+          <img
+            src="https://pomf2.lain.la/f/22yuvdrk.png"
+            alt="AniKuy Logo"
+            class="logo-img"
+          />
+        </div>
+
+        <button class="icon-button" id="searchButton" aria-label="Cari Anime">
+          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M11 4a7 7 0 1 0 4.9 11.9l3.4 3.4 1.4-1.4-3.4-3.4A7 7 0 0 0 11 4zm0 2a5 5 0 1 1 0 10 5 5 0 0 1 0-10z"
+            />
+          </svg>
+        </button>
+      </header>
+
+      <main id="mainContent">
+        <div class="page-container">
+          <h2 class="page-title">Pengaturan</h2>
+
+          <div class="profile-card theme-card" id="themeCard">
+            <h3 class="section-title small-title">Tema</h3>
+            <p class="profile-text">
+              Pilih tampilan yang kamu suka. Pengaturan ini berlaku untuk semua
+              halaman.
+            </p>
+
+            <button
+              type="button"
+              class="theme-toggle-btn"
+              id="themeToggle"
+              aria-expanded="false"
+              aria-controls="themeList"
+            >
+              <div>
+                <div class="theme-toggle-main">Change Theme</div>
+                <div
+                  class="theme-toggle-current"
+                  id="currentThemeLabel"
+                >
+                  Biru &amp; Hitam (Default)
+                </div>
+              </div>
+              <svg
+                class="theme-toggle-icon"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  fill="currentColor"
+                  d="M7 10l5 5 5-5H7z"
+                />
+              </svg>
+            </button>
+
+            <div class="theme-list" id="themeList">
+              <div class="theme-options">
+                <label class="theme-option">
+                  <input
+                    type="radio"
+                    name="theme-option"
+                    value="dark"
+                    id="themeDark"
+                  />
+                  <div>
+                    <div class="theme-option-main">
+                      Biru &amp; Hitam (Default)
+                    </div>
+                    <div class="theme-option-sub">
+                      Tampilan gelap dengan aksen biru.
+                    </div>
+                  </div>
+                </label>
+                <label class="theme-option">
+                  <input
+                    type="radio"
+                    name="theme-option"
+                    value="light"
+                    id="themeLight"
+                  />
+                  <div>
+                    <div class="theme-option-main">Putih &amp; Hitam</div>
+                    <div class="theme-option-sub">
+                      Tampilan terang dengan latar putih dan hitam.
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <div id="toast" class="toast"></div>
+
+      <script src="/assets/js/core.js"></script>
+    </div>
+  </body>
+</html>
