@@ -115,6 +115,11 @@ img {
   height: 18px;
 }
 
+/* SEMBUNYIKAN SEARCH DI HALAMAN SETTING */
+body[data-page="setting"] #searchButton {
+  display: none;
+}
+
 /* MAIN / VIEW */
 
 #mainContent {
@@ -1318,7 +1323,7 @@ img {
 .settings-row-value {
   font-size: 13px;
   font-weight: 700;
-  color: #e5f0ff; /* biru keputihan di tema gelap */
+  color: #e5f0ff;
   white-space: nowrap;
 }
 
@@ -1423,7 +1428,7 @@ img {
 
 .theme-modal-sheet.dragging .theme-modal-handle,
 .theme-modal-handle:active {
-  background: #e5e7eb; /* lebih terang saat ditekan di tema gelap */
+  background: #e5e7eb;
 }
 
 .theme-modal-title {
@@ -1721,7 +1726,7 @@ body.theme-light .theme-modal-handle {
 
 body.theme-light .theme-modal-sheet.dragging .theme-modal-handle,
 body.theme-light .theme-modal-handle:active {
-  background: #9ca3af; /* sedikit lebih gelap saat ditekan di tema putih */
+  background: #9ca3af;
 }
 
 /* Light theme: player & dropdown dsb */
