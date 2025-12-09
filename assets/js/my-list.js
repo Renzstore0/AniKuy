@@ -1,27 +1,9 @@
 const myListGrid = document.getElementById("myListGrid");
 const myListEmpty = document.getElementById("myListEmpty");
-
 const tabFavorites = document.getElementById("tabFavorites");
 const tabHistory = document.getElementById("tabHistory");
 
-let currentMyListTab = "favorites"; // "favorites" | "history"
-
-function setActiveTab(tab) {
-  currentMyListTab = tab;
-
-  if (tabFavorites) {
-    tabFavorites.classList.toggle("active", tab === "favorites");
-    tabFavorites.textContent = "Favorit";
-  }
-  if (tabHistory) {
-    tabHistory.classList.toggle("active", tab === "history");
-    tabHistory.textContent = "History";
-  }
-
-  renderMyListPage();
-}
-
-function renderFavoritesList() {
+function renderFavorites() {
   if (!myListGrid || !myListEmpty) return;
 
   const favs = getFavorites();
@@ -29,6 +11,7 @@ function renderFavoritesList() {
 
   if (!favs.length) {
     myListEmpty.style.display = "block";
+    myListEmpty.textContent = "Belum ada anime di favorit.";
     return;
   }
 
@@ -44,87 +27,74 @@ function renderFavoritesList() {
   });
 }
 
-function renderHistoryList() {
+function formatSecondsToLabel(sec) {
+  const s = Math.floor(Number(sec) || 0);
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  if (!m && !r) return "";
+  if (!m) return `${r}s`;
+  return `${m}m ${r}s`;
+}
+
+function renderHistory() {
   if (!myListGrid || !myListEmpty) return;
 
-  const historyMap =
-    typeof getWatchHistory === "function" ? getWatchHistory() : {};
-
-  const entries = Object.values(historyMap || {}).sort((a, b) => {
-    return (b.updatedAt || 0) - (a.updatedAt || 0);
-  });
-
+  const histories =
+    typeof getWatchHistory === "function" ? getWatchHistory() : [];
   myListGrid.innerHTML = "";
 
-  if (!entries.length) {
+  if (!histories.length) {
     myListEmpty.style.display = "block";
+    myListEmpty.textContent = "Belum ada riwayat tontonan.";
     return;
   }
 
   myListEmpty.style.display = "none";
 
-  entries.forEach((h) => {
-    const pos = Number(h.positionSec || 0);
-    const minutes = Math.floor(pos / 60);
-    const seconds = pos % 60;
-    const timeLabel =
-      pos > 0
-        ? ` • ${minutes.toString().padStart(2, "0")}:${seconds
-            .toString()
-            .padStart(2, "0")}`
-        : "";
+  histories.forEach((h) => {
+    const labelTime = formatSecondsToLabel(h.last_time);
+    const meta =
+      (h.episode_title ? `${h.episode_title} · ` : "") +
+      (labelTime ? `Lanjut di ${labelTime}` : "Lanjut nonton");
 
-    const item = {
-      slug: h.animeSlug,
-      title: h.animeTitle || h.episodeTitle || "Episode",
-      poster: h.poster || "",
-      status: "",
-      episode_count: "",
-      rating: "",
-    };
-
-    const card = createAnimeCard(item, {
-      rating: "",
-      badgeBottom: h.episodeTitle ? h.episodeTitle : "",
-      meta: `Lanjut nonton${timeLabel}`,
-    });
-
-    // override klik card → langsung ke episode terakhir
-    card.addEventListener(
-      "click",
-      (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
-        if (!h.episodeSlug) {
-          showToast("Episode tidak ditemukan");
-          return;
-        }
-        const url = `/anime/episode?slug=${encodeURIComponent(h.episodeSlug)}`;
-        window.location.href = url;
+    const card = createAnimeCard(
+      {
+        slug: h.anime_slug,
+        title: h.anime_title || "",
+        poster: h.anime_poster || "",
       },
-      true // capture: true, biar nutup handler bawaan card
+      {
+        meta,
+        badgeBottom: "Lanjut nonton",
+        href: `/anime/episode?slug=${encodeURIComponent(h.episode_slug)}`,
+      }
     );
 
     myListGrid.appendChild(card);
   });
 }
 
-function renderMyListPage() {
-  if (currentMyListTab === "history") {
-    renderHistoryList();
+function setActiveTab(tab) {
+  if (!tabFavorites || !tabHistory) return;
+  if (tab === "history") {
+    tabHistory.classList.add("active");
+    tabFavorites.classList.remove("active");
+    renderHistory();
   } else {
-    renderFavoritesList();
+    tabFavorites.classList.add("active");
+    tabHistory.classList.remove("active");
+    renderFavorites();
   }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // default: Favorit
+  setActiveTab("favorites");
+
   if (tabFavorites) {
     tabFavorites.addEventListener("click", () => setActiveTab("favorites"));
   }
   if (tabHistory) {
     tabHistory.addEventListener("click", () => setActiveTab("history"));
   }
-
-  // default buka tab Favorit
-  setActiveTab("favorites");
 });
