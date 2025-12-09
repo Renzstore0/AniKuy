@@ -144,6 +144,43 @@ img {
   margin-bottom: 12px;
 }
 
+/* MY LIST: FAVORIT / HISTORY TABS */
+
+.mylist-tabs {
+  display: flex;
+  gap: 24px;
+  align-items: baseline;
+  padding: 8px 0 4px;
+  margin-bottom: 8px;
+}
+
+.mylist-tab {
+  background: none;
+  border: none;
+  color: #e5e7eb;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  position: relative;
+}
+
+.mylist-tab::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 2px;
+  border-radius: 999px;
+  background: #e5e7eb;
+  opacity: 0;
+}
+
+.mylist-tab.active::after {
+  opacity: 1;
+}
+
 /* SECTION HEADER */
 
 .section-header {
@@ -1868,4 +1905,13 @@ body.theme-light .episode-search-input {
 
 body.theme-light .episode-search-input::placeholder {
   color: #9ca3af;
+}
+
+/* light theme: my list tabs */
+body.theme-light .mylist-tab {
+  color: #111827;
+}
+
+body.theme-light .mylist-tab::after {
+  background: #111827;
 }
