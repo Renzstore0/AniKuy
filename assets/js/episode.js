@@ -102,10 +102,7 @@ function bindPlayerProgressListener() {
   if (episodePlayer.tagName !== "VIDEO") return;
 
   episodePlayer.addEventListener("timeupdate", () => {
-    if (
-      !currentEpisodeMeta ||
-      typeof updateWatchHistory !== "function"
-    ) {
+    if (!currentEpisodeMeta || typeof updateWatchHistory !== "function") {
       return;
     }
     const pos = Math.floor(episodePlayer.currentTime || 0);
