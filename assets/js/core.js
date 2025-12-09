@@ -1,5 +1,6 @@
 const BASE_URL = "https://www.sankavollerei.com";
 const LS_KEY_FAVORITES = "anikuy_favorites";
+const LS_KEY_WATCH_HISTORY = "anikuy_watch_history";
 const LS_KEY_THEME = "anikuy_theme";
 const THEME_DARK = "dark";
 const THEME_LIGHT = "light";
@@ -15,7 +16,7 @@ function applyTheme(theme) {
 function initThemeFromStorage() {
   try {
     const saved = localStorage.getItem(LS_KEY_THEME);
-    const theme = saved === THEME_LIGHT ? THEME_LIGHT : THEME_DARK;
+    const theme = saved === THEME_LIGHT ? THETHEME_LIGHT : THEME_DARK;
     applyTheme(theme);
     return theme;
   } catch (e) {
@@ -197,6 +198,63 @@ function removeFavorite(slug) {
   if (typeof showToast === "function") {
     showToast("Dihapus dari My List");
   }
+}
+
+// WATCH HISTORY (riwayat nonton)
+function loadWatchHistoryFromStorage() {
+  try {
+    const raw = localStorage.getItem(LS_KEY_WATCH_HISTORY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+let watchHistory = loadWatchHistoryFromStorage();
+
+function getWatchHistory() {
+  return Object.assign({}, watchHistory);
+}
+
+function saveWatchHistory() {
+  try {
+    localStorage.setItem(LS_KEY_WATCH_HISTORY, JSON.stringify(watchHistory));
+  } catch {
+    // abaikan
+  }
+}
+
+/**
+ * entry = {
+ *   animeSlug: string,
+ *   animeTitle?: string,
+ *   poster?: string,
+ *   episodeSlug: string,
+ *   episodeTitle?: string,
+ *   positionSec?: number
+ * }
+ */
+function updateWatchHistory(entry) {
+  if (!entry || !entry.animeSlug || !entry.episodeSlug) return;
+
+  const pos =
+    typeof entry.positionSec === "number" && entry.positionSec >= 0
+      ? entry.positionSec
+      : 0;
+
+  watchHistory[entry.animeSlug] = {
+    animeSlug: entry.animeSlug,
+    animeTitle: entry.animeTitle || "",
+    poster: entry.poster || "",
+    episodeSlug: entry.episodeSlug,
+    episodeTitle: entry.episodeTitle || "",
+    positionSec: pos,
+    updatedAt: Date.now(),
+  };
+
+  saveWatchHistory();
 }
 
 // BIKIN KARTU ANIME (dipakai di semua page)
