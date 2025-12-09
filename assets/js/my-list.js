@@ -1,13 +1,30 @@
 const myListGrid = document.getElementById("myListGrid");
 const myListEmpty = document.getElementById("myListEmpty");
 
-function renderMyListPage() {
+const tabFavorites = document.getElementById("tabFavorites");
+const tabHistory = document.getElementById("tabHistory");
+
+let currentMyListTab = "favorites"; // "favorites" | "history"
+
+function setActiveTab(tab) {
+  currentMyListTab = tab;
+
+  if (tabFavorites) {
+    tabFavorites.classList.toggle("active", tab === "favorites");
+    tabFavorites.textContent = "Favorit";
+  }
+  if (tabHistory) {
+    tabHistory.classList.toggle("active", tab === "history");
+    tabHistory.textContent = "History";
+  }
+
+  renderMyListPage();
+}
+
+function renderFavoritesList() {
   if (!myListGrid || !myListEmpty) return;
 
   const favs = getFavorites();
-  const historyMap =
-    typeof getWatchHistory === "function" ? getWatchHistory() : {};
-
   myListGrid.innerHTML = "";
 
   if (!favs.length) {
@@ -23,79 +40,91 @@ function renderMyListPage() {
       badgeBottom: a.episode_count ? `${a.episode_count} Eps` : "",
       meta: a.status || "",
     });
+    myListGrid.appendChild(card);
+  });
+}
 
-    if (card) {
-      // pastikan card bisa dipakai untuk posisi tombol history
-      if (!card.style.position) {
-        card.style.position = "relative";
-      }
+function renderHistoryList() {
+  if (!myListGrid || !myListEmpty) return;
 
-      const historyForAnime =
-        historyMap && a.slug ? historyMap[a.slug] : null;
+  const historyMap =
+    typeof getWatchHistory === "function" ? getWatchHistory() : {};
 
-      // tombol history / lanjut nonton
-      const historyBtn = document.createElement("button");
-      historyBtn.type = "button";
-      historyBtn.className = "icon-button history-button";
-      historyBtn.setAttribute("aria-label", "Lanjut nonton");
+  const entries = Object.values(historyMap || {}).sort((a, b) => {
+    return (b.updatedAt || 0) - (a.updatedAt || 0);
+  });
 
-      const svgNS = "http://www.w3.org/2000/svg";
-      const icon = document.createElementNS(svgNS, "svg");
-      icon.setAttribute("viewBox", "0 0 24 24");
-      icon.classList.add("icon-svg");
+  myListGrid.innerHTML = "";
 
-      const path = document.createElementNS(svgNS, "path");
-      path.setAttribute(
-        "d",
-        "M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8.009 8.009 0 0 1-8 8zm.5-13h-1.5v6l5 3 .75-1.23-4.25-2.52z"
-      );
-      path.setAttribute("fill", "currentColor");
-      icon.appendChild(path);
-      historyBtn.appendChild(icon);
+  if (!entries.length) {
+    myListEmpty.style.display = "block";
+    return;
+  }
 
-      // posisi tombol history (pojok kanan bawah kartu)
-      historyBtn.style.position = "absolute";
-      historyBtn.style.right = "8px";
-      historyBtn.style.bottom = "8px";
+  myListEmpty.style.display = "none";
 
-      if (!historyForAnime || !historyForAnime.episodeSlug) {
-        historyBtn.disabled = true;
-        historyBtn.title = "Belum ada riwayat nonton";
-      } else {
-        const pos = historyForAnime.positionSec || 0;
-        const minutes = Math.floor(pos / 60);
-        const seconds = pos % 60;
-        const timeLabel =
-          pos > 0
-            ? ` (${minutes.toString().padStart(2, "0")}:${seconds
-                .toString()
-                .padStart(2, "0")})`
-            : "";
-        historyBtn.title =
-          "Lanjut: " +
-          (historyForAnime.episodeTitle || "Episode terakhir ditonton") +
-          timeLabel;
-      }
+  entries.forEach((h) => {
+    const pos = Number(h.positionSec || 0);
+    const minutes = Math.floor(pos / 60);
+    const seconds = pos % 60;
+    const timeLabel =
+      pos > 0
+        ? ` • ${minutes.toString().padStart(2, "0")}:${seconds
+            .toString()
+            .padStart(2, "0")}`
+        : "";
 
-      historyBtn.addEventListener("click", (ev) => {
+    const item = {
+      slug: h.animeSlug,
+      title: h.animeTitle || h.episodeTitle || "Episode",
+      poster: h.poster || "",
+      status: "",
+      episode_count: "",
+      rating: "",
+    };
+
+    const card = createAnimeCard(item, {
+      rating: "",
+      badgeBottom: h.episodeTitle ? h.episodeTitle : "",
+      meta: `Lanjut nonton${timeLabel}`,
+    });
+
+    // override klik card → langsung ke episode terakhir
+    card.addEventListener(
+      "click",
+      (ev) => {
+        ev.preventDefault();
         ev.stopPropagation();
-        if (!historyForAnime || !historyForAnime.episodeSlug) {
-          showToast("Belum ada riwayat nonton");
+        if (!h.episodeSlug) {
+          showToast("Episode tidak ditemukan");
           return;
         }
-        const url = `/anime/episode?slug=${encodeURIComponent(
-          historyForAnime.episodeSlug
-        )}`;
+        const url = `/anime/episode?slug=${encodeURIComponent(h.episodeSlug)}`;
         window.location.href = url;
-      });
-
-      card.appendChild(historyBtn);
-    }
+      },
+      true // capture: true, biar nutup handler bawaan card
+    );
 
     myListGrid.appendChild(card);
   });
 }
 
+function renderMyListPage() {
+  if (currentMyListTab === "history") {
+    renderHistoryList();
+  } else {
+    renderFavoritesList();
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-  renderMyListPage();
+  if (tabFavorites) {
+    tabFavorites.addEventListener("click", () => setActiveTab("favorites"));
+  }
+  if (tabHistory) {
+    tabHistory.addEventListener("click", () => setActiveTab("history"));
+  }
+
+  // default buka tab Favorit
+  setActiveTab("favorites");
 });
