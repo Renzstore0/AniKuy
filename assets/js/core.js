@@ -1,7 +1,8 @@
 const BASE_URL = "https://www.sankavollerei.com";
 const LS_KEY_FAVORITES = "anikuy_favorites";
-const LS_KEY_WATCH_HISTORY = "anikuy_watch_history";
 const LS_KEY_THEME = "anikuy_theme";
+const LS_KEY_WATCH_HISTORY = "anikuy_watch_history";
+
 const THEME_DARK = "dark";
 const THEME_LIGHT = "light";
 
@@ -138,7 +139,9 @@ async function apiGet(path) {
   }
 }
 
-// FAVORITES (My List / Favorit)
+/* ========================
+ * FAVORITES (My List)
+ * ===================== */
 function loadFavoritesFromStorage() {
   try {
     const raw = localStorage.getItem(LS_KEY_FAVORITES);
@@ -200,64 +203,181 @@ function removeFavorite(slug) {
   }
 }
 
-// WATCH HISTORY (riwayat nonton)
+/* ========================
+ * WATCH HISTORY (riwayat + progress)
+ * ===================== */
+
 function loadWatchHistoryFromStorage() {
   try {
     const raw = localStorage.getItem(LS_KEY_WATCH_HISTORY);
-    if (!raw) return {};
+    if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? parsed : {};
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    return {};
+    return [];
   }
 }
 
 let watchHistory = loadWatchHistoryFromStorage();
 
-function getWatchHistory() {
-  return Object.assign({}, watchHistory);
-}
-
 function saveWatchHistory() {
   try {
-    localStorage.setItem(LS_KEY_WATCH_HISTORY, JSON.stringify(watchHistory));
+    localStorage.setItem(
+      LS_KEY_WATCH_HISTORY,
+      JSON.stringify(watchHistory || [])
+    );
   } catch {
     // abaikan
   }
 }
 
-/**
- * entry = {
- *   animeSlug: string,
- *   animeTitle?: string,
- *   poster?: string,
- *   episodeSlug: string,
- *   episodeTitle?: string,
- *   positionSec?: number
- * }
- */
-function updateWatchHistory(entry) {
-  if (!entry || !entry.animeSlug || !entry.episodeSlug) return;
+function getWatchHistory() {
+  if (!Array.isArray(watchHistory)) return [];
+  return watchHistory
+    .slice()
+    .sort((a, b) => (b.updated_at || 0) - (a.updated_at || 0));
+}
 
-  const pos =
-    typeof entry.positionSec === "number" && entry.positionSec >= 0
-      ? entry.positionSec
-      : 0;
+function findWatchHistoryByEpisodeSlug(slug) {
+  if (!slug || !Array.isArray(watchHistory)) return null;
+  return watchHistory.find((h) => h.episode_slug === slug) || null;
+}
 
-  watchHistory[entry.animeSlug] = {
-    animeSlug: entry.animeSlug,
-    animeTitle: entry.animeTitle || "",
-    poster: entry.poster || "",
-    episodeSlug: entry.episodeSlug,
-    episodeTitle: entry.episodeTitle || "",
-    positionSec: pos,
-    updatedAt: Date.now(),
+function updateWatchHistoryProgress(payload) {
+  if (!payload) return;
+  const {
+    anime_slug,
+    anime_title,
+    anime_poster,
+    episode_slug,
+    episode_title,
+    current_time,
+    duration,
+  } = payload;
+
+  if (!episode_slug) return;
+
+  const time = Number(current_time) || 0;
+  if (time <= 0) return;
+
+  if (!Array.isArray(watchHistory)) watchHistory = [];
+
+  const idx = watchHistory.findIndex((h) => h.episode_slug === episode_slug);
+  const now = Date.now();
+
+  const entry = {
+    anime_slug: anime_slug || "",
+    anime_title: anime_title || "",
+    anime_poster: anime_poster || "",
+    episode_slug,
+    episode_title: episode_title || "",
+    last_time: time,
+    duration: Number(duration) || 0,
+    updated_at: now,
   };
+
+  if (idx >= 0) {
+    watchHistory.splice(idx, 1);
+  }
+  watchHistory.unshift(entry);
+
+  // batasin history biar nggak kebanyakan
+  if (watchHistory.length > 50) {
+    watchHistory.length = 50;
+  }
 
   saveWatchHistory();
 }
 
-// BIKIN KARTU ANIME (dipakai di semua page)
+function clearWatchHistoryForEpisode(episodeSlug) {
+  if (!episodeSlug || !Array.isArray(watchHistory)) return;
+  watchHistory = watchHistory.filter((h) => h.episode_slug !== episodeSlug);
+  saveWatchHistory();
+}
+
+// tracking progress di player episode (HTML5 <video>)
+let currentWatchTracker = null;
+
+function setupWatchProgressTracking(meta) {
+  const video = document.getElementById("episodePlayer");
+  if (!video || typeof video.currentTime !== "number") return;
+
+  // lepas handler lama
+  if (currentWatchTracker && currentWatchTracker.handler) {
+    video.removeEventListener("timeupdate", currentWatchTracker.handler);
+    window.removeEventListener("beforeunload", currentWatchTracker.handler);
+  }
+
+  const safeMeta = {
+    anime_slug: meta && meta.animeSlug ? meta.animeSlug : "",
+    anime_title: meta && meta.animeTitle ? meta.animeTitle : "",
+    anime_poster: meta && meta.animePoster ? meta.animePoster : "",
+    episode_slug: meta && meta.episodeSlug ? meta.episodeSlug : "",
+    episode_title: meta && meta.episodeTitle ? meta.episodeTitle : "",
+  };
+
+  function handler() {
+    if (!video || typeof video.currentTime !== "number") return;
+
+    const currentTime = Number(video.currentTime) || 0;
+    const duration = Number(video.duration) || 0;
+
+    // jangan simpan kalau belum nonton beneran
+    if (!duration || currentTime < 10) return;
+
+    // kalau hampir tamat, anggap selesai → hapus dari history
+    if (duration && currentTime >= duration - 5) {
+      clearWatchHistoryForEpisode(safeMeta.episode_slug);
+      return;
+    }
+
+    updateWatchHistoryProgress({
+      ...safeMeta,
+      current_time: currentTime,
+      duration,
+    });
+  }
+
+  video.addEventListener("timeupdate", handler);
+  window.addEventListener("beforeunload", handler);
+
+  currentWatchTracker = { handler, meta: safeMeta };
+}
+
+// apply auto-resume ketika episode dibuka
+function applyResumeTimeForEpisode(episodeSlug) {
+  const video = document.getElementById("episodePlayer");
+  if (!video || typeof video.currentTime !== "number") return;
+
+  const entry = findWatchHistoryByEpisodeSlug(episodeSlug);
+  if (!entry || !entry.last_time) return;
+
+  const resumeTime = Number(entry.last_time) || 0;
+  if (!resumeTime) return;
+
+  const seek = () => {
+    const duration = Number(video.duration) || 0;
+    // kalau sudah hampir selesai, nggak usah resume
+    if (duration && resumeTime >= duration - 5) return;
+    try {
+      video.currentTime = resumeTime;
+    } catch (e) {}
+  };
+
+  if (video.readyState >= 1) {
+    seek();
+  } else {
+    const onMeta = () => {
+      video.removeEventListener("loadedmetadata", onMeta);
+      seek();
+    };
+    video.addEventListener("loadedmetadata", onMeta);
+  }
+}
+
+/* ========================
+ * BIKIN KARTU ANIME
+ * ===================== */
 function createAnimeCard(item, opts = {}) {
   const card = document.createElement("div");
   card.className = "anime-card";
@@ -312,15 +432,25 @@ function createAnimeCard(item, opts = {}) {
   }
 
   card.addEventListener("click", () => {
-    if (!item.slug) return;
-    const url = `/anime/detail?slug=${encodeURIComponent(item.slug)}`;
-    window.location.href = url;
+    let url = null;
+
+    if (opts.href) {
+      url = typeof opts.href === "function" ? opts.href(item) : opts.href;
+    } else if (item.slug) {
+      url = `/anime/detail?slug=${encodeURIComponent(item.slug)}`;
+    }
+
+    if (url) {
+      window.location.href = url;
+    }
   });
 
   return card;
 }
 
-// GLOBAL UI
+/* ========================
+ * GLOBAL UI
+ * ===================== */
 document.addEventListener("DOMContentLoaded", () => {
   const currentTheme = initThemeFromStorage();
   bindThemeControls(currentTheme);
