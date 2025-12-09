@@ -1,3 +1,5 @@
+// assets/js/episode.js
+
 const episodeTitleEl = document.getElementById("episodeTitle");
 const episodePlayer = document.getElementById("episodePlayer");
 const prevEpisodeBtn = document.getElementById("prevEpisodeBtn");
@@ -379,21 +381,6 @@ async function loadEpisode(slug) {
   renderServerMenu();
   renderQualityMenu();
   renderDownloadMenu();
-
-  // tracking riwayat tonton + auto-resume (hanya jalan kalau #episodePlayer adalah <video>)
-  if (typeof setupWatchProgressTracking === "function") {
-    setupWatchProgressTracking({
-      animeSlug: currentAnimeSlug,
-      animeTitle: d.anime && d.anime.title,
-      animePoster: d.anime && d.anime.poster,
-      episodeSlug: slug,
-      episodeTitle: d.episode || "",
-    });
-  }
-
-  if (typeof applyResumeTimeForEpisode === "function") {
-    applyResumeTimeForEpisode(slug);
-  }
 
   // update slug di URL (replaceState)
   const params = new URLSearchParams(window.location.search);
