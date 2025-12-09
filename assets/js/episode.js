@@ -23,11 +23,6 @@ let currentAnimeSlug = null;
 let prevSlug = null;
 let nextSlug = null;
 
-// meta episode saat ini (untuk history)
-let currentEpisodeMeta = null;
-let lastSavedPositionSec = 0;
-let progressListenerBound = false;
-
 // data toolbar
 let streamGroups = []; // [{ quality, servers: [] }]
 let downloadData = null; // d.download_urls
@@ -94,64 +89,6 @@ document.addEventListener("click", (e) => {
     closeAllDropdowns();
   }
 });
-
-// tracking progress untuk history (HTML5 video saja)
-function bindPlayerProgressListener() {
-  if (progressListenerBound) return;
-  if (!episodePlayer) return;
-  if (episodePlayer.tagName !== "VIDEO") return;
-
-  episodePlayer.addEventListener("timeupdate", () => {
-    if (!currentEpisodeMeta || typeof updateWatchHistory !== "function") {
-      return;
-    }
-    const pos = Math.floor(episodePlayer.currentTime || 0);
-    if (!pos || pos < 0) return;
-    if (Math.abs(pos - lastSavedPositionSec) < 10) return; // simpan tiap ±10 detik
-    lastSavedPositionSec = pos;
-    updateWatchHistory({
-      ...currentEpisodeMeta,
-      positionSec: pos,
-    });
-  });
-
-  progressListenerBound = true;
-}
-
-// apply resume posisi dari history
-function applyResumePosition() {
-  if (!episodePlayer) return;
-  if (episodePlayer.tagName !== "VIDEO") return;
-  if (typeof getWatchHistory !== "function" || !currentAnimeSlug) return;
-
-  const historyMap = getWatchHistory();
-  const history = historyMap[currentAnimeSlug];
-  if (!history) return;
-  if (history.episodeSlug !== currentEpisodeSlug) return;
-
-  const pos = Number(history.positionSec || 0);
-  if (!pos || pos < 5) return; // cuma resume kalau sudah > 5 detik
-
-  const seekTo = pos;
-
-  const setTime = () => {
-    try {
-      episodePlayer.currentTime = seekTo;
-    } catch (e) {
-      // abaikan
-    }
-  };
-
-  if (episodePlayer.readyState >= 1) {
-    setTime();
-  } else {
-    const handler = () => {
-      setTime();
-      episodePlayer.removeEventListener("loadedmetadata", handler);
-    };
-    episodePlayer.addEventListener("loadedmetadata", handler);
-  }
-}
 
 // set stream berdasarkan quality + server
 async function setStreamSource(targetQuality, targetServerName) {
@@ -402,40 +339,6 @@ async function loadEpisode(slug) {
   const d = json.data;
   currentEpisodeSlug = slug;
   currentAnimeSlug = (d.anime && d.anime.slug) || currentAnimeSlug;
-
-  const animeTitle =
-    (d.anime &&
-      (d.anime.title ||
-        d.anime.japanese_title ||
-        d.anime.romaji_title)) ||
-    d.title ||
-    "";
-  const poster =
-    (d.anime && (d.anime.poster || d.anime.cover)) ||
-    d.poster ||
-    "";
-  const episodeTitle = d.episode || "Episode";
-
-  currentEpisodeMeta = {
-    animeSlug: currentAnimeSlug,
-    animeTitle,
-    poster,
-    episodeSlug: slug,
-    episodeTitle,
-  };
-  lastSavedPositionSec = 0;
-
-  // simpan entry history dasar (episode terakhir yang dibuka)
-  if (
-    typeof updateWatchHistory === "function" &&
-    currentEpisodeMeta.animeSlug
-  ) {
-    updateWatchHistory({
-      ...currentEpisodeMeta,
-      positionSec: 0,
-    });
-  }
-
   prevSlug = d.has_previous_episode ? d.previous_episode.slug : null;
   nextSlug = d.has_next_episode ? d.next_episode.slug : null;
 
@@ -447,7 +350,7 @@ async function loadEpisode(slug) {
     )}`;
   }
 
-  episodeTitleEl.textContent = episodeTitle;
+  episodeTitleEl.textContent = d.episode || "Episode";
 
   // stream default
   if (d.stream_url) {
@@ -477,9 +380,20 @@ async function loadEpisode(slug) {
   renderQualityMenu();
   renderDownloadMenu();
 
-  // bind tracking progress & resume posisi (kalau support <video>)
-  bindPlayerProgressListener();
-  applyResumePosition();
+  // tracking riwayat tonton + auto-resume (hanya jalan kalau #episodePlayer adalah <video>)
+  if (typeof setupWatchProgressTracking === "function") {
+    setupWatchProgressTracking({
+      animeSlug: currentAnimeSlug,
+      animeTitle: d.anime && d.anime.title,
+      animePoster: d.anime && d.anime.poster,
+      episodeSlug: slug,
+      episodeTitle: d.episode || "",
+    });
+  }
+
+  if (typeof applyResumeTimeForEpisode === "function") {
+    applyResumeTimeForEpisode(slug);
+  }
 
   // update slug di URL (replaceState)
   const params = new URLSearchParams(window.location.search);
