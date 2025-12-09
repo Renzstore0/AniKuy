@@ -16,7 +16,7 @@ function applyTheme(theme) {
 function initThemeFromStorage() {
   try {
     const saved = localStorage.getItem(LS_KEY_THEME);
-    const theme = saved === THEME_LIGHT ? THETHEME_LIGHT : THEME_DARK;
+    const theme = saved === THEME_LIGHT ? THEME_LIGHT : THEME_DARK;
     applyTheme(theme);
     return theme;
   } catch (e) {
@@ -138,7 +138,7 @@ async function apiGet(path) {
   }
 }
 
-// FAVORITES (My List)
+// FAVORITES (My List / Favorit)
 function loadFavoritesFromStorage() {
   try {
     const raw = localStorage.getItem(LS_KEY_FAVORITES);
