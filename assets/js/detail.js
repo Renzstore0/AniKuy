@@ -1,6 +1,5 @@
 // assets/js/detail.js
 
-// ===== ambil elemen (dibikin fleksibel biar nggak gagal kalau id beda) =====
 const animeDetailContent =
   document.getElementById("animeDetailContent") ||
   document.getElementById("animeDetail") ||
@@ -28,8 +27,6 @@ const recommendationGrid = document.getElementById("recommendationGrid");
 if (recommendationGrid) {
   recommendationGrid.innerHTML = "";
   recommendationGrid.style.display = "none";
-
-  // kalau judul "Rekomendasi" ada tepat sebelum grid, ikut hide
   const prev = recommendationGrid.previousElementSibling;
   if (prev && /rekomendasi/i.test(prev.textContent || "")) {
     prev.style.display = "none";
@@ -41,7 +38,6 @@ const detailSlugFromUrl = detailParams.get("slug");
 
 let episodeSearchWrap = null;
 
-// ===== safe wrappers biar kalau function core.js belum ada gak nge-crash =====
 const safeToast = (msg) => {
   if (typeof showToast === "function") showToast(msg);
 };
@@ -54,7 +50,7 @@ const safeRemoveFavorite =
   typeof removeFavorite === "function" ? removeFavorite : () => {};
 
 // =====================================================
-// UTIL: TITLE / SEASON (season dari endpoint search)
+// UTIL: SEASON (season dari endpoint search)
 // =====================================================
 
 function cleanTextBasic(str) {
@@ -165,11 +161,10 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
 
   seasonList.innerHTML = "";
 
-  // judul buat cari season: title kadang kosong -> pakai english/synonyms
+  // search query: pakai data.title dulu, kalau kosong fallback japanese
   const titleForSeason =
-    (detailData && String(detailData.english || "").trim()) ||
-    (detailData && String(detailData.synonyms || "").trim()) ||
     (detailData && String(detailData.title || "").trim()) ||
+    (detailData && String(detailData.japanese || "").trim()) ||
     "";
 
   if (!titleForSeason) {
@@ -214,7 +209,6 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
     const otherFull = normalizeBaseTitleFull(a.title);
     const otherRoot = normalizeBaseTitleRoot(a.title);
 
-    // match ketat / match root (biar "stone" dapet dr stone)
     const matchFull = currentFull && otherFull && otherFull === currentFull;
     const matchRoot = currentRoot && otherRoot && otherRoot === currentRoot;
 
@@ -301,7 +295,6 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
 // =====================================================
 
 async function loadAnimeDetail(slug) {
-  // kalau elemen detail gak ketemu -> jelasin via toast biar jelas
   if (!animeDetailContent) {
     safeToast('Element detail tidak ketemu (id "animeDetailContent").');
     return;
@@ -323,16 +316,10 @@ async function loadAnimeDetail(slug) {
   const d = json.data;
   const apiSlug = slug;
 
-  // ✅ title atas: english -> synonyms -> (title kalau ada) -> slug
-  const titleMain =
-    (d.english && String(d.english).trim()) ||
-    (d.synonyms && String(d.synonyms).trim()) ||
-    (d.title && String(d.title).trim()) ||
-    apiSlug;
-
-  // ✅ title bawah: japanese
-  const titleJapanese =
-    d.japanese && String(d.japanese).trim() ? String(d.japanese).trim() : "";
+  // ✅ sesuai request: judul hanya dari data.title dan data.japanese
+  // kalau title kosong, biarin "-" (jangan fallback ke english/synonyms)
+  const titleMain = (d.title && String(d.title).trim()) || "-";
+  const titleJapanese = (d.japanese && String(d.japanese).trim()) || "";
 
   animeDetailContent.innerHTML = "";
 
@@ -606,3 +593,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
   loadAnimeDetail(detailSlugFromUrl);
 });
+```0
