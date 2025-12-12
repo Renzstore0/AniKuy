@@ -3,21 +3,19 @@
   "use strict";
 
   const $ = (id) => document.getElementById(id);
+  const toast = (m) => typeof showToast === "function" && showToast(m);
 
   const el = {
     title: $("episodeTitle"),
-    player: $("episodePlayer"),
+    player: $("episodePlayer"), // iframe
     prev: $("prevEpisodeBtn"),
     next: $("nextEpisodeBtn"),
-
     serverBtn: $("serverBtn"),
     qualityBtn: $("qualityBtn"),
     downloadBtn: $("downloadBtn"),
     shareBtn: $("shareBtn"),
-
     serverLabel: $("serverLabel"),
     qualityLabel: $("qualityLabel"),
-
     serverMenu: $("serverMenu"),
     qualityMenu: $("qualityMenu"),
     downloadMenu: $("downloadMenu"),
@@ -32,46 +30,9 @@
     selectedQuality = null,
     selectedServerName = null;
 
-  const toast = (m) => typeof showToast === "function" && showToast(m);
-
-  const apiPathFromHref = (href) => {
+  const apiPath = (href) => {
     const h = String(href || "").trim();
     return h.startsWith("/") ? `/anime${h}` : null;
-  };
-
-  const cleanServer = (title, q) => {
-    let t = String(title || "").trim() || "Server";
-    if (q) t = t.replace(new RegExp(`\\s*${String(q).trim()}\\s*$`, "i"), "").trim();
-    t = t.replace(/\s*(\d{3,4}p|4k)\s*$/i, "").trim();
-    return t || "Server";
-  };
-
-  const rankQ = (label) => {
-    const t = String(label || "").toLowerCase().trim();
-    if (t.includes("4k")) return 4000;
-    const m = t.match(/(\d{3,4})\s*p/);
-    return m ? parseInt(m[1], 10) || 0 : 0;
-  };
-
-  const normalizeGroups = (serverObj) =>
-    (Array.isArray(serverObj?.qualities) ? serverObj.qualities : []).map((q) => {
-      const qLabel = (q?.title ? String(q.title).trim() : "") || "Auto";
-      const servers = (Array.isArray(q?.serverList) ? q.serverList : [])
-        .map((s) => ({
-          name: cleanServer(s?.title, qLabel),
-          id: s?.serverId ? String(s.serverId).trim() : null,
-          href: s?.href ? String(s.href).trim() : null,
-        }))
-        .filter((s) => s && (s.id || s.href));
-
-      return { quality: qLabel, servers, hasServers: !!servers.length };
-    });
-
-  const bestPlayable = (groups) => {
-    const playable = (groups || []).filter((g) => g?.hasServers);
-    if (!playable.length) return null;
-    playable.sort((a, b) => rankQ(b.quality) - rankQ(a.quality));
-    return playable[0] || null;
   };
 
   const pickUrl = (d) =>
@@ -84,13 +45,46 @@
     d?.defaultStreamingUrl ||
     null;
 
+  const cleanServer = (title, q) => {
+    let t = String(title || "").trim() || "Server";
+    if (q) t = t.replace(new RegExp(`\\s*${String(q).trim()}\\s*$`, "i"), "").trim();
+    return (t.replace(/\s*(\d{3,4}p|4k)\s*$/i, "").trim() || "Server");
+  };
+
+  const rankQ = (q) => {
+    const t = String(q || "").toLowerCase();
+    if (t.includes("4k")) return 4000;
+    const m = t.match(/(\d{3,4})\s*p/);
+    return m ? parseInt(m[1], 10) || 0 : 0;
+  };
+
+  const normalizeGroups = (serverObj) =>
+    (Array.isArray(serverObj?.qualities) ? serverObj.qualities : []).map((q) => {
+      const quality = (q?.title ? String(q.title).trim() : "") || "Auto";
+      const servers = (Array.isArray(q?.serverList) ? q.serverList : [])
+        .map((s) => ({
+          name: cleanServer(s?.title, quality),
+          id: s?.serverId ? String(s.serverId).trim() : null,
+          href: s?.href ? String(s.href).trim() : null,
+        }))
+        .filter((s) => s && (s.id || s.href));
+      return { quality, servers, hasServers: !!servers.length };
+    });
+
+  const bestPlayable = (groups) => {
+    const ok = (groups || []).filter((g) => g?.hasServers);
+    if (!ok.length) return null;
+    ok.sort((a, b) => rankQ(b.quality) - rankQ(a.quality));
+    return ok[0] || null;
+  };
+
   async function resolveServerUrl(server) {
     if (!server) return null;
 
-    const path = apiPathFromHref(server.href);
-    if (path) {
+    const p = apiPath(server.href);
+    if (p) {
       try {
-        const res = await apiGet(path);
+        const res = await apiGet(p);
         const url = pickUrl(res?.data ?? res);
         if (url) return url;
       } catch {}
@@ -114,8 +108,7 @@
 
   document.addEventListener("click", (e) => {
     const c = $("playerDropdownContainer");
-    if (!c) return;
-    if (!c.contains(e.target) && !e.target.closest(".toolbar-btn")) closeAll();
+    if (c && !c.contains(e.target) && !e.target.closest(".toolbar-btn")) closeAll();
   });
 
   const updateLabels = () => {
@@ -128,29 +121,28 @@
     if (el.qualityLabel) el.qualityLabel.textContent = selectedQuality || "Auto";
   };
 
-  async function setStreamSource(qWanted, serverWanted) {
+  async function setStreamSource(qWanted, sWanted) {
     if (!el.player || !streamGroups.length) return;
 
     const wanted = qWanted || selectedQuality || streamGroups[0]?.quality || null;
-    let group = streamGroups.find((g) => g.quality === wanted) || streamGroups[0];
+    let g = streamGroups.find((x) => x.quality === wanted) || streamGroups[0];
 
-    if (!group?.hasServers) {
+    if (!g?.hasServers) {
       const best = bestPlayable(streamGroups);
       if (!best) return toast("Server tidak tersedia");
       toast(`Server tidak tersedia untuk ${wanted || "kualitas ini"}`);
-      group = best;
+      g = best;
     }
 
-    const server =
-      (serverWanted && group.servers.find((s) => s.name === serverWanted)) || group.servers[0];
-    if (!server) return toast("Server tidak tersedia");
+    const s = (sWanted && g.servers.find((x) => x.name === sWanted)) || g.servers[0];
+    if (!s) return toast("Server tidak tersedia");
 
-    const url = await resolveServerUrl(server);
+    const url = await resolveServerUrl(s);
     if (!url) return toast("Gagal memuat server");
 
     el.player.src = url;
-    selectedQuality = group.quality || null;
-    selectedServerName = server.name || null;
+    selectedQuality = g.quality || null;
+    selectedServerName = s.name || null;
     updateLabels();
   }
 
@@ -168,10 +160,9 @@
 
     let g = streamGroups.find((x) => x.quality === selectedQuality);
     if (!g?.hasServers) g = best;
-
     const q = g.quality || "Auto";
-    const frag = document.createDocumentFragment();
 
+    const frag = document.createDocumentFragment();
     g.servers.forEach((s) => {
       const b = document.createElement("button");
       b.type = "button";
@@ -185,7 +176,6 @@
       });
       frag.appendChild(b);
     });
-
     el.serverMenu.appendChild(frag);
   }
 
@@ -243,13 +233,13 @@
     let added = 0;
 
     formats.forEach((fmt, idx) => {
-      const fmtTitle = (fmt?.title ? String(fmt.title).trim() : "") || "Format";
+      const title = (fmt?.title ? String(fmt.title).trim() : "") || "Format";
       const qs = Array.isArray(fmt?.qualities) ? fmt.qualities : [];
       if (!qs.length) return;
 
       const h = document.createElement("div");
       h.className = "dropdown-subtitle";
-      h.textContent = fmtTitle;
+      h.textContent = title;
       if (idx > 0) h.style.marginTop = "6px";
       frag.appendChild(h);
 
@@ -276,13 +266,10 @@
     if (!added) el.downloadMenu.innerHTML += '<div class="dropdown-empty">Link unduhan belum tersedia</div>';
   }
 
-  // ✅ format share sesuai permintaan: 2 baris (teks + url)
+  // ✅ share: 2 baris (teks + url)
   function handleShare() {
     const name = (el.title?.textContent || document.title || "Episode").trim();
-    const url = epSlug
-      ? `${location.origin}${location.pathname}?slug=${epSlug}`
-      : location.href;
-
+    const url = epSlug ? `${location.origin}${location.pathname}?slug=${epSlug}` : location.href;
     const copyText = `Tonton ${name} di AniKuy\n${url}`;
     const shareTitle = `Tonton ${name} di AniKuy`;
 
@@ -314,33 +301,30 @@
     prevSlug = d.hasPrevEpisode ? d?.prevEpisode?.episodeId || null : null;
     nextSlug = d.hasNextEpisode ? d?.nextEpisode?.episodeId || null : null;
 
-    const backButton = $("backButton");
-    if (backButton && animeSlug)
-      backButton.dataset.href = `/anime/detail?slug=${encodeURIComponent(animeSlug)}`;
+    const back = $("backButton");
+    if (back && animeSlug) back.dataset.href = `/anime/detail?slug=${encodeURIComponent(animeSlug)}`;
 
     el.title.textContent = d.title || "Episode";
 
-    // tampil cepat pakai default dulu
     if (d.defaultStreamingUrl) el.player.src = d.defaultStreamingUrl;
     else el.player.removeAttribute("src");
 
     streamGroups = normalizeGroups(d.server || {});
     downloadData = Array.isArray(d?.downloadUrl?.formats) ? d.downloadUrl.formats : null;
 
-    // pilih kualitas tertinggi yang playable
     const best = bestPlayable(streamGroups);
     if (best?.servers?.length) {
       selectedQuality = best.quality || null;
       selectedServerName = best.servers[0].name || null;
-      setStreamSource(selectedQuality, selectedServerName); // override ke best
+      setStreamSource(selectedQuality, selectedServerName);
     } else {
       selectedQuality = streamGroups[0]?.quality || null;
       selectedServerName = null;
       updateLabels();
     }
 
-    if (el.prev) el.prev.disabled = !prevSlug;
-    if (el.next) el.next.disabled = !nextSlug;
+    el.prev && (el.prev.disabled = !prevSlug);
+    el.next && (el.next.disabled = !nextSlug);
 
     renderServerMenu();
     renderQualityMenu();
@@ -351,7 +335,7 @@
     history.replaceState({}, "", `${location.pathname}?${p.toString()}`);
   }
 
-  // ========= listeners =========
+  // listeners
   el.prev?.addEventListener("click", () => prevSlug && loadEpisode(prevSlug));
   el.next?.addEventListener("click", () => nextSlug && loadEpisode(nextSlug));
 
@@ -360,7 +344,7 @@
     renderServerMenu();
     const open = el.serverMenu?.classList.contains("show");
     closeAll();
-    if (!open) el.serverMenu?.classList.add("show");
+    !open && el.serverMenu?.classList.add("show");
   });
 
   el.qualityBtn?.addEventListener("click", (e) => {
@@ -368,7 +352,7 @@
     renderQualityMenu();
     const open = el.qualityMenu?.classList.contains("show");
     closeAll();
-    if (!open) el.qualityMenu?.classList.add("show");
+    !open && el.qualityMenu?.classList.add("show");
   });
 
   el.downloadBtn?.addEventListener("click", (e) => {
@@ -377,7 +361,7 @@
     renderDownloadMenu();
     const open = el.downloadMenu?.classList.contains("show");
     closeAll();
-    if (!open) el.downloadMenu?.classList.add("show");
+    !open && el.downloadMenu?.classList.add("show");
   });
 
   el.shareBtn?.addEventListener("click", (e) => {
@@ -385,6 +369,19 @@
     handleShare();
   });
 
+  // ===== lock landscape saat fullscreen (native fullscreen dari iframe) =====
+  const lockLS = async (on) => {
+    try {
+      if (!screen.orientation?.lock) return;
+      if (on) await screen.orientation.lock("landscape");
+      else screen.orientation.unlock();
+    } catch {}
+  };
+  const onFs = () => lockLS(!!(document.fullscreenElement || document.webkitFullscreenElement));
+  document.addEventListener("fullscreenchange", onFs);
+  document.addEventListener("webkitfullscreenchange", onFs);
+
+  // init
   document.addEventListener("DOMContentLoaded", () => {
     const s = new URLSearchParams(location.search).get("slug");
     if (!s) return toast("Episode tidak ditemukan");
