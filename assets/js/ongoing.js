@@ -1,110 +1,78 @@
-const ongoingGridFull = document.getElementById("ongoingGridFull");
-const ongoingPrevBtn = document.getElementById("ongoingPrevBtn");
-const ongoingNextBtn = document.getElementById("ongoingNextBtn");
-const ongoingPageInfo = document.getElementById("ongoingPageInfo");
+// assets/js/ongoing.js
+(() => {
+  "use strict";
 
-let ongoingPage = 1;
-let ongoingLastPage = 1;
-let ongoingLoading = false;
+  const grid = document.getElementById("ongoingGridFull");
+  const main = document.getElementById("mainContent");
 
-// Sembunyikan tombol & info page, tidak pernah dipakai
-if (ongoingPrevBtn) ongoingPrevBtn.style.display = "none";
-if (ongoingNextBtn) ongoingNextBtn.style.display = "none";
-if (ongoingPageInfo) ongoingPageInfo.style.display = "none";
+  let page = 1,
+    last = 1,
+    loading = false;
 
-// Format label episode → "Eps .."
-function formatEpisodeLabel(text) {
-  if (!text) return "";
-
-  let t = String(text).trim();
-
-  let m = t.match(/^Total\s+(\d+)\s*(Episode|Eps?)?/i);
-  if (m) return `Eps ${m[1]}`;
-
-  m = t.match(/^Episode\s+(\d+)/i);
-  if (m) return `Eps ${m[1]}`;
-
-  m = t.match(/^(\d+)\s*(Episode|Eps?)?$/i);
-  if (m) return `Eps ${m[1]}`;
-
-  return t.replace(/Episode/gi, "Eps");
-}
-
-function parseAnimeIdFromHref(href) {
-  if (!href) return "";
-  try {
-    const s = String(href).trim();
-    const parts = s.split("/").filter(Boolean);
-    return parts[parts.length - 1] || "";
-  } catch {
-    return "";
-  }
-}
-
-async function loadOngoingList(page = 1, append = false) {
-  if (!ongoingGridFull || ongoingLoading) return;
-
-  ongoingLoading = true;
-
-  let json;
-  try {
-    // ✅ recent Samehadaku
-    json = await apiGet(`/anime/samehadaku/recent?page=${encodeURIComponent(page)}`);
-  } catch {
-    ongoingLoading = false;
-    return;
-  }
-
-  if (!json || json.status !== "success") {
-    ongoingLoading = false;
-    return;
-  }
-
-  const pag = json.pagination || {};
-  ongoingPage = pag.currentPage || page;
-  ongoingLastPage = pag.totalPages || ongoingLastPage;
-
-  if (!append) ongoingGridFull.innerHTML = "";
-
-  const list =
-    json.data && Array.isArray(json.data.animeList) ? json.data.animeList : [];
-
-  list.forEach((a) => {
-    // ✅ PENTING: slug detail harus animeId (atau fallback dari href)
-    const slug = a.animeId || parseAnimeIdFromHref(a.href) || a.slug || "";
-
-    const item = {
-      title: a.title || "-",
-      poster: a.poster || "",
-      slug,
-      animeId: a.animeId,
-    };
-
-    const card = createAnimeCard(item, {
-      badgeTop: "Baru",
-      badgeBottom: formatEpisodeLabel(a.episodes || ""),
-      meta: a.releasedOn || "",
-    });
-
-    ongoingGridFull.appendChild(card);
+  // tombol/info pagination memang tidak dipakai
+  ["ongoingPrevBtn", "ongoingNextBtn", "ongoingPageInfo"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "none";
   });
 
-  ongoingLoading = false;
-}
+  const epsLabel = (txt) => {
+    const t = String(txt || "").trim();
+    const m =
+      t.match(/^Total\s+(\d+)/i) ||
+      t.match(/^Episode\s+(\d+)/i) ||
+      t.match(/^(\d+)\s*(Episode|Eps?)?$/i);
+    return m ? `Eps ${m[1]}` : t.replace(/Episode/gi, "Eps");
+  };
 
-document.addEventListener("DOMContentLoaded", () => {
-  loadOngoingList(1, false);
-
-  const mainContent = document.getElementById("mainContent");
-  if (!mainContent) return;
-
-  mainContent.addEventListener("scroll", () => {
-    const nearBottom =
-      mainContent.scrollTop + mainContent.clientHeight >=
-      mainContent.scrollHeight - 200;
-
-    if (nearBottom && !ongoingLoading && ongoingPage < ongoingLastPage) {
-      loadOngoingList(ongoingPage + 1, true);
+  const slugFromHref = (href) => {
+    try {
+      const parts = String(href || "").trim().split("/").filter(Boolean);
+      return parts.pop() || "";
+    } catch {
+      return "";
     }
+  };
+
+  async function load(p = 1, append = false) {
+    if (!grid || loading) return;
+    loading = true;
+
+    let json;
+    try {
+      json = await apiGet(`/anime/samehadaku/recent?page=${encodeURIComponent(p)}`);
+    } catch {
+      loading = false;
+      return;
+    }
+
+    if (json?.status !== "success") return void (loading = false);
+
+    const pag = json.pagination || {};
+    page = pag.currentPage || p;
+    last = pag.totalPages || last;
+
+    if (!append) grid.innerHTML = "";
+
+    const list = Array.isArray(json?.data?.animeList) ? json.data.animeList : [];
+    for (const a of list) {
+      const slug = a?.animeId || slugFromHref(a?.href) || a?.slug || "";
+      const card = createAnimeCard(
+        { title: a?.title || "-", poster: a?.poster || "", slug, animeId: a?.animeId },
+        { badgeTop: "Baru", badgeBottom: epsLabel(a?.episodes), meta: a?.releasedOn || "" }
+      );
+      grid.appendChild(card);
+    }
+
+    loading = false;
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    load(1, false);
+    if (!main) return;
+
+    main.addEventListener("scroll", () => {
+      const nearBottom = main.scrollTop + main.clientHeight >= main.scrollHeight - 200;
+      if (nearBottom && !loading && page < last) load(page + 1, true);
+    });
   });
-});
+})();
