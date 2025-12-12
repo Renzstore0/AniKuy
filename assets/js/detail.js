@@ -1,7 +1,8 @@
+// assets/js/detail.js
+
 const animeDetailContent = document.getElementById("animeDetailContent");
 const episodeList = document.getElementById("episodeList");
 const seasonList = document.getElementById("seasonList");
-const recommendationGrid = document.getElementById("recommendationGrid");
 
 const tabEpisodes = document.getElementById("tabEpisodes");
 const tabSeasons = document.getElementById("tabSeasons");
@@ -30,6 +31,20 @@ function showSeasonTab() {
   seasonList.classList.remove("hidden");
 
   if (episodeSearchWrap) episodeSearchWrap.classList.add("hidden");
+}
+
+// ---------- UTIL SCORE (biar aman: kadang string, kadang object) ----------
+function getScoreValue(score) {
+  if (score == null) return "N/A";
+  if (typeof score === "string" || typeof score === "number") {
+    const s = String(score).trim();
+    return s ? s : "N/A";
+  }
+  if (typeof score === "object" && score.value != null) {
+    const s = String(score.value).trim();
+    return s ? s : "N/A";
+  }
+  return "N/A";
 }
 
 // ---------- SEASON LIST (pakai synopsis.connections) ----------
@@ -100,6 +115,7 @@ async function loadAnimeDetail(slug) {
 
   let json;
   try {
+    // endpoint detail samehadaku
     json = await apiGet(`/anime/samehadaku/anime/${encodeURIComponent(slug)}`);
   } catch {
     return;
@@ -145,8 +161,7 @@ async function loadAnimeDetail(slug) {
     metaCol.appendChild(jp);
   }
 
-  const scoreVal =
-    d.score && d.score.value != null ? String(d.score.value) : "N/A";
+  const scoreVal = getScoreValue(d.score);
 
   const info = document.createElement("div");
   info.className = "detail-meta";
@@ -154,7 +169,9 @@ async function loadAnimeDetail(slug) {
     <div><span class="label">Rating:</span> ${scoreVal}</div>
     <div><span class="label">Tipe:</span> ${d.type || "-"}</div>
     <div><span class="label">Status:</span> ${d.status || "-"}</div>
-    <div><span class="label">Episode:</span> ${d.episodes != null ? d.episodes : "?"}</div>
+    <div><span class="label">Episode:</span> ${
+      d.episodes != null ? d.episodes : "?"
+    }</div>
     <div><span class="label">Rilis:</span> ${d.aired || "-"}</div>
     <div><span class="label">Studio:</span> ${d.studios || "-"}</div>
   `;
@@ -169,7 +186,9 @@ async function loadAnimeDetail(slug) {
     chip.textContent = g.title || "-";
     chip.addEventListener("click", () => {
       if (!g.genreId) return;
-      const url = `/anime/genre?slug=${encodeURIComponent(g.genreId)}&name=${encodeURIComponent(g.title || "")}`;
+      const url = `/anime/genre?slug=${encodeURIComponent(
+        g.genreId
+      )}&name=${encodeURIComponent(g.title || "")}`;
       window.location.href = url;
     });
     genresWrap.appendChild(chip);
@@ -190,7 +209,10 @@ async function loadAnimeDetail(slug) {
 
   const playIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   playIcon.setAttribute("viewBox", "0 0 24 24");
-  const playPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  const playPath = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "path"
+  );
   playPath.setAttribute("d", "M8 5v14l11-7z");
   playPath.setAttribute("fill", "currentColor");
   playIcon.appendChild(playPath);
@@ -202,7 +224,7 @@ async function loadAnimeDetail(slug) {
   playBtn.appendChild(playText);
 
   playBtn.addEventListener("click", () => {
-    const eps = d.episodeList || [];
+    const eps = Array.isArray(d.episodeList) ? d.episodeList : [];
     if (!eps.length || !eps[0].episodeId) return;
     const url = `/anime/episode?slug=${encodeURIComponent(eps[0].episodeId)}`;
     window.location.href = url;
@@ -214,7 +236,10 @@ async function loadAnimeDetail(slug) {
 
   const favIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   favIcon.setAttribute("viewBox", "0 0 24 24");
-  const favPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  const favPath = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "path"
+  );
   favPath.setAttribute(
     "d",
     "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4 8.04 4 9.54 4.81 10.35 6.09 11.16 4.81 12.66 4 14.2 4 16.7 4 18.7 6 18.7 8.5c0 3.78-3.4 6.86-8.55 11.54z"
@@ -240,6 +265,7 @@ async function loadAnimeDetail(slug) {
       rating: scoreVal !== "N/A" ? scoreVal : "",
       episode_count: d.episodes != null ? String(d.episodes) : "",
       status: d.status || "",
+      type: d.type || "",
     };
 
     if (isFavorite(apiSlug)) removeFavorite(apiSlug);
@@ -259,7 +285,10 @@ async function loadAnimeDetail(slug) {
 
   const paragraphs =
     d.synopsis && Array.isArray(d.synopsis.paragraphs) ? d.synopsis.paragraphs : [];
-  let cleanSynopsis = paragraphs.map((s) => String(s || "").trim()).filter(Boolean).join(" ");
+  let cleanSynopsis = paragraphs
+    .map((s) => String(s || "").trim())
+    .filter(Boolean)
+    .join(" ");
   if (!cleanSynopsis) cleanSynopsis = "Tidak ada sinopsis.";
 
   syn.textContent = cleanSynopsis;
@@ -282,7 +311,7 @@ async function loadAnimeDetail(slug) {
 
   // ===== EPISODE LIST + SEARCH =====
   if (episodeList) {
-    const eps = d.episodeList || [];
+    const eps = Array.isArray(d.episodeList) ? d.episodeList : [];
 
     const existingSearch = document.getElementById("episodeSearchWrap");
     if (existingSearch && existingSearch.parentNode) {
@@ -325,7 +354,7 @@ async function loadAnimeDetail(slug) {
 
     episodeList.innerHTML = "";
 
-    // tampilkan dari episode terakhir ke awal (biar sama feel lama)
+    // tampilkan dari episode terakhir ke awal
     for (let i = eps.length - 1; i >= 0; i--) {
       const ep = eps[i];
       if (!ep) continue;
@@ -333,10 +362,10 @@ async function loadAnimeDetail(slug) {
       const item = document.createElement("div");
       item.className = "episode-item";
 
-      const epNum = ep.title != null ? ep.title : eps.length - i;
+      const epTitle = ep.title != null ? String(ep.title) : String(eps.length - i);
 
       const left = document.createElement("span");
-      left.textContent = `Episode ${epNum}`;
+      left.textContent = `Episode ${epTitle}`;
       item.appendChild(left);
 
       item.addEventListener("click", () => {
@@ -351,9 +380,6 @@ async function loadAnimeDetail(slug) {
 
   // ===== SEASON LIST =====
   loadSeasonListFromConnections(d, apiSlug);
-
-  // ===== REKOMENDASI ===== (data tidak ada di response -> aman tetap kosong)
-  if (recommendationGrid) recommendationGrid.innerHTML = "";
 
   document.title = `AniKuy - ${titleMain}`;
 }
