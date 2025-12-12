@@ -22,21 +22,24 @@ let todayIndex = 0;
 let todayAutoTimer = null;
 const TODAY_AUTO_MS = 7000;
 
-// --- UTIL HARI ---
-
+// ---------- UTIL ----------
 function getTodayName() {
   const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
   return days[new Date().getDay()];
 }
 
-// --- FORMAT LABEL EPISODE (dipakai Home & Ongoing) ---
+function cleanUrl(s) {
+  if (!s) return "";
+  // some data included like "[https://...]" — hapus bracket jika ada
+  return String(s).replace(/^\[|\]$/g, "").trim();
+}
 
+// --- FORMAT LABEL EPISODE (dipakai Home & Ongoing) ---
 function formatEpisodeLabel(text) {
   if (!text) return "";
-
   let t = String(text).trim();
 
-  // "Total 10 Episode" / "Total 10 Eps"
+  // common: "Total 10 Episode" / "Total 10 Eps"
   let m = t.match(/^Total\s+(\d+)\s*(Episode|Eps?)?/i);
   if (m) return `Eps ${m[1]}`;
 
@@ -48,30 +51,15 @@ function formatEpisodeLabel(text) {
   m = t.match(/^(\d+)\s*(Episode|Eps?)?$/i);
   if (m) return `Eps ${m[1]}`;
 
+  // sometimes field just "episodes": "10" or "15"
+  m = t.match(/^(\d+)$/i);
+  if (m) return `Eps ${m[1]}`;
+
   // fallback: ganti kata Episode → Eps
   return t.replace(/Episode/gi, "Eps");
 }
 
-// --- HELPER MAP RAW JSON -> CARD PROPS ---
-
-function mapRawToCard(a) {
-  // raw items from samehadaku format:
-  // { title, poster, episodes, releasedOn, animeId, href, ... }
-  return {
-    title: a.title || "",
-    poster: a.poster || a.image || "/assets/img/placeholder-poster.png",
-    slug: a.animeId || a.slug || (a.href ? a.href.split("/").filter(Boolean).pop() : ""),
-    // rating/score may be in other lists
-    rating: a.score || a.rating || "",
-    // for meta/badge
-    current_episode: a.episodes ?? a.episode ?? "",
-    release_day: a.releasedOn ?? a.releaseDate ?? a.last_release_date ?? "",
-    last_release_date: a.releasedOn ?? a.releaseDate ?? a.last_release_date ?? "",
-  };
-}
-
-// --- RILIS HARI INI (HERO) ---
-
+// ---------- TODAY HERO ----------
 function scrollTodayDotsIntoView() {
   if (!todayDots) return;
   const active = todayDots.querySelector("span.active");
@@ -79,20 +67,13 @@ function scrollTodayDotsIntoView() {
 
   const wrapRect = todayDots.getBoundingClientRect();
   const dotRect = active.getBoundingClientRect();
-  const offset =
-    dotRect.left - wrapRect.left - wrapRect.width / 2 + dotRect.width / 2;
+  const offset = dotRect.left - wrapRect.left - wrapRect.width / 2 + dotRect.width / 2;
 
   todayDots.scrollBy({ left: offset, behavior: "smooth" });
 }
 
 function updateTodayHero() {
-  if (
-    !todaySection ||
-    !todayPoster ||
-    !todayTitle ||
-    !todayDots ||
-    !todayAnimeList.length
-  ) {
+  if (!todaySection || !todayPoster || !todayTitle || !todayDots || !todayAnimeList.length) {
     return;
   }
 
@@ -107,20 +88,20 @@ function updateTodayHero() {
   const next = todayAnimeList[nextIndex];
 
   // poster utama
-  todayPoster.src = current.poster;
-  todayPoster.alt = current.title;
-  todayTitle.textContent = current.title;
+  todayPoster.src = cleanUrl(current.poster || "");
+  todayPoster.alt = current.title || "";
+  todayTitle.textContent = current.title || "";
 
   // poster sebelum
   if (todayPosterPrev && prev) {
-    todayPosterPrev.src = prev.poster;
-    todayPosterPrev.alt = prev.title;
+    todayPosterPrev.src = cleanUrl(prev.poster || "");
+    todayPosterPrev.alt = prev.title || "";
   }
 
   // poster sesudah
   if (todayPosterNext && next) {
-    todayPosterNext.src = next.poster;
-    todayPosterNext.alt = next.title;
+    todayPosterNext.src = cleanUrl(next.poster || "");
+    todayPosterNext.alt = next.title || "";
   }
 
   // dots
@@ -131,7 +112,7 @@ function updateTodayHero() {
     todayDots.appendChild(dot);
   });
 
-  // auto-scroll dots supaya titik kuning selalu kelihatan
+  // auto-scroll dots supaya titik aktif selalu kelihatan
   scrollTodayDotsIntoView();
 }
 
@@ -146,9 +127,17 @@ function restartTodayAuto() {
 
 function goToTodayDetail() {
   const current = todayAnimeList[todayIndex];
-  if (!current || !current.slug) return;
-  const url = `/anime/detail?slug=${encodeURIComponent(current.slug)}`;
-  window.location.href = url;
+  if (!current) return;
+  // prefer slug, fallback to animeId or href
+  const slug = current.slug || current.animeId || "";
+  if (slug) {
+    const url = `/anime/detail?slug=${encodeURIComponent(slug)}`;
+    window.location.href = url;
+    return;
+  }
+  if (current.href) {
+    window.location.href = current.href;
+  }
 }
 
 function goTodayStep(delta, fromUser = true) {
@@ -159,38 +148,63 @@ function goTodayStep(delta, fromUser = true) {
   if (fromUser) restartTodayAuto();
 }
 
-// loadTodayAnime sekarang ambil data dari /anime/home (raw JSON yang kamu beri)
-// lalu pilih beberapa item terbaru dari recent.animeList sebagai "Rilis Hari Ini"
+/**
+ * loadTodayAnime:
+ * - pertama coba /anime/schedule (struktur lama)
+ * - jika gagal atau tidak ada schedule, fallback ke /anime/home dan gunakan recent.animeList
+ */
 async function loadTodayAnime() {
   if (!todaySection) return;
 
-  let json;
+  // coba ambil dari endpoint schedule dulu
   try {
-    json = await apiGet("/anime/home");
-  } catch {
-    return;
+    const sched = await apiGet("/anime/schedule");
+    if (sched && sched.status === "success" && Array.isArray(sched.data)) {
+      // cari hari sekarang
+      const todayName = getTodayName();
+      const todayObj = sched.data.find((d) => d.day === todayName);
+      if (todayObj && Array.isArray(todayObj.anime_list) && todayObj.anime_list.length) {
+        todayAnimeList = todayObj.anime_list.map((a) => ({
+          title: a.anime_name || a.title,
+          poster: cleanUrl(a.poster || a.image || ""),
+          slug: a.slug || a.animeId || "",
+          animeId: a.animeId || "",
+          href: a.href || "",
+        }));
+      }
+    }
+  } catch (e) {
+    // ignore, kita akan fallback ke home result
   }
 
-  if (!json || json.status !== "success" || !json.data) return;
-
-  // struktur raw: json.data.recent.animeList (array)
-  const recentList = (json.data.recent && json.data.recent.animeList) || [];
-
-  if (!Array.isArray(recentList) || !recentList.length) {
-    return;
+  // fallback: jika belum ada data, ambil dari /anime/home -> recent.animeList
+  if (!todayAnimeList.length) {
+    try {
+      const home = await apiGet("/anime/home");
+      if (home && home.status === "success" && home.data) {
+        // raw JSON yang kamu kirim punya struktur: data.recent.animeList
+        const recent = home.data.recent && Array.isArray(home.data.recent.animeList) ? home.data.recent.animeList : null;
+        if (recent && recent.length) {
+          todayAnimeList = recent.map((a) => ({
+            title: a.title || a.anime_name,
+            poster: cleanUrl(a.poster || a.image || ""),
+            slug: a.animeId || a.slug || "",
+            animeId: a.animeId || "",
+            href: a.href || "",
+          }));
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
   }
-
-  // Ambil 5 item teratas sebagai carousel rilis hari ini.
-  // (Jika kamu ingin filter berdasarkan hari, bisa ubah logika ini nanti)
-  todayAnimeList = recentList.slice(0, 5).map(mapRawToCard);
 
   if (!todayAnimeList.length) return;
 
   // tampilkan section
   todaySection.style.display = "block";
-  const todayName = getTodayName();
   if (todayHeaderTitle) {
-    todayHeaderTitle.textContent = `Anime Rilis Hari Ini - ${todayName}`;
+    todayHeaderTitle.textContent = `Anime Rilis Hari Ini - ${getTodayName()}`;
   }
 
   todayIndex = 0;
@@ -198,38 +212,32 @@ async function loadTodayAnime() {
   restartTodayAuto();
 
   // event tombol
-  if (todayWatchBtn) {
-    todayWatchBtn.addEventListener("click", () => goToTodayDetail());
-  }
-  if (todayPoster) {
-    todayPoster.addEventListener("click", () => goToTodayDetail());
-  }
+  if (todayWatchBtn) todayWatchBtn.addEventListener("click", goToTodayDetail);
+  if (todayPoster) todayPoster.addEventListener("click", goToTodayDetail);
 
-  // klik poster samping untuk pindah slide
-  if (todayPosterPrev) {
-    todayPosterPrev.addEventListener("click", () => goTodayStep(-1, true));
-  }
-  if (todayPosterNext) {
-    todayPosterNext.addEventListener("click", () => goTodayStep(1, true));
-  }
-
-  if (todayPrevBtn) {
-    todayPrevBtn.addEventListener("click", () => goTodayStep(-1, true));
-  }
-  if (todayNextBtn) {
-    todayNextBtn.addEventListener("click", () => goTodayStep(1, true));
-  }
+  if (todayPosterPrev) todayPosterPrev.addEventListener("click", () => goTodayStep(-1, true));
+  if (todayPosterNext) todayPosterNext.addEventListener("click", () => goTodayStep(1, true));
+  if (todayPrevBtn) todayPrevBtn.addEventListener("click", () => goTodayStep(-1, true));
+  if (todayNextBtn) todayNextBtn.addEventListener("click", () => goTodayStep(1, true));
 }
 
 // --- HOME (SEDANG TAYANG & SELESAI) ---
-
+/**
+ * loadHome:
+ * - mendukung struktur lama (ongoing_anime / complete_anime)
+ * - juga mendukung struktur Raw JSON yang berisi recent/movie/top10
+ * mapping yang dipakai:
+ *   ongoing <- ongoing_anime || recent.animeList
+ *   complete <- complete_anime || movie.animeList || top10.animeList
+ */
 async function loadHome() {
   if (!ongoingGridHome || !completeRowHome) return;
 
   let data;
   try {
     data = await apiGet("/anime/home");
-  } catch {
+  } catch (e) {
+    console.error("Failed to fetch /anime/home", e);
     return;
   }
 
@@ -238,55 +246,60 @@ async function loadHome() {
     return;
   }
 
-  // Sesuaikan dengan Raw JSON:
-  // ongoing -> data.data.recent.animeList
-  // complete -> data.data.movie.animeList
-  const ongoingRaw = (data.data.recent && data.data.recent.animeList) || [];
-  const completeRaw = (data.data.movie && data.data.movie.animeList) || [];
+  const raw = data.data;
+
+  // extract ongoing
+  let ongoing = [];
+  if (Array.isArray(raw.ongoing_anime)) ongoing = raw.ongoing_anime;
+  else if (raw.recent && Array.isArray(raw.recent.animeList)) ongoing = raw.recent.animeList;
+  else if (Array.isArray(raw.ongoing)) ongoing = raw.ongoing;
+
+  // extract complete
+  let complete = [];
+  if (Array.isArray(raw.complete_anime)) complete = raw.complete_anime;
+  else if (raw.movie && Array.isArray(raw.movie.animeList)) complete = raw.movie.animeList;
+  else if (raw.top10 && Array.isArray(raw.top10.animeList)) complete = raw.top10.animeList;
+  else if (Array.isArray(raw.complete)) complete = raw.complete;
+
+  // normalize helpers (card creation expects certain props)
+  function normalizeCardData(a) {
+    return {
+      title: a.title || a.anime_name || a.animeId || "",
+      poster: cleanUrl(a.poster || a.image || a.thumb || ""),
+      slug: a.slug || a.animeId || "",
+      current_episode: a.current_episode || a.episodes || a.episodes_count || "",
+      release_day: a.release_day || a.releasedOn || a.last_release_date || "",
+      rating: a.rating || a.score || a.score_value || "",
+      href: a.href || "",
+    };
+  }
 
   ongoingGridHome.innerHTML = "";
   completeRowHome.innerHTML = "";
 
   // SEDANG TAYANG (home) – badge bawah: Eps ..
-  ongoingRaw.slice(0, 9).forEach((a) => {
-    const mapped = mapRawToCard(a);
-    const card = createAnimeCard(
-      {
-        title: mapped.title,
-        poster: mapped.poster,
-        slug: mapped.slug,
-        rating: mapped.rating,
-      },
-      {
-        badgeTop: "Baru",
-        badgeBottom: formatEpisodeLabel(mapped.current_episode || ""),
-        meta: mapped.release_day || "",
-      }
-    );
+  (ongoing.slice(0, 9) || []).forEach((a) => {
+    const norm = normalizeCardData(a);
+    const card = createAnimeCard(norm, {
+      badgeTop: "Baru",
+      badgeBottom: formatEpisodeLabel(norm.current_episode || ""),
+      meta: norm.release_day || "",
+    });
     ongoingGridHome.appendChild(card);
   });
 
-  // SELESAI DITAYANGKAN (home) – pakai rating, fallback N/A
-  completeRaw.slice(0, 15).forEach((a) => {
-    const mapped = mapRawToCard(a);
-    const card = createAnimeCard(
-      {
-        title: mapped.title,
-        poster: mapped.poster,
-        slug: mapped.slug,
-        rating: mapped.rating || "N/A",
-      },
-      {
-        rating: mapped.rating && mapped.rating !== "" ? mapped.rating : "N/A",
-        meta: mapped.last_release_date || "",
-      }
-    );
+  // SELESAI DITAYANGKAN (home) – pakai rating
+  (complete.slice(0, 15) || []).forEach((a) => {
+    const norm = normalizeCardData(a);
+    const card = createAnimeCard(norm, {
+      rating: norm.rating && String(norm.rating) !== "" ? norm.rating : "N/A",
+      meta: norm.release_day || "",
+    });
     completeRowHome.appendChild(card);
   });
 }
 
 // --- BUTTON "SEMUA" ---
-
 if (seeAllOngoingBtn) {
   seeAllOngoingBtn.addEventListener("click", () => {
     window.location.href = "/anime/ongoing";
@@ -300,8 +313,14 @@ if (seeAllCompleteBtn) {
 }
 
 // --- INIT ---
-
 document.addEventListener("DOMContentLoaded", () => {
   loadHome();
   loadTodayAnime();
 });
+
+/* --- catatan:
+ - file ini mengasumsikan fungsi global `apiGet(url)` ada dan mengembalikan JSON parsed.
+ - juga mengasumsikan fungsi `createAnimeCard(data, opts)` ada di scope global untuk membuat elemen card.
+ - fungsi `showToast(msg)` diasumsikan tersedia untuk notifikasi.
+ - code ini tahan banting terhadap struktur JSON lama maupun struktur Raw JSON yang kamu kirim.
+*/
