@@ -148,8 +148,11 @@ img{pointer-events:none}
 .search-input{flex:1;border-radius:999px;border:1px solid rgba(148,163,184,.7);padding:6px 12px;background:rgba(15,23,42,.95);color:#e5e7eb;font-size:14px}
 .search-input:focus{outline:none;border-color:#22d3ee}
 .btn-primary{border-radius:999px;border:none;padding:6px 14px;background:linear-gradient(135deg,#1d4ed8,#22d3ee);color:#e5e7eb;font-size:14px;font-weight:600;cursor:pointer}
-.genre-chip-list{margin-top:8px;display:flex;flex-wrap:wrap;gap:8px}
-.genre-chip{padding:4px 10px;border-radius:999px;background:rgba(15,23,42,.95);border:1px solid rgba(30,64,175,.7);font-size:12px;color:#bfdbfe;cursor:pointer}
+
+/* GENRE CHIPS: 2 per baris */
+.genre-chip-list{margin-top:8px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.genre-chip{padding:4px 10px;border-radius:999px;background:rgba(15,23,42,.95);border:1px solid rgba(30,64,175,.7);font-size:12px;color:#bfdbfe;cursor:pointer;width:100%;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
 .explore-tabs{margin-top:6px;margin-bottom:10px;display:flex;gap:8px}
 .explore-tab{flex:1;padding:6px 12px;border-radius:999px;border:none;background:rgba(15,23,42,.95);color:#9ca3af;font-size:14px;cursor:pointer;transition:background .15s ease,color .15s ease,transform .1s ease}
 .explore-tab:active{transform:scale(.97)}
