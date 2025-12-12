@@ -33,22 +33,33 @@ async function performSearch(query) {
 
   let json;
   try {
-    json = await apiGet(`/anime/search/${enc}`);
+    // ✅ endpoint baru (query param q)
+    json = await apiGet(`/anime/samehadaku/search?q=${enc}`);
   } catch {
     return;
   }
-  if (!json || json.status !== "success") return;
 
-  const list = json.data || [];
+  if (!json || json.status !== "success" || !json.data) return;
+
+  const list = Array.isArray(json.data.animeList) ? json.data.animeList : [];
+
   searchResultGrid.innerHTML = "";
   searchResultInfo.textContent = `${list.length} hasil untuk "${q}"`;
 
   list.forEach((a) => {
-    const card = createAnimeCard(a, {
-      rating: a.rating && a.rating !== "" ? a.rating : "N/A",
-      badgeBottom: a.status || "",
-      meta: (a.genres && a.genres.map((g) => g.name).join(", ")) || "",
+    const item = {
+      title: a.title || "-",
+      poster: a.poster || "",
+      slug: a.animeId || "", // penting: animeId = slug detail internal
+      animeId: a.animeId,
+    };
+
+    const card = createAnimeCard(item, {
+      rating: a.score && a.score !== "" ? a.score : "N/A",
+      badgeBottom: a.status || a.type || "",
+      meta: (a.genreList && a.genreList.map((g) => g.title).join(", ")) || "",
     });
+
     searchResultGrid.appendChild(card);
   });
 
@@ -79,9 +90,7 @@ function handleSearchInput() {
   }
 
   // minimal 2 karakter biar nggak terlalu spam API
-  if (value.length < 2) {
-    return;
-  }
+  if (value.length < 2) return;
 
   clearTimeout(searchDebounceTimer);
   searchDebounceTimer = setTimeout(() => {
