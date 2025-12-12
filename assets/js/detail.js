@@ -231,6 +231,7 @@ async function renderSeasonList(detailData, detailSlug) {
 
     const titleEl = document.createElement("div");
     titleEl.className = "season-title";
+    // ✅ jangan tambahin "Season ..." => title asli aja
     titleEl.textContent = title || "-";
     info.appendChild(titleEl);
 
@@ -251,6 +252,7 @@ async function renderSeasonList(detailData, detailSlug) {
     items.push({ c, imgEl: img, title });
   }
 
+  // ✅ ambil poster season dari endpoint search (judul sama)
   for (const it of items) {
     const { c, imgEl, title } = it;
     const poster = await resolvePosterViaSearch(title, c.animeId);
@@ -282,21 +284,22 @@ async function loadAnimeDetail(slug) {
   const d = json.data;
   const apiSlug = slug;
 
-  // ✅ Judul utama = judul biasa (title)
-  const titleMain = pickFirstString(d?.title) || apiSlug;
+  // ✅ FIX: karena d.title bisa kosong, urutan fallback:
+  // title -> english -> synonyms -> slug
+  const titleMain =
+    pickFirstString(d?.title) ||
+    pickFirstString(d?.english) ||
+    pickFirstString(d?.synonyms) ||
+    apiSlug;
 
-  // ✅ Sub-judul = japanese, fallback english
-  const titleSubRaw = pickFirstString(d?.japanese, d?.english);
+  // ✅ Judul bawah: japanese (kalau ada & beda dari judul utama)
+  const jp = pickFirstString(d?.japanese);
   const titleSub =
-    titleSubRaw && normalizeTitle(titleSubRaw) !== normalizeTitle(titleMain)
-      ? titleSubRaw
-      : "";
+    jp && normalizeTitle(jp) !== normalizeTitle(titleMain) ? jp : "";
 
-  // poster utama: dari detail, fallback search judul
+  // poster utama: dari detail dulu, kalau kosong baru search
   let posterUrl = getPosterFromDetail(d);
-  if (!posterUrl) {
-    posterUrl = await resolvePosterViaSearch(titleMain, apiSlug);
-  }
+  if (!posterUrl) posterUrl = await resolvePosterViaSearch(titleMain, apiSlug);
 
   animeDetailContent.innerHTML = "";
 
@@ -320,12 +323,11 @@ async function loadAnimeDetail(slug) {
   titleEl.textContent = titleMain;
   metaCol.appendChild(titleEl);
 
-  // ✅ judul japanese/english di bawah
   if (titleSub) {
-    const jp = document.createElement("div");
-    jp.className = "detail-sub";
-    jp.textContent = titleSub;
-    metaCol.appendChild(jp);
+    const sub = document.createElement("div");
+    sub.className = "detail-sub";
+    sub.textContent = titleSub;
+    metaCol.appendChild(sub);
   }
 
   const scoreVal =
