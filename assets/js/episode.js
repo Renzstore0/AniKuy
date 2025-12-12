@@ -9,8 +9,6 @@
     player: $("episodePlayer"),
     prev: $("prevEpisodeBtn"),
     next: $("nextEpisodeBtn"),
-    back: $("backButton"),
-    wrap: $("playerDropdownContainer"),
 
     serverBtn: $("serverBtn"),
     qualityBtn: $("qualityBtn"),
@@ -25,20 +23,18 @@
     downloadMenu: $("downloadMenu"),
   };
 
+  let epSlug = null,
+    animeSlug = null,
+    prevSlug = null,
+    nextSlug = null,
+    streamGroups = [],
+    downloadData = null,
+    selectedQuality = null,
+    selectedServerName = null;
+
   const toast = (m) => typeof showToast === "function" && showToast(m);
 
-  const S = {
-    ep: null,
-    anime: null,
-    prev: null,
-    next: null,
-    groups: [], // [{quality, servers:[{name,id,href,url?}]}]
-    downloads: null,
-    q: null,
-    s: null,
-  };
-
-  const apiPath = (href) => {
+  const apiPathFromHref = (href) => {
     const h = String(href || "").trim();
     return h.startsWith("/") ? `/anime${h}` : null;
   };
@@ -46,7 +42,36 @@
   const cleanServer = (title, q) => {
     let t = String(title || "").trim() || "Server";
     if (q) t = t.replace(new RegExp(`\\s*${String(q).trim()}\\s*$`, "i"), "").trim();
-    return (t.replace(/\s*(\d{3,4}p|4k)\s*$/i, "").trim() || "Server");
+    t = t.replace(/\s*(\d{3,4}p|4k)\s*$/i, "").trim();
+    return t || "Server";
+  };
+
+  const rankQ = (label) => {
+    const t = String(label || "").toLowerCase().trim();
+    if (t.includes("4k")) return 4000;
+    const m = t.match(/(\d{3,4})\s*p/);
+    return m ? parseInt(m[1], 10) || 0 : 0;
+  };
+
+  const normalizeGroups = (serverObj) =>
+    (Array.isArray(serverObj?.qualities) ? serverObj.qualities : []).map((q) => {
+      const qLabel = (q?.title ? String(q.title).trim() : "") || "Auto";
+      const servers = (Array.isArray(q?.serverList) ? q.serverList : [])
+        .map((s) => ({
+          name: cleanServer(s?.title, qLabel),
+          id: s?.serverId ? String(s.serverId).trim() : null,
+          href: s?.href ? String(s.href).trim() : null,
+        }))
+        .filter((s) => s && (s.id || s.href));
+
+      return { quality: qLabel, servers, hasServers: !!servers.length };
+    });
+
+  const bestPlayable = (groups) => {
+    const playable = (groups || []).filter((g) => g?.hasServers);
+    if (!playable.length) return null;
+    playable.sort((a, b) => rankQ(b.quality) - rankQ(a.quality));
+    return playable[0] || null;
   };
 
   const pickUrl = (d) =>
@@ -59,173 +84,176 @@
     d?.defaultStreamingUrl ||
     null;
 
-  const normalizeGroups = (serverObj) =>
-    (Array.isArray(serverObj?.qualities) ? serverObj.qualities : [])
-      .map((q) => {
-        const qLabel = (q?.title ? String(q.title).trim() : "") || "Auto";
-        const servers = (Array.isArray(q?.serverList) ? q.serverList : [])
-          .map((s) => ({
-            name: cleanServer(s?.title, qLabel),
-            id: s?.serverId ? String(s.serverId).trim() : null,
-            href: s?.href ? String(s.href).trim() : null,
-            url: s?.url || s?.embed_url || s?.link || null,
-          }))
-          .filter((x) => x && (x.url || x.id || x.href));
-        return servers.length ? { quality: qLabel, servers } : null;
-      })
-      .filter(Boolean);
-
-  const closeMenus = () => {
-    el.serverMenu?.classList.remove("show");
-    el.qualityMenu?.classList.remove("show");
-    el.downloadMenu?.classList.remove("show");
-  };
-
-  const toggle = (menu) => {
-    if (!menu) return;
-    const open = menu.classList.contains("show");
-    closeMenus();
-    if (!open) menu.classList.add("show");
-  };
-
-  const updateLabels = () => {
-    if (el.serverLabel)
-      el.serverLabel.textContent = S.s ? (S.q ? `${S.s} ${S.q}` : S.s) : "Auto";
-    if (el.qualityLabel) el.qualityLabel.textContent = S.q || "Auto";
-  };
-
   async function resolveServerUrl(server) {
     if (!server) return null;
-    if (server.url) return server.url;
 
-    const p = apiPath(server.href);
-    if (p) {
+    const path = apiPathFromHref(server.href);
+    if (path) {
       try {
-        const r = await apiGet(p);
-        const u = pickUrl(r?.data ?? r);
-        if (u) return u;
+        const res = await apiGet(path);
+        const url = pickUrl(res?.data ?? res);
+        if (url) return url;
       } catch {}
     }
 
     if (server.id) {
       try {
-        const r = await apiGet(`/anime/samehadaku/server/${encodeURIComponent(server.id)}`);
-        return pickUrl(r?.data ?? r);
+        const res = await apiGet(`/anime/samehadaku/server/${encodeURIComponent(server.id)}`);
+        return pickUrl(res?.data ?? res);
       } catch {}
     }
 
     return null;
   }
 
-  async function setStream(q, serverName) {
-    if (!el.player || !S.groups.length) return;
+  const closeAll = () => {
+    el.serverMenu?.classList.remove("show");
+    el.qualityMenu?.classList.remove("show");
+    el.downloadMenu?.classList.remove("show");
+  };
 
-    const qUse = q || S.q || S.groups[0]?.quality || null;
-    const g = S.groups.find((x) => x.quality === qUse) || S.groups[0];
-    if (!g) return;
+  document.addEventListener("click", (e) => {
+    const c = $("playerDropdownContainer");
+    if (!c) return;
+    if (!c.contains(e.target) && !e.target.closest(".toolbar-btn")) closeAll();
+  });
 
-    const s = (serverName && g.servers.find((x) => x.name === serverName)) || g.servers[0];
-    if (!s) return;
+  const updateLabels = () => {
+    if (el.serverLabel)
+      el.serverLabel.textContent = selectedServerName
+        ? selectedQuality
+          ? `${selectedServerName} ${selectedQuality}`
+          : selectedServerName
+        : "Auto";
+    if (el.qualityLabel) el.qualityLabel.textContent = selectedQuality || "Auto";
+  };
 
-    const url = await resolveServerUrl(s);
+  async function setStreamSource(qWanted, serverWanted) {
+    if (!el.player || !streamGroups.length) return;
+
+    const wanted = qWanted || selectedQuality || streamGroups[0]?.quality || null;
+    let group = streamGroups.find((g) => g.quality === wanted) || streamGroups[0];
+
+    if (!group?.hasServers) {
+      const best = bestPlayable(streamGroups);
+      if (!best) return toast("Server tidak tersedia");
+      toast(`Server tidak tersedia untuk ${wanted || "kualitas ini"}`);
+      group = best;
+    }
+
+    const server =
+      (serverWanted && group.servers.find((s) => s.name === serverWanted)) || group.servers[0];
+    if (!server) return toast("Server tidak tersedia");
+
+    const url = await resolveServerUrl(server);
     if (!url) return toast("Gagal memuat server");
 
     el.player.src = url;
-    S.q = g.quality || null;
-    S.s = s.name || null;
+    selectedQuality = group.quality || null;
+    selectedServerName = server.name || null;
     updateLabels();
   }
 
-  const renderServerMenu = () => {
-    const m = el.serverMenu;
-    if (!m) return;
-    m.innerHTML = "";
+  function renderServerMenu() {
+    if (!el.serverMenu) return;
+    el.serverMenu.innerHTML = "";
 
-    if (!S.groups.length) {
-      m.innerHTML = '<div class="dropdown-empty">Server tidak tersedia</div>';
+    const best = bestPlayable(streamGroups);
+    if (!streamGroups.length || !best) {
+      el.serverMenu.innerHTML = '<div class="dropdown-empty">Server tidak tersedia</div>';
       return;
     }
 
-    m.innerHTML = '<div class="dropdown-title">Pilih Server</div>';
+    el.serverMenu.innerHTML = '<div class="dropdown-title">Pilih Server</div>';
+
+    let g = streamGroups.find((x) => x.quality === selectedQuality);
+    if (!g?.hasServers) g = best;
+
+    const q = g.quality || "Auto";
     const frag = document.createDocumentFragment();
 
-    S.groups.forEach((g) => {
-      const q = g.quality || "Auto";
-      g.servers.forEach((s) => {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.className = "dropdown-item";
-        if (S.s === s.name && S.q === q) b.classList.add("active");
-        b.textContent = `${s.name || "Server"} ${q}`.trim();
-        b.addEventListener("click", () => {
-          setStream(q, s.name || null);
-          closeMenus();
-          toast(`Server: ${s.name || "Server"} ${q}`);
-        });
-        frag.appendChild(b);
-      });
-    });
-
-    m.appendChild(frag);
-  };
-
-  const renderQualityMenu = () => {
-    const m = el.qualityMenu;
-    if (!m) return;
-    m.innerHTML = "";
-
-    if (!S.groups.length) {
-      m.innerHTML = '<div class="dropdown-empty">Kualitas tidak tersedia</div>';
-      return;
-    }
-
-    m.innerHTML = '<div class="dropdown-title">Pilih Kualitas Streaming</div>';
-
-    const frag = document.createDocumentFragment();
-    [...new Set(S.groups.map((g) => g.quality))].forEach((q) => {
+    g.servers.forEach((s) => {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "dropdown-item";
-      if (S.q === q) b.classList.add("active");
-      b.textContent = q || "Auto";
+      if (selectedServerName === s.name && selectedQuality === q) b.classList.add("active");
+      b.textContent = `${s.name || "Server"} ${q}`.trim();
       b.addEventListener("click", () => {
-        setStream(q || null, null);
-        closeMenus();
-        toast(`Kualitas: ${q || "Auto"}`);
+        setStreamSource(q, s.name || null);
+        closeAll();
+        toast(`Server: ${s.name || "Server"} ${q}`);
       });
       frag.appendChild(b);
     });
 
-    m.appendChild(frag);
-  };
+    el.serverMenu.appendChild(frag);
+  }
 
-  const renderDownloadMenu = () => {
-    const m = el.downloadMenu;
-    if (!m) return;
-    m.innerHTML = "";
+  function renderQualityMenu() {
+    if (!el.qualityMenu) return;
+    el.qualityMenu.innerHTML = "";
 
-    const formats = Array.isArray(S.downloads) ? S.downloads : [];
-    if (!formats.length) {
-      m.innerHTML = '<div class="dropdown-empty">Link unduhan belum tersedia</div>';
+    if (!streamGroups.length) {
+      el.qualityMenu.innerHTML = '<div class="dropdown-empty">Kualitas tidak tersedia</div>';
       return;
     }
 
-    m.innerHTML = '<div class="dropdown-title">Unduh berdasarkan kualitas</div>';
+    el.qualityMenu.innerHTML = '<div class="dropdown-title">Pilih Kualitas Streaming</div>';
+    const frag = document.createDocumentFragment();
+
+    streamGroups.forEach((g) => {
+      const q = g.quality || "Auto";
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "dropdown-item";
+      if (selectedQuality === q) b.classList.add("active");
+
+      if (!g.hasServers) {
+        b.disabled = true;
+        b.style.opacity = "0.55";
+        b.style.cursor = "not-allowed";
+      }
+
+      b.textContent = q;
+      b.addEventListener("click", () => {
+        if (!g.hasServers) return toast(`Server tidak tersedia untuk ${q}`);
+        setStreamSource(q, null);
+        closeAll();
+        toast(`Kualitas: ${q}`);
+      });
+
+      frag.appendChild(b);
+    });
+
+    el.qualityMenu.appendChild(frag);
+  }
+
+  function renderDownloadMenu() {
+    if (!el.downloadMenu) return;
+    el.downloadMenu.innerHTML = "";
+
+    const formats = Array.isArray(downloadData) ? downloadData : [];
+    if (!formats.length) {
+      el.downloadMenu.innerHTML = '<div class="dropdown-empty">Link unduhan belum tersedia</div>';
+      return;
+    }
+
+    el.downloadMenu.innerHTML = '<div class="dropdown-title">Unduh berdasarkan kualitas</div>';
     const frag = document.createDocumentFragment();
     let added = 0;
 
     formats.forEach((fmt, idx) => {
-      const title = (fmt?.title ? String(fmt.title).trim() : "") || "Format";
-      const qualities = Array.isArray(fmt?.qualities) ? fmt.qualities : [];
-      if (!qualities.length) return;
+      const fmtTitle = (fmt?.title ? String(fmt.title).trim() : "") || "Format";
+      const qs = Array.isArray(fmt?.qualities) ? fmt.qualities : [];
+      if (!qs.length) return;
 
       const h = document.createElement("div");
       h.className = "dropdown-subtitle";
-      h.textContent = title;
+      h.textContent = fmtTitle;
       if (idx > 0) h.style.marginTop = "6px";
       frag.appendChild(h);
 
-      qualities.forEach((q) => {
+      qs.forEach((q) => {
         const qTitle = (q?.title ? String(q.title).trim() : "") || "Auto";
         (Array.isArray(q?.urls) ? q.urls : []).forEach((u) => {
           const url = (u?.url ? String(u.url).trim() : "") || "";
@@ -244,35 +272,36 @@
       });
     });
 
-    m.appendChild(frag);
-    if (!added) m.innerHTML += '<div class="dropdown-empty">Link unduhan belum tersedia</div>';
-  };
+    el.downloadMenu.appendChild(frag);
+    if (!added) el.downloadMenu.innerHTML += '<div class="dropdown-empty">Link unduhan belum tersedia</div>';
+  }
 
-  const share = () => {
-    const epName = (el.title?.textContent || document.title || "Episode")
-      .replace(/^AniKuy\s*-\s*/i, "")
-      .trim();
+  // ✅ format share sesuai permintaan: 2 baris (teks + url)
+  function handleShare() {
+    const name = (el.title?.textContent || document.title || "Episode").trim();
+    const url = epSlug
+      ? `${location.origin}${location.pathname}?slug=${epSlug}`
+      : location.href;
 
-    const url = S.ep ? `${location.origin}${location.pathname}?slug=${S.ep}` : location.href;
-    const text = `Tonton ${epName} di AniKuy\n${url}`;
-    const title = `Tonton ${epName} di AniKuy`;
+    const copyText = `Tonton ${name} di AniKuy\n${url}`;
+    const shareTitle = `Tonton ${name} di AniKuy`;
 
-    if (navigator.share) return navigator.share({ title, text: title, url }).catch(() => {});
+    if (navigator.share) return navigator.share({ title: shareTitle, text: shareTitle, url }).catch(() => {});
     if (navigator.clipboard?.writeText)
-      return navigator.clipboard.writeText(text).then(
+      return navigator.clipboard.writeText(copyText).then(
         () => toast("Link episode disalin"),
         () => toast("Gagal menyalin link")
       );
 
-    window.prompt("Salin teks ini:", text);
-  };
+    window.prompt("Salin teks ini:", copyText);
+  }
 
-  async function loadEpisode(epSlug) {
+  async function loadEpisode(slug) {
     if (!el.player || !el.title) return;
 
     let json;
     try {
-      json = await apiGet(`/anime/samehadaku/episode/${encodeURIComponent(epSlug)}`);
+      json = await apiGet(`/anime/samehadaku/episode/${encodeURIComponent(slug)}`);
     } catch {
       return toast("Gagal memuat episode");
     }
@@ -280,76 +309,85 @@
     const d = json?.status === "success" ? json.data : null;
     if (!d) return toast("Episode tidak ditemukan");
 
-    S.ep = epSlug;
-    S.anime = d.animeId || S.anime;
-    S.prev = d.hasPrevEpisode ? d?.prevEpisode?.episodeId || null : null;
-    S.next = d.hasNextEpisode ? d?.nextEpisode?.episodeId || null : null;
+    epSlug = slug;
+    animeSlug = d.animeId || animeSlug;
+    prevSlug = d.hasPrevEpisode ? d?.prevEpisode?.episodeId || null : null;
+    nextSlug = d.hasNextEpisode ? d?.nextEpisode?.episodeId || null : null;
 
-    if (el.back && S.anime) el.back.dataset.href = `/anime/detail?slug=${encodeURIComponent(S.anime)}`;
+    const backButton = $("backButton");
+    if (backButton && animeSlug)
+      backButton.dataset.href = `/anime/detail?slug=${encodeURIComponent(animeSlug)}`;
 
     el.title.textContent = d.title || "Episode";
+
+    // tampil cepat pakai default dulu
     if (d.defaultStreamingUrl) el.player.src = d.defaultStreamingUrl;
     else el.player.removeAttribute("src");
 
-    S.groups = normalizeGroups(d.server || {});
-    S.downloads = Array.isArray(d?.downloadUrl?.formats) ? d.downloadUrl.formats : null;
+    streamGroups = normalizeGroups(d.server || {});
+    downloadData = Array.isArray(d?.downloadUrl?.formats) ? d.downloadUrl.formats : null;
 
-    const g0 = S.groups[0];
-    const s0 = g0?.servers?.[0];
-    S.q = s0 ? g0.quality || null : null;
-    S.s = s0 ? s0.name || null : null;
+    // pilih kualitas tertinggi yang playable
+    const best = bestPlayable(streamGroups);
+    if (best?.servers?.length) {
+      selectedQuality = best.quality || null;
+      selectedServerName = best.servers[0].name || null;
+      setStreamSource(selectedQuality, selectedServerName); // override ke best
+    } else {
+      selectedQuality = streamGroups[0]?.quality || null;
+      selectedServerName = null;
+      updateLabels();
+    }
 
-    updateLabels();
-    if (el.prev) el.prev.disabled = !S.prev;
-    if (el.next) el.next.disabled = !S.next;
+    if (el.prev) el.prev.disabled = !prevSlug;
+    if (el.next) el.next.disabled = !nextSlug;
 
     renderServerMenu();
     renderQualityMenu();
     renderDownloadMenu();
 
     const p = new URLSearchParams(location.search);
-    p.set("slug", epSlug);
+    p.set("slug", slug);
     history.replaceState({}, "", `${location.pathname}?${p.toString()}`);
   }
 
-  // close menus on outside click
-  document.addEventListener("click", (e) => {
-    if (!el.wrap) return;
-    if (!el.wrap.contains(e.target) && !e.target.closest(".toolbar-btn")) closeMenus();
-  });
-
-  el.prev?.addEventListener("click", () => S.prev && loadEpisode(S.prev));
-  el.next?.addEventListener("click", () => S.next && loadEpisode(S.next));
+  // ========= listeners =========
+  el.prev?.addEventListener("click", () => prevSlug && loadEpisode(prevSlug));
+  el.next?.addEventListener("click", () => nextSlug && loadEpisode(nextSlug));
 
   el.serverBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
-    if (!S.groups.length) return;
     renderServerMenu();
-    toggle(el.serverMenu);
+    const open = el.serverMenu?.classList.contains("show");
+    closeAll();
+    if (!open) el.serverMenu?.classList.add("show");
   });
 
   el.qualityBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
-    if (!S.groups.length) return;
     renderQualityMenu();
-    toggle(el.qualityMenu);
+    const open = el.qualityMenu?.classList.contains("show");
+    closeAll();
+    if (!open) el.qualityMenu?.classList.add("show");
   });
 
   el.downloadBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
-    if (!S.downloads) return toast("Link unduhan belum tersedia");
+    if (!downloadData) return toast("Link unduhan belum tersedia");
     renderDownloadMenu();
-    toggle(el.downloadMenu);
+    const open = el.downloadMenu?.classList.contains("show");
+    closeAll();
+    if (!open) el.downloadMenu?.classList.add("show");
   });
 
   el.shareBtn?.addEventListener("click", (e) => {
     e.stopPropagation();
-    share();
+    handleShare();
   });
 
   document.addEventListener("DOMContentLoaded", () => {
-    const epSlug = new URLSearchParams(location.search).get("slug");
-    if (!epSlug) return toast("Episode tidak ditemukan");
-    loadEpisode(epSlug);
+    const s = new URLSearchParams(location.search).get("slug");
+    if (!s) return toast("Episode tidak ditemukan");
+    loadEpisode(s);
   });
 })();
