@@ -1,23 +1,130 @@
-// ====== core.js (global utils) ======
-
 const BASE_URL = "https://www.sankavollerei.com";
+const LS_KEY_FAVORITES = "anikuy_favorites";
+const LS_KEY_THEME = "anikuy_theme";
+const THEME_DARK = "dark";
+const THEME_LIGHT = "light";
 
-// ========== TOAST ==========
-function showToast(message) {
-  const toast = document.createElement("div");
-  toast.className = "toast";
-  toast.textContent = message;
-  document.body.appendChild(toast);
-
-  setTimeout(() => toast.classList.add("show"), 10);
-
-  setTimeout(() => {
-    toast.classList.remove("show");
-    setTimeout(() => toast.remove(), 300);
-  }, 2500);
+function applyTheme(theme) {
+  const body = document.body;
+  if (!body) return;
+  body.classList.remove("theme-dark", "theme-light");
+  const t = theme === THEME_LIGHT ? THEME_LIGHT : THEME_DARK;
+  body.classList.add(t === THEME_LIGHT ? "theme-light" : "theme-dark");
 }
 
-// ========== FETCH API ==========
+function initThemeFromStorage() {
+  try {
+    const saved = localStorage.getItem(LS_KEY_THEME);
+    const theme = saved === THEME_LIGHT ? THEME_LIGHT : THEME_DARK;
+    applyTheme(theme);
+    return theme;
+  } catch (e) {
+    applyTheme(THEME_DARK);
+    return THEME_DARK;
+  }
+}
+
+/**
+ * Kontrol tema (dipakai di halaman Settings)
+ * - Tombol pill: #themeToggle
+ * - Bottom sheet: #themeSheet
+ *   - overlay: #themeSheetOverlay
+ *   - tombol Tutup: #themeSheetClose
+ *   - radio: input[name="theme-option"]
+ */
+function bindThemeControls(currentTheme) {
+  const radios = document.querySelectorAll('input[name="theme-option"]');
+
+  const themeToggle = document.getElementById("themeToggle");
+  const currentLabelEl = document.getElementById("currentThemeLabel");
+
+  const themeSheet = document.getElementById("themeSheet");
+  const themeSheetClose = document.getElementById("themeSheetClose");
+  const themeSheetOverlay = document.getElementById("themeSheetOverlay");
+
+  function labelText(theme) {
+    return theme === THEME_LIGHT
+      ? "Putih & Hitam"
+      : "Biru & Hitam (Default)";
+  }
+
+  function updateCurrentLabel(theme) {
+    if (currentLabelEl) {
+      currentLabelEl.textContent = labelText(theme);
+    }
+  }
+
+  updateCurrentLabel(currentTheme);
+
+  function openSheet() {
+    if (!themeSheet) return;
+    themeSheet.classList.add("show");
+    themeSheet.setAttribute("aria-hidden", "false");
+    if (themeToggle) {
+      themeToggle.setAttribute("aria-expanded", "true");
+    }
+  }
+
+  function closeSheet() {
+    if (!themeSheet) return;
+    themeSheet.classList.remove("show");
+    themeSheet.setAttribute("aria-hidden", "true");
+    if (themeToggle) {
+      themeToggle.setAttribute("aria-expanded", "false");
+    }
+  }
+
+  // buka / tutup bottom sheet dari tombol pill
+  if (themeToggle && themeSheet) {
+    themeToggle.addEventListener("click", () => {
+      const isOpen = themeSheet.classList.contains("show");
+      if (isOpen) {
+        closeSheet();
+      } else {
+        openSheet();
+      }
+    });
+  }
+
+  // tutup dari tombol dan overlay
+  if (themeSheetClose) {
+    themeSheetClose.addEventListener("click", closeSheet);
+  }
+  if (themeSheetOverlay) {
+    themeSheetOverlay.addEventListener("click", closeSheet);
+  }
+
+  // kalau tidak ada radio, selesai
+  if (!radios.length) return;
+
+  // set radio & handle perubahan tema
+  radios.forEach((radio) => {
+    radio.checked = radio.value === currentTheme;
+    radio.addEventListener("change", (e) => {
+      const value = e.target.value === THEME_LIGHT ? THEME_LIGHT : THEME_DARK;
+      localStorage.setItem(LS_KEY_THEME, value);
+      applyTheme(value);
+      updateCurrentLabel(value);
+      if (typeof showToast === "function") {
+        showToast("Tema berhasil diubah");
+      }
+      closeSheet();
+    });
+  });
+}
+
+// TOAST
+function showToast(msg) {
+  const toastEl = document.getElementById("toast");
+  if (!toastEl) return;
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  setTimeout(() => {
+    toastEl.classList.remove("show");
+  }, 1600);
+}
+
+// FETCH API SANKA
 async function apiGet(path) {
   try {
     const res = await fetch(`${BASE_URL}${path}`);
@@ -30,59 +137,49 @@ async function apiGet(path) {
   }
 }
 
-// ---------------- UTIL DATA (support beberapa bentuk JSON) ----------------
-
-function getAnimeSlug(item) {
-  if (!item) return "";
-  return item.slug || item.animeId || item.anime_id || item.id || "";
+// --------- NORMALIZER (biar support response baru) ----------
+function pickSlug(item) {
+  return (item && (item.slug || item.animeId || item.anime_id || item.id)) || "";
+}
+function pickTitle(item) {
+  return (
+    (item &&
+      (item.title ||
+        item.anime_name ||
+        item.name ||
+        item.judul ||
+        item.japanese_title)) ||
+    ""
+  );
+}
+function pickPoster(item) {
+  return (item && (item.poster || item.image || item.thumbnail)) || "";
 }
 
-function getAnimeTitle(item) {
-  if (!item) return "";
-  return item.title || item.anime_name || item.name || "";
-}
-
-function getAnimePoster(item) {
-  if (!item) return "";
-  return item.poster || item.image || item.thumbnail || "";
-}
-
-function getAnimeRating(item) {
-  if (!item) return "";
-  if (item.rating != null) return item.rating;
-
-  // samehadaku detail: score: { value, users }
-  if (item.score != null) {
-    if (typeof item.score === "object" && item.score.value != null)
-      return item.score.value;
-    return item.score;
-  }
-
-  // top10: score: "8.73"
-  if (item.score != null) return item.score;
-
-  return "";
-}
-
-// ---------------- FAVORITES (MY LIST) ----------------
-
-const FAVORITE_KEY = "anikuy_favorites";
-
-function getFavorites() {
+// FAVORITES (My List)
+function loadFavoritesFromStorage() {
   try {
-    const raw = localStorage.getItem(FAVORITE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const raw = localStorage.getItem(LS_KEY_FAVORITES);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
   }
 }
 
-function setFavorites(list) {
+let favorites = loadFavoritesFromStorage();
+
+function saveFavorites() {
   try {
-    localStorage.setItem(FAVORITE_KEY, JSON.stringify(list));
-  } catch (err) {
-    console.error(err);
+    localStorage.setItem(LS_KEY_FAVORITES, JSON.stringify(favorites || []));
+  } catch {
+    // abaikan
   }
+}
+
+function getFavorites() {
+  return Array.isArray(favorites) ? favorites.slice() : [];
 }
 
 function isFavorite(slug) {
@@ -91,104 +188,93 @@ function isFavorite(slug) {
 }
 
 function addFavorite(anime) {
-  const slug = getAnimeSlug(anime);
+  const slug = anime && (anime.slug || pickSlug(anime));
   if (!anime || !slug) return;
   if (isFavorite(slug)) return;
 
   const fav = {
     slug,
-    title: getAnimeTitle(anime),
-    poster: getAnimePoster(anime),
-    rating: getAnimeRating(anime),
-    episode_count:
-      anime.episode_count != null
-        ? anime.episode_count
-        : anime.episodes != null
-        ? anime.episodes
-        : "",
+    title: anime.title || pickTitle(anime) || "",
+    poster: anime.poster || pickPoster(anime) || "",
+    rating: anime.rating || "",
+    episode_count: anime.episode_count || anime.episodes || "",
     status: anime.status || "",
   };
 
-  const favorites = getFavorites();
   favorites.push(fav);
-  setFavorites(favorites);
-  showToast("Ditambahkan ke Favorit");
+  saveFavorites();
+
+  if (typeof showToast === "function") {
+    showToast("Ditambahkan ke My List");
+  }
 }
 
 function removeFavorite(slug) {
   if (!slug) return;
-  const favorites = getFavorites().filter((a) => a.slug !== slug);
-  setFavorites(favorites);
-  showToast("Dihapus dari Favorit");
+  favorites = getFavorites().filter((a) => a.slug !== slug);
+  saveFavorites();
+
+  if (typeof showToast === "function") {
+    showToast("Dihapus dari My List");
+  }
 }
 
-// ---------------- UI HELPERS ----------------
-
-function formatEpisodeLabel(episodes) {
-  if (episodes == null || episodes === "") return "";
-  return `Eps ${episodes}`;
-}
-
+// BIKIN KARTU ANIME (dipakai di semua page) — UI sama, cuma fallback data
 function createAnimeCard(item, opts = {}) {
   const card = document.createElement("div");
   card.className = "anime-card";
 
-  const posterSrc = getAnimePoster(item) || "/assets/img/placeholder-poster.png";
-  const titleText = getAnimeTitle(item) || "-";
-
-  // Poster
-  const imgWrap = document.createElement("div");
-  imgWrap.className = "anime-poster-wrap";
+  const thumb = document.createElement("div");
+  thumb.className = "anime-thumb";
 
   const img = document.createElement("img");
-  img.src = posterSrc;
-  img.alt = titleText;
+  img.src = item.poster || pickPoster(item) || "/assets/img/placeholder-poster.png";
+  img.alt = item.title || pickTitle(item) || "-";
+  thumb.appendChild(img);
 
-  imgWrap.appendChild(img);
-
-  // Badge top
   if (opts.badgeTop) {
-    const badgeTop = document.createElement("div");
-    badgeTop.className = "badge badge-top";
-    badgeTop.textContent = opts.badgeTop;
-    imgWrap.appendChild(badgeTop);
+    const b = document.createElement("div");
+    b.className = "badge-top-left";
+    b.textContent = opts.badgeTop;
+    thumb.appendChild(b);
   }
 
-  // Badge bottom
   if (opts.badgeBottom) {
-    const badgeBottom = document.createElement("div");
-    badgeBottom.className = "badge badge-bottom";
-    badgeBottom.textContent = opts.badgeBottom;
-    imgWrap.appendChild(badgeBottom);
+    const b = document.createElement("div");
+    b.className = "badge-bottom-left";
+    b.textContent = opts.badgeBottom;
+    thumb.appendChild(b);
   }
 
-  card.appendChild(imgWrap);
-
-  // Title
-  const titleEl = document.createElement("div");
-  titleEl.className = "anime-title";
-  titleEl.textContent = titleText;
-  card.appendChild(titleEl);
-
-  // Meta (optional)
-  if (opts.meta) {
-    const meta = document.createElement("div");
-    meta.className = "anime-meta";
-    meta.textContent = opts.meta;
-    card.appendChild(meta);
-  }
-
-  // Rating (optional)
   if (opts.rating) {
-    const rating = document.createElement("div");
-    rating.className = "anime-rating";
-    rating.textContent = `⭐ ${opts.rating}`;
-    card.appendChild(rating);
+    const rate = document.createElement("div");
+    rate.className = "badge-rating";
+    const star = document.createElement("span");
+    star.className = "star";
+    star.textContent = "★";
+    const val = document.createElement("span");
+    val.textContent = opts.rating;
+    rate.appendChild(star);
+    rate.appendChild(val);
+    thumb.appendChild(rate);
   }
 
-  // Click -> detail
+  card.appendChild(thumb);
+
+  const title = document.createElement("div");
+  title.className = "anime-title";
+  title.textContent = item.title || pickTitle(item) || "-";
+  card.appendChild(title);
+
+  if (opts.meta) {
+    const m = document.createElement("div");
+    m.className = "anime-meta";
+    m.textContent = opts.meta;
+    card.appendChild(m);
+  }
+
   card.addEventListener("click", () => {
-    const slug = getAnimeSlug(item);
+    const slug = item.slug || pickSlug(item);
     if (!slug) return;
     const url = `/anime/detail?slug=${encodeURIComponent(slug)}`;
     window.location.href = url;
@@ -196,3 +282,83 @@ function createAnimeCard(item, opts = {}) {
 
   return card;
 }
+
+// GLOBAL UI
+document.addEventListener("DOMContentLoaded", () => {
+  const currentTheme = initThemeFromStorage();
+  bindThemeControls(currentTheme);
+
+  const backButton = document.getElementById("backButton");
+  const searchButton = document.getElementById("searchButton");
+  const settingsButton = document.getElementById("settingsButton");
+  const pageType = document.body.dataset.page || "";
+  const basePages = new Set(["home", "explore", "my-list", "profile"]);
+
+  // klik logo -> home
+  const logoWrap = document.querySelector(".logo-wrap");
+  if (logoWrap) {
+    logoWrap.style.cursor = "pointer";
+    logoWrap.addEventListener("click", () => {
+      window.location.href = "/";
+    });
+  }
+
+  if (backButton) {
+    backButton.style.visibility = basePages.has(pageType) ? "hidden" : "visible";
+
+    backButton.addEventListener("click", () => {
+      const customHref = backButton.dataset.href;
+      if (customHref) {
+        window.location.href = customHref;
+      } else {
+        window.history.back();
+      }
+    });
+  }
+
+  if (searchButton) {
+    searchButton.addEventListener("click", () => {
+      window.location.href = "/search";
+    });
+  }
+
+  if (settingsButton) {
+    settingsButton.addEventListener("click", () => {
+      window.location.href = "/settings";
+    });
+  }
+
+  const mainContent = document.getElementById("mainContent");
+  const bottomNav = document.querySelector(".bottom-nav");
+  if (mainContent && bottomNav) {
+    let lastScrollY = 0;
+    let navHidden = false;
+
+    mainContent.addEventListener("scroll", () => {
+      const current = mainContent.scrollTop;
+
+      if (current > lastScrollY + 10 && !navHidden) {
+        bottomNav.classList.add("hide");
+        navHidden = true;
+      } else if (current < lastScrollY - 10 && navHidden) {
+        bottomNav.classList.remove("hide");
+        navHidden = false;
+      }
+
+      lastScrollY = current;
+    });
+  }
+
+  document.addEventListener("contextmenu", (e) => e.preventDefault());
+  document.addEventListener("dragstart", (e) => e.preventDefault());
+  document.addEventListener("keydown", (e) => {
+    const key = e.key.toLowerCase();
+    if (
+      (e.ctrlKey && ["s", "u", "p"].includes(key)) ||
+      (e.ctrlKey && e.shiftKey && ["i", "j", "c"].includes(key)) ||
+      key === "f12"
+    ) {
+      e.preventDefault();
+    }
+  });
+});
