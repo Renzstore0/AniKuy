@@ -12,19 +12,46 @@ const detailSlugFromUrl = detailParams.get("slug");
 
 let episodeSearchWrap = null;
 
-// ---------- UTIL SEASON (POLA KAYAK KODE LAMA) ----------
+// =====================================================
+// UTIL: TITLE / SEASON (biar season work dari search)
+// =====================================================
 
-function normalizeBaseTitle(title) {
-  if (!title) return "";
-  return String(title)
+function cleanTextBasic(str) {
+  return String(str || "")
     .toLowerCase()
-    .replace(/season\s*\d+(\s*part\s*\d+)?/gi, "")
-    .replace(/\d+(st|nd|rd|th)\s*season/gi, "")
-    .replace(/\(.*?\)/g, "")
-    .replace(/subtitle indonesia/gi, "")
-    .replace(/\s+eps?\.?\s*\d+.*/gi, "")
+    .replace(/\(.*?\)/g, " ") // buang (...) termasuk subtitle
+    .replace(/subtitle indonesia/gi, " ")
+    .replace(/\s+eps?\.?\s*\d+.*/gi, " ") // buang "Eps 12 ..."
     .replace(/\s+/g, " ")
     .trim();
+}
+
+// base full: hapus season/part tapi masih menyisakan subtitle kalau ada (kecuali yg di (...))
+function normalizeBaseTitleFull(title) {
+  if (!title) return "";
+  let t = cleanTextBasic(title);
+
+  // hapus pola season & part
+  t = t
+    .replace(/season\s*\d+(\s*part\s*\d+)?/gi, " ")
+    .replace(/\d+(st|nd|rd|th)\s*season/gi, " ")
+    .replace(/\bpart\s*\d+\b/gi, " ");
+
+  // rapihin simbol/punct: "dr. stone:" => "dr stone"
+  t = t.replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+
+  return t;
+}
+
+// base root: ambil 2-3 kata awal sebagai "kunci franchise"
+function normalizeBaseTitleRoot(title) {
+  const full = normalizeBaseTitleFull(title);
+  if (!full) return "";
+
+  const words = full.split(" ").filter(Boolean);
+  if (words.length >= 3) return `${words[0]} ${words[1]} ${words[2]}`.trim();
+  if (words.length >= 2) return `${words[0]} ${words[1]}`.trim();
+  return full;
 }
 
 function hasSeasonKeyword(title) {
@@ -32,12 +59,14 @@ function hasSeasonKeyword(title) {
   const t = String(title).toLowerCase();
   if (/season\s*\d+/.test(t)) return true;
   if (/\d+(st|nd|rd|th)\s*season/.test(t)) return true;
+  if (/part\s*\d+/.test(t)) return true;
   return false;
 }
 
 function getSeasonSearchQuery(title) {
-  const base = normalizeBaseTitle(title);
-  return base || String(title || "").trim();
+  // pakai yang paling "root" biar hasil search luas (contoh: dr stone)
+  const root = normalizeBaseTitleRoot(title);
+  return root || normalizeBaseTitleFull(title) || String(title || "").trim();
 }
 
 function extractSeasonNumber(title) {
@@ -69,7 +98,9 @@ function formatSeasonTitle(title) {
     .trim();
 }
 
-// ---------- TAB EPISODE / SEASON ----------
+// =====================================================
+// TAB EPISODE / SEASON
+// =====================================================
 
 function showEpisodeTab() {
   if (!episodeList || !seasonList || !tabEpisodes || !tabSeasons) return;
@@ -91,14 +122,16 @@ function showSeasonTab() {
   if (episodeSearchWrap) episodeSearchWrap.classList.add("hidden");
 }
 
-// ---------- LOAD SEASON LIST (PAKAI SEARCH ENDPOINT BARU) ----------
+// =====================================================
+// LOAD SEASON LIST (pakai endpoint search baru)
+// =====================================================
 
 async function loadSeasonListForAnime(detailData, detailSlug) {
   if (!seasonList) return;
 
   seasonList.innerHTML = "";
 
-  // cari judul yang bisa dipakai buat season
+  // Judul yang dipakai buat season: utamakan english/synonyms (karena title bisa kosong)
   const titleForSeason =
     (detailData && String(detailData.english || "").trim()) ||
     (detailData && String(detailData.synonyms || "").trim()) ||
@@ -124,14 +157,19 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
 
   let json;
   try {
-    json = await apiGet(`/anime/samehadaku/search?q=${encodeURIComponent(searchQuery)}`);
+    json = await apiGet(
+      `/anime/samehadaku/search?q=${encodeURIComponent(searchQuery)}`
+    );
   } catch {
     return;
   }
+
   if (!json || json.status !== "success" || !json.data) return;
 
   const list = Array.isArray(json.data.animeList) ? json.data.animeList : [];
-  const currentBase = normalizeBaseTitle(titleForSeason);
+
+  const currentFull = normalizeBaseTitleFull(titleForSeason);
+  const currentRoot = normalizeBaseTitleRoot(titleForSeason);
 
   const relatedAll = [];
   let hasSeasonLike = hasSeasonKeyword(titleForSeason);
@@ -139,14 +177,23 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
   list.forEach((a) => {
     if (!a || !a.animeId || !a.title) return;
 
-    const base = normalizeBaseTitle(a.title);
-    if (!base || base !== currentBase) return;
+    const otherFull = normalizeBaseTitleFull(a.title);
+    const otherRoot = normalizeBaseTitleRoot(a.title);
+
+    const matchFull = currentFull && otherFull && otherFull === currentFull;
+    const matchRoot =
+      currentRoot &&
+      otherRoot &&
+      otherRoot === currentRoot &&
+      currentRoot.split(" ").length >= 2; // minimal 2 kata biar gak ngawur
+
+    if (!matchFull && !matchRoot) return;
 
     relatedAll.push(a);
     if (hasSeasonKeyword(a.title)) hasSeasonLike = true;
   });
 
-  // kalau gak ada indikasi season sama sekali, tampilkan kosong
+  // kalau memang ga ada item "season-like", anggap season belum ada
   if (!hasSeasonLike) {
     const empty = document.createElement("div");
     empty.className = "season-empty";
@@ -158,15 +205,15 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
   const seasons = [];
 
   relatedAll.forEach((a) => {
-    if (a.animeId === detailSlug) return;
-
-    const seasonNumber = extractSeasonNumber(a.title);
+    if (a.animeId === detailSlug) return; // jangan tampilkan yang sedang dibuka
 
     seasons.push({
       slug: a.animeId,
-      title: formatSeasonTitle(a.title), // ✅ judul asli (tanpa "Season ...")
+      title: formatSeasonTitle(a.title), // ✅ judul asli saja
       poster: a.poster || "",
-      seasonNumber,
+      seasonNumber: extractSeasonNumber(a.title),
+      // bonus: biar stable urutannya kalau seasonNumber sama
+      rawTitle: String(a.title || ""),
     });
   });
 
@@ -178,7 +225,12 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
     return;
   }
 
-  seasons.sort((a, b) => (a.seasonNumber || 0) - (b.seasonNumber || 0));
+  seasons.sort((a, b) => {
+    const an = a.seasonNumber || 0;
+    const bn = b.seasonNumber || 0;
+    if (an !== bn) return an - bn;
+    return (a.rawTitle || "").localeCompare(b.rawTitle || "");
+  });
 
   seasons.forEach((s) => {
     const item = document.createElement("div");
@@ -188,7 +240,7 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
     thumb.className = "season-thumb";
 
     const img = document.createElement("img");
-    img.src = s.poster || "/assets/img/placeholder-poster.png";
+    img.src = s.poster || "/assets/img/placeholder-poster.png"; // ✅ poster dari search
     img.alt = s.title || "Season";
     img.onerror = () => {
       img.onerror = null;
@@ -209,15 +261,16 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
     item.appendChild(info);
 
     item.addEventListener("click", () => {
-      const url = `/anime/detail?slug=${encodeURIComponent(s.slug)}`;
-      window.location.href = url;
+      window.location.href = `/anime/detail?slug=${encodeURIComponent(s.slug)}`;
     });
 
     seasonList.appendChild(item);
   });
 }
 
-// ---------- LOAD DETAIL (ENDPOINT BARU) ----------
+// =====================================================
+// LOAD DETAIL (endpoint baru)
+// =====================================================
 
 async function loadAnimeDetail(slug) {
   if (!animeDetailContent) return;
@@ -228,20 +281,21 @@ async function loadAnimeDetail(slug) {
   } catch {
     return;
   }
+
   if (!json || json.status !== "success" || !json.data) return;
 
   const d = json.data;
   const apiSlug = slug;
 
-  // ✅ FIX JUDUL:
-  // - title utama: english -> synonyms -> slug
-  // - title bawah: japanese
+  // ✅ Title utama: english -> synonyms -> slug
   const titleMain =
     (d.english && String(d.english).trim()) ||
     (d.synonyms && String(d.synonyms).trim()) ||
     apiSlug;
 
-  const titleJapanese = d.japanese && String(d.japanese).trim() ? String(d.japanese).trim() : "";
+  // ✅ Title bawah: japanese
+  const titleJapanese =
+    d.japanese && String(d.japanese).trim() ? String(d.japanese).trim() : "";
 
   const poster = d.poster || "/assets/img/placeholder-poster.png";
 
@@ -290,7 +344,9 @@ async function loadAnimeDetail(slug) {
     <div><span class="label">Rating:</span> ${scoreVal}</div>
     <div><span class="label">Tipe:</span> ${d.type || "-"}</div>
     <div><span class="label">Status:</span> ${d.status || "-"}</div>
-    <div><span class="label">Episode:</span> ${d.episodes != null ? d.episodes : "?"}</div>
+    <div><span class="label">Episode:</span> ${
+      d.episodes != null ? d.episodes : "?"
+    }</div>
     <div><span class="label">Rilis:</span> ${d.aired || "-"}</div>
     <div><span class="label">Studio:</span> ${d.studios || "-"}</div>
   `;
@@ -306,10 +362,9 @@ async function loadAnimeDetail(slug) {
     chip.textContent = g.title || "-";
     chip.addEventListener("click", () => {
       if (!g.genreId) return;
-      const url = `/anime/genre?slug=${encodeURIComponent(
+      window.location.href = `/anime/genre?slug=${encodeURIComponent(
         g.genreId
       )}&name=${encodeURIComponent(g.title || "")}`;
-      window.location.href = url;
     });
     genresWrap.appendChild(chip);
   });
@@ -330,7 +385,6 @@ async function loadAnimeDetail(slug) {
 
   const playIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   playIcon.setAttribute("viewBox", "0 0 24 24");
-
   const playPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
   playPath.setAttribute("d", "M8 5v14l11-7z");
   playPath.setAttribute("fill", "currentColor");
@@ -345,8 +399,9 @@ async function loadAnimeDetail(slug) {
   playBtn.addEventListener("click", () => {
     const eps = Array.isArray(d.episodeList) ? d.episodeList : [];
     if (!eps.length || !eps[0].episodeId) return;
-    const url = `/anime/episode?slug=${encodeURIComponent(eps[0].episodeId)}`;
-    window.location.href = url;
+    window.location.href = `/anime/episode?slug=${encodeURIComponent(
+      eps[0].episodeId
+    )}`;
   });
 
   const favBtn = document.createElement("button");
@@ -355,7 +410,6 @@ async function loadAnimeDetail(slug) {
 
   const favIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   favIcon.setAttribute("viewBox", "0 0 24 24");
-
   const favPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
   favPath.setAttribute(
     "d",
@@ -401,12 +455,10 @@ async function loadAnimeDetail(slug) {
 
   const paragraphs =
     d.synopsis && Array.isArray(d.synopsis.paragraphs) ? d.synopsis.paragraphs : [];
-
   let cleanSynopsis = paragraphs
     .map((s) => String(s || "").trim())
     .filter(Boolean)
     .join(" ");
-
   if (!cleanSynopsis) cleanSynopsis = "Tidak ada sinopsis.";
 
   syn.textContent = cleanSynopsis;
@@ -472,7 +524,7 @@ async function loadAnimeDetail(slug) {
 
     episodeList.innerHTML = "";
 
-    // tampilkan dari episode terakhir ke awal (biar sama feel lama)
+    // dari terakhir ke awal (feel lama)
     for (let i = eps.length - 1; i >= 0; i--) {
       const ep = eps[i];
       if (!ep) continue;
@@ -488,25 +540,28 @@ async function loadAnimeDetail(slug) {
 
       item.addEventListener("click", () => {
         if (!ep.episodeId) return;
-        const url = `/anime/episode?slug=${encodeURIComponent(ep.episodeId)}`;
-        window.location.href = url;
+        window.location.href = `/anime/episode?slug=${encodeURIComponent(
+          ep.episodeId
+        )}`;
       });
 
       episodeList.appendChild(item);
     }
   }
 
-  // ===== SEASON LIST (POLA SEARCH) =====
+  // ===== SEASON LIST (dari search) =====
   loadSeasonListForAnime(d, apiSlug);
 
   document.title = `AniKuy - ${titleMain}`;
 }
 
-// ---------- INIT ----------
+// =====================================================
+// INIT
+// =====================================================
 
 document.addEventListener("DOMContentLoaded", () => {
   if (!detailSlugFromUrl) {
-    showToast("Slug anime tidak ditemukan");
+    if (typeof showToast === "function") showToast("Slug anime tidak ditemukan");
     return;
   }
 
