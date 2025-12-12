@@ -24,7 +24,7 @@ function normalizeTitle(s) {
   return String(s || "")
     .toLowerCase()
     .replace(/\s+/g, " ")
-    .replace(/[^\p{L}\p{N}\s]/gu, "") // buang simbol (unicode-safe)
+    .replace(/[^\p{L}\p{N}\s]/gu, "")
     .trim();
 }
 
@@ -65,7 +65,6 @@ function normalizeConnections(raw) {
       c?.anime?.slug
     );
 
-    // IMPORTANT: judul asli aja, tanpa tambahan "Season"
     const title = pickFirstString(c.title, c.name, c.animeTitle, c?.anime?.title);
 
     out.push({
@@ -74,7 +73,6 @@ function normalizeConnections(raw) {
     });
   });
 
-  // buang yang bener-bener kosong semua
   return out.filter((x) => x.animeId || x.title);
 }
 
@@ -134,18 +132,15 @@ function findBestMatchFromSearch(list, targetAnimeId, targetTitle) {
   const tid = String(targetAnimeId || "").trim();
   const tnorm = normalizeTitle(targetTitle);
 
-  // 1) prioritas match animeId
   if (tid) {
     const byId = list.find((x) => String(x?.animeId || "").trim() === tid);
     if (byId) return byId;
   }
 
-  // 2) match title normalized (exact)
   if (tnorm) {
     const byTitle = list.find((x) => normalizeTitle(x?.title) === tnorm);
     if (byTitle) return byTitle;
 
-    // 3) match contains (biar lebih fleksibel)
     const byContains = list.find((x) => {
       const nx = normalizeTitle(x?.title);
       return nx.includes(tnorm) || tnorm.includes(nx);
@@ -153,7 +148,6 @@ function findBestMatchFromSearch(list, targetAnimeId, targetTitle) {
     if (byContains) return byContains;
   }
 
-  // 4) fallback: first
   return list[0] || null;
 }
 
@@ -198,8 +192,6 @@ function showSeasonTab() {
 
 // ======================
 // SEASON LIST
-// - title: judul asli (tanpa "Season ...")
-// - poster: ambil dari endpoint search
 // ======================
 async function renderSeasonList(detailData, detailSlug) {
   if (!seasonList) return;
@@ -218,11 +210,10 @@ async function renderSeasonList(detailData, detailSlug) {
     return;
   }
 
-  // render placeholder dulu (biar cepat)
   const items = [];
 
   for (const c of connections) {
-    const title = String(c.title || "").trim(); // judul asli aja
+    const title = String(c.title || "").trim();
     if (!title && !c.animeId) continue;
 
     const item = document.createElement("div");
@@ -260,14 +251,12 @@ async function renderSeasonList(detailData, detailSlug) {
     items.push({ c, imgEl: img, title });
   }
 
-  // ambil poster dari search (sesuai endpoint search.js)
   for (const it of items) {
     const { c, imgEl, title } = it;
     const poster = await resolvePosterViaSearch(title, c.animeId);
     if (poster) safeSetImg(imgEl, poster, title || "Poster");
   }
 
-  // kalau ternyata nggak ada yang kebuild
   if (!seasonList.children.length) {
     const empty = document.createElement("div");
     empty.className = "season-empty";
@@ -293,8 +282,15 @@ async function loadAnimeDetail(slug) {
   const d = json.data;
   const apiSlug = slug;
 
-  const titleMain =
-    pickFirstString(d?.title, d?.english, d?.japanese) || apiSlug;
+  // ✅ Judul utama = judul biasa (title)
+  const titleMain = pickFirstString(d?.title) || apiSlug;
+
+  // ✅ Sub-judul = japanese, fallback english
+  const titleSubRaw = pickFirstString(d?.japanese, d?.english);
+  const titleSub =
+    titleSubRaw && normalizeTitle(titleSubRaw) !== normalizeTitle(titleMain)
+      ? titleSubRaw
+      : "";
 
   // poster utama: dari detail, fallback search judul
   let posterUrl = getPosterFromDetail(d);
@@ -324,10 +320,11 @@ async function loadAnimeDetail(slug) {
   titleEl.textContent = titleMain;
   metaCol.appendChild(titleEl);
 
-  if (d?.japanese) {
+  // ✅ judul japanese/english di bawah
+  if (titleSub) {
     const jp = document.createElement("div");
     jp.className = "detail-sub";
-    jp.textContent = d.japanese;
+    jp.textContent = titleSub;
     metaCol.appendChild(jp);
   }
 
@@ -541,7 +538,7 @@ async function loadAnimeDetail(slug) {
     }
   }
 
-  // ===== SEASON LIST (poster ambil dari search) =====
+  // ===== SEASON LIST =====
   await renderSeasonList(d, apiSlug);
 
   document.title = `AniKuy - ${titleMain}`;
