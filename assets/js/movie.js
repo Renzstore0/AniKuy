@@ -1,15 +1,14 @@
 const movieGrid = document.getElementById("movieGrid");
-const movieLoading = document.getElementById("movieLoading");
+const movieLoadingEl = document.getElementById("movieLoading");
 const movieEnd = document.getElementById("movieEnd");
-const mainContent = document.getElementById("mainContent");
 
 let moviePage = 1;
-let movieHasNext = true;
-let movieIsLoading = false;
+let movieLastPage = 1;
+let movieLoading = false;
 
-function setMovieLoading(isLoading) {
-  movieIsLoading = isLoading;
-  if (movieLoading) movieLoading.classList.toggle("show", isLoading);
+function setMovieLoading(show) {
+  if (!movieLoadingEl) return;
+  movieLoadingEl.classList.toggle("show", !!show);
 }
 
 function setMovieEndVisible(show) {
@@ -17,128 +16,75 @@ function setMovieEndVisible(show) {
   movieEnd.classList.toggle("hidden", !show);
 }
 
-function parseAnimeIdFromHref(href) {
-  if (!href) return "";
-  try {
-    const s = String(href).trim();
-    const parts = s.split("/").filter(Boolean);
-    return parts[parts.length - 1] || "";
-  } catch {
-    return "";
-  }
-}
+async function loadMovieList(page = 1, append = false) {
+  if (!movieGrid || movieLoading) return;
 
-async function loadMovies(page = 1) {
-  if (!movieGrid || movieIsLoading || !movieHasNext) return;
-
+  movieLoading = true;
   setMovieLoading(true);
   setMovieEndVisible(false);
 
+  let json;
   try {
-    const json = await apiGet(
-      `/anime/samehadaku/movies?page=${encodeURIComponent(page)}`
-    );
+    json = await apiGet(`/anime/samehadaku/movies?page=${encodeURIComponent(page)}`);
+  } catch {
+    movieLoading = false;
+    setMovieLoading(false);
+    return;
+  }
 
-    if (!json || json.status !== "success" || !json.data) {
-      if (typeof showToast === "function") showToast("Gagal memuat movie");
-      movieHasNext = false;
-      setMovieEndVisible(true);
-      return;
-    }
+  if (!json || json.status !== "success") {
+    movieLoading = false;
+    setMovieLoading(false);
+    return;
+  }
 
-    const list = Array.isArray(json.data.animeList) ? json.data.animeList : [];
-    const pagination = json.pagination || null;
+  // pagination bisa ada di root (sesuai contoh raw JSON kamu)
+  const pag = json.pagination || {};
+  moviePage = pag.currentPage || page;
+  movieLastPage = pag.totalPages || movieLastPage;
 
-    // render cards
-    list.forEach((a) => {
-      const item = {
-        title: a.title || "-",
-        poster: a.poster || "",
-        slug: a.animeId || parseAnimeIdFromHref(a.href) || "",
-        animeId: a.animeId,
-      };
+  if (!append) movieGrid.innerHTML = "";
 
-      const card = createAnimeCard(item, {
-        rating: a.score && a.score !== "" ? a.score : "N/A",
-        meta: a.status || "",
-      });
+  const list =
+    json.data && Array.isArray(json.data.animeList) ? json.data.animeList : [];
 
-      movieGrid.appendChild(card);
+  list.forEach((a) => {
+    const item = {
+      title: a.title || "-",
+      poster: a.poster || "",
+      slug: a.animeId || "", // movie endpoint: animeId = slug detail
+    };
+
+    const card = createAnimeCard(item, {
+      rating: a.score && a.score !== "" ? a.score : "N/A",
+      meta: a.status || "",
     });
 
-    // update pagination
-    if (pagination && typeof pagination.hasNextPage === "boolean") {
-      movieHasNext = pagination.hasNextPage;
-    } else {
-      // fallback: kalau pagination tidak ada, stop saat list kosong
-      movieHasNext = list.length > 0;
-    }
+    movieGrid.appendChild(card);
+  });
 
-    if (!movieHasNext) setMovieEndVisible(true);
-  } catch (e) {
-    if (typeof showToast === "function") showToast("Gagal memuat movie");
-  } finally {
-    setMovieLoading(false);
+  // kalau sudah page terakhir, tampilkan end text
+  if (moviePage >= movieLastPage) {
+    setMovieEndVisible(true);
   }
+
+  movieLoading = false;
+  setMovieLoading(false);
 }
 
-function shouldLoadNextByScroll(container) {
-  // load next kalau sudah dekat bottom (threshold 280px)
-  const threshold = 280;
-  return (
-    container.scrollTop + container.clientHeight >=
-    container.scrollHeight - threshold
-  );
-}
+document.addEventListener("DOMContentLoaded", () => {
+  loadMovieList(1, false);
 
-function onMovieScroll() {
+  const mainContent = document.getElementById("mainContent");
   if (!mainContent) return;
-  if (movieIsLoading || !movieHasNext) return;
 
-  if (shouldLoadNextByScroll(mainContent)) {
-    moviePage += 1;
-    loadMovies(moviePage);
-  }
-}
+  mainContent.addEventListener("scroll", () => {
+    const nearBottom =
+      mainContent.scrollTop + mainContent.clientHeight >=
+      mainContent.scrollHeight - 200;
 
-function initMoviePage() {
-  if (!movieGrid) return;
-
-  // support ?page=2 sebagai start (opsional)
-  const params = new URLSearchParams(window.location.search);
-  const p = parseInt(params.get("page") || "1", 10);
-  moviePage = Number.isFinite(p) && p > 0 ? p : 1;
-
-  movieGrid.innerHTML = "";
-  movieHasNext = true;
-  setMovieEndVisible(false);
-
-  // load awal
-  loadMovies(moviePage);
-
-  // infinite scroll: listen scroll dari container utama (#mainContent)
-  if (mainContent) {
-    mainContent.addEventListener("scroll", onMovieScroll, { passive: true });
-  }
-
-  // cadangan: kalau konten awal pendek, auto fetch sampai bisa discroll / habis
-  const pump = async () => {
-    if (!mainContent) return;
-    let guard = 0;
-    while (
-      guard < 6 &&
-      movieHasNext &&
-      !movieIsLoading &&
-      mainContent.scrollHeight <= mainContent.clientHeight + 50
-    ) {
-      guard += 1;
-      moviePage += 1;
-      await loadMovies(moviePage);
+    if (nearBottom && !movieLoading && moviePage < movieLastPage) {
+      loadMovieList(moviePage + 1, true);
     }
-  };
-
-  // jalankan pump setelah load awal selesai (kasih jeda kecil)
-  setTimeout(pump, 300);
-}
-
-document.addEventListener("DOMContentLoaded", initMoviePage);
+  });
+});
