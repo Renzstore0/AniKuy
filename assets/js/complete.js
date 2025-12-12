@@ -1,5 +1,3 @@
-// assets/js/complete.js
-
 const completeGridFull = document.getElementById("completeGridFull");
 const completePrevBtn = document.getElementById("completePrevBtn");
 const completeNextBtn = document.getElementById("completeNextBtn");
@@ -21,7 +19,8 @@ async function loadCompleteList(page = 1, append = false) {
 
   let json;
   try {
-    json = await apiGet(`/anime/complete-anime/${page}`);
+    // ✅ ganti respon: completed Samehadaku
+    json = await apiGet(`/anime/samehadaku/completed?page=${page}`);
   } catch {
     completeLoading = false;
     return;
@@ -32,24 +31,33 @@ async function loadCompleteList(page = 1, append = false) {
     return;
   }
 
-  const pag = json.data.paginationData;
-  completePage = pag.current_page;
-  completeLastPage = pag.last_visible_page || completeLastPage;
+  const pag = json.pagination || {};
+  completePage = pag.currentPage || page;
+  completeLastPage = pag.totalPages || completeLastPage;
 
-  // kalau bukan append, berarti load pertama / refresh
-  if (!append) {
-    completeGridFull.innerHTML = "";
-  }
+  if (!append) completeGridFull.innerHTML = "";
 
-  (json.data.completeAnimeData || []).forEach((a) => {
-    const epsLabel = a.episode_count
-      ? `Eps ${a.episode_count}`
-      : "Eps ?";
+  const list = json.data && Array.isArray(json.data.animeList) ? json.data.animeList : [];
 
-    const card = createAnimeCard(a, {
-      // tidak pakai rating di halaman "Semua Selesai"
+  list.forEach((a) => {
+    const item = {
+      title: a.title,
+      poster: a.poster,
+      slug: a.slug,
+    };
+
+    // episode_count tidak selalu ada di response list completed
+    const epsRaw = a.episode_count || a.episodes || "";
+    const epsLabel = epsRaw ? `Eps ${epsRaw}` : "Eps ?";
+
+    // genreList (kalau ada) untuk meta
+    const genres = Array.isArray(a.genreList)
+      ? a.genreList.map((g) => (g && (g.title || g.name))).filter(Boolean).join(", ")
+      : "";
+
+    const card = createAnimeCard(item, {
       badgeBottom: epsLabel,
-      meta: a.last_release_date || "",
+      meta: genres || a.status || "",
     });
     completeGridFull.appendChild(card);
   });
@@ -59,7 +67,7 @@ async function loadCompleteList(page = 1, append = false) {
 
 // infinite scroll pakai mainContent
 document.addEventListener("DOMContentLoaded", () => {
-  loadCompleteList(1, false); // page 1
+  loadCompleteList(1, false);
 
   const mainContent = document.getElementById("mainContent");
   if (!mainContent) return;
@@ -69,12 +77,8 @@ document.addEventListener("DOMContentLoaded", () => {
       mainContent.scrollTop + mainContent.clientHeight >=
       mainContent.scrollHeight - 200;
 
-    if (
-      nearBottom &&
-      !completeLoading &&
-      completePage < completeLastPage
-    ) {
-      loadCompleteList(completePage + 1, true); // append page berikutnya
+    if (nearBottom && !completeLoading && completePage < completeLastPage) {
+      loadCompleteList(completePage + 1, true);
     }
   });
 });
