@@ -1,5 +1,3 @@
-// assets/js/ongoing.js
-
 const ongoingGridFull = document.getElementById("ongoingGridFull");
 const ongoingPrevBtn = document.getElementById("ongoingPrevBtn");
 const ongoingNextBtn = document.getElementById("ongoingNextBtn");
@@ -20,19 +18,15 @@ function formatEpisodeLabel(text) {
 
   let t = String(text).trim();
 
-  // "Total 10 Episode" / "Total 10 Eps"
   let m = t.match(/^Total\s+(\d+)\s*(Episode|Eps?)?/i);
   if (m) return `Eps ${m[1]}`;
 
-  // "Episode 10"
   m = t.match(/^Episode\s+(\d+)/i);
   if (m) return `Eps ${m[1]}`;
 
-  // "10 Episode" / "10 Eps" / "10"
   m = t.match(/^(\d+)\s*(Episode|Eps?)?$/i);
   if (m) return `Eps ${m[1]}`;
 
-  // fallback
   return t.replace(/Episode/gi, "Eps");
 }
 
@@ -43,7 +37,8 @@ async function loadOngoingList(page = 1, append = false) {
 
   let json;
   try {
-    json = await apiGet(`/anime/ongoing-anime?page=${page}`);
+    // ✅ ganti respon: recent Samehadaku
+    json = await apiGet(`/anime/samehadaku/recent?page=${page}`);
   } catch {
     ongoingLoading = false;
     return;
@@ -53,19 +48,25 @@ async function loadOngoingList(page = 1, append = false) {
     return;
   }
 
-  const pag = json.data.paginationData;
-  ongoingPage = pag.current_page;
-  ongoingLastPage = pag.last_visible_page || ongoingLastPage;
+  const pag = json.pagination || {};
+  ongoingPage = pag.currentPage || page;
+  ongoingLastPage = pag.totalPages || ongoingLastPage;
 
-  if (!append) {
-    ongoingGridFull.innerHTML = "";
-  }
+  if (!append) ongoingGridFull.innerHTML = "";
 
-  (json.data.ongoingAnimeData || []).forEach((a) => {
-    const card = createAnimeCard(a, {
-      badgeTop: a.release_day || "",
-      badgeBottom: formatEpisodeLabel(a.current_episode || ""),
-      meta: a.newest_release_date || "",
+  const list = json.data && Array.isArray(json.data.animeList) ? json.data.animeList : [];
+
+  list.forEach((a) => {
+    const item = {
+      title: a.title,
+      poster: a.poster,
+      slug: a.slug,
+    };
+
+    const card = createAnimeCard(item, {
+      badgeTop: "Baru",
+      badgeBottom: formatEpisodeLabel(a.episodes || ""),
+      meta: a.releasedOn || "",
     });
     ongoingGridFull.appendChild(card);
   });
