@@ -53,6 +53,7 @@ function getPosterFromDetail(d) {
 function normalizeConnections(raw) {
   const out = [];
   const arr = Array.isArray(raw) ? raw : [];
+
   arr.forEach((c) => {
     if (!c) return;
 
@@ -64,18 +65,17 @@ function normalizeConnections(raw) {
       c?.anime?.slug
     );
 
+    // IMPORTANT: judul asli aja, tanpa tambahan "Season"
     const title = pickFirstString(c.title, c.name, c.animeTitle, c?.anime?.title);
-
-    if (!animeId && !title) return;
 
     out.push({
       animeId: animeId || "",
-      title: title || "Season",
-      poster: pickFirstString(c.poster, c.image, c.thumbnail, c?.anime?.poster) || "",
+      title: title || "",
     });
   });
 
-  return out;
+  // buang yang bener-bener kosong semua
+  return out.filter((x) => x.animeId || x.title);
 }
 
 function extractConnections(detailData) {
@@ -100,9 +100,9 @@ function extractConnections(detailData) {
 }
 
 // ======================
-// SEARCH CACHE (pakai endpoint baru)
+// SEARCH (endpoint baru) + CACHE
 // ======================
-const searchCache = new Map(); // key: queryNormalized -> animeList[]
+const searchCache = new Map(); // key: normalizedQuery -> animeList[]
 
 async function samehadakuSearch(q) {
   const key = normalizeTitle(q);
@@ -129,7 +129,7 @@ async function samehadakuSearch(q) {
 }
 
 function findBestMatchFromSearch(list, targetAnimeId, targetTitle) {
-  if (!Array.isArray(listAttach(list)) || !list.length) return null;
+  if (!Array.isArray(list) || !list.length) return null;
 
   const tid = String(targetAnimeId || "").trim();
   const tnorm = normalizeTitle(targetTitle);
@@ -140,13 +140,16 @@ function findBestMatchFromSearch(list, targetAnimeId, targetTitle) {
     if (byId) return byId;
   }
 
-  // 2) match title normalized
+  // 2) match title normalized (exact)
   if (tnorm) {
     const byTitle = list.find((x) => normalizeTitle(x?.title) === tnorm);
     if (byTitle) return byTitle;
 
-    // 3) fallback: title contains / included
-    const byContains = list.find((x) => normalizeTitle(x?.title).includes(tnorm) || tnorm.includes(normalizeTitle(x?.title)));
+    // 3) match contains (biar lebih fleksibel)
+    const byContains = list.find((x) => {
+      const nx = normalizeTitle(x?.title);
+      return nx.includes(tnorm) || tnorm.includes(nx);
+    });
     if (byContains) return byContains;
   }
 
@@ -154,14 +157,10 @@ function findBestMatchFromSearch(list, targetAnimeId, targetTitle) {
   return list[0] || null;
 }
 
-// helper kecil: biar aman kalau ada yang ngaco
-function listAttach(v) {
-  return v;
-}
-
 async function resolvePosterViaSearch(title, animeId) {
   const q = String(title || "").trim();
   if (!q) return "";
+
   const list = await samehadakuSearch(q);
   const match = findBestMatchFromSearch(list, animeId, title);
   return match?.poster || "";
@@ -170,6 +169,7 @@ async function resolvePosterViaSearch(title, animeId) {
 async function resolveAnimeIdViaSearch(title, animeIdFallback) {
   const q = String(title || "").trim();
   if (!q) return animeIdFallback || "";
+
   const list = await samehadakuSearch(q);
   const match = findBestMatchFromSearch(list, animeIdFallback, title);
   return match?.animeId || animeIdFallback || "";
@@ -197,7 +197,9 @@ function showSeasonTab() {
 }
 
 // ======================
-// SEASON LIST (poster ambil dari search endpoint)
+// SEASON LIST
+// - title: judul asli (tanpa "Season ...")
+// - poster: ambil dari endpoint search
 // ======================
 async function renderSeasonList(detailData, detailSlug) {
   if (!seasonList) return;
@@ -216,10 +218,13 @@ async function renderSeasonList(detailData, detailSlug) {
     return;
   }
 
-  // render dulu pakai placeholder biar UI cepet muncul
+  // render placeholder dulu (biar cepat)
   const items = [];
 
   for (const c of connections) {
+    const title = String(c.title || "").trim(); // judul asli aja
+    if (!title && !c.animeId) continue;
+
     const item = document.createElement("div");
     item.className = "season-item";
 
@@ -227,7 +232,7 @@ async function renderSeasonList(detailData, detailSlug) {
     thumb.className = "season-thumb";
 
     const img = document.createElement("img");
-    safeSetImg(img, c.poster || "", c.title || "Season");
+    safeSetImg(img, "", title || "Poster");
     thumb.appendChild(img);
 
     const info = document.createElement("div");
@@ -235,38 +240,39 @@ async function renderSeasonList(detailData, detailSlug) {
 
     const titleEl = document.createElement("div");
     titleEl.className = "season-title";
-    titleEl.textContent = c.title || "Season";
+    titleEl.textContent = title || "-";
     info.appendChild(titleEl);
 
     item.appendChild(thumb);
     item.appendChild(info);
 
-    // klik: kalau animeId kosong, coba cari dari search (judul sama)
     item.addEventListener("click", async () => {
       const finalId =
         (c.animeId && String(c.animeId).trim()) ||
-        (await resolveAnimeIdViaSearch(c.title, "")) ||
+        (await resolveAnimeIdViaSearch(title, "")) ||
         "";
       if (!finalId) return;
 
-      const url = `/anime/detail?slug=${encodeURIComponent(finalId)}`;
-      window.location.href = url;
+      window.location.href = `/anime/detail?slug=${encodeURIComponent(finalId)}`;
     });
 
     seasonList.appendChild(item);
-    items.push({ c, imgEl: img });
+    items.push({ c, imgEl: img, title });
   }
 
-  // enrich poster via search (kalau poster belum ada)
+  // ambil poster dari search (sesuai endpoint search.js)
   for (const it of items) {
-    const { c, imgEl } = it;
-    if (!imgEl) continue;
+    const { c, imgEl, title } = it;
+    const poster = await resolvePosterViaSearch(title, c.animeId);
+    if (poster) safeSetImg(imgEl, poster, title || "Poster");
+  }
 
-    const already = String(c.poster || "").trim();
-    if (already) continue;
-
-    const poster = await resolvePosterViaSearch(c.title, c.animeId);
-    if (poster) safeSetImg(imgEl, poster, c.title || "Season");
+  // kalau ternyata nggak ada yang kebuild
+  if (!seasonList.children.length) {
+    const empty = document.createElement("div");
+    empty.className = "season-empty";
+    empty.textContent = "Season belum ada";
+    seasonList.appendChild(empty);
   }
 }
 
@@ -290,7 +296,7 @@ async function loadAnimeDetail(slug) {
   const titleMain =
     pickFirstString(d?.title, d?.english, d?.japanese) || apiSlug;
 
-  // poster utama: ambil dari detail dulu, kalau kosong baru fallback search (judul)
+  // poster utama: dari detail, fallback search judul
   let posterUrl = getPosterFromDetail(d);
   if (!posterUrl) {
     posterUrl = await resolvePosterViaSearch(titleMain, apiSlug);
@@ -388,8 +394,7 @@ async function loadAnimeDetail(slug) {
   playBtn.addEventListener("click", () => {
     const eps = Array.isArray(d?.episodeList) ? d.episodeList : [];
     if (!eps.length || !eps[0]?.episodeId) return;
-    const url = `/anime/episode?slug=${encodeURIComponent(eps[0].episodeId)}`;
-    window.location.href = url;
+    window.location.href = `/anime/episode?slug=${encodeURIComponent(eps[0].episodeId)}`;
   });
 
   const favBtn = document.createElement("button");
@@ -529,15 +534,14 @@ async function loadAnimeDetail(slug) {
 
       item.addEventListener("click", () => {
         if (!ep.episodeId) return;
-        const url = `/anime/episode?slug=${encodeURIComponent(ep.episodeId)}`;
-        window.location.href = url;
+        window.location.href = `/anime/episode?slug=${encodeURIComponent(ep.episodeId)}`;
       });
 
       episodeList.appendChild(item);
     }
   }
 
-  // ===== SEASON LIST (pakai search endpoint untuk poster) =====
+  // ===== SEASON LIST (poster ambil dari search) =====
   await renderSeasonList(d, apiSlug);
 
   document.title = `AniKuy - ${titleMain}`;
