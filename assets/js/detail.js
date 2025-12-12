@@ -4,7 +4,8 @@
 
   // ========= DOM helpers =========
   const $id = (id) => document.getElementById(id);
-  const $ = (sel) => document.querySelector(sel);
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
   const pick = (...els) => els.find(Boolean);
 
   const animeDetailContent = pick(
@@ -13,29 +14,44 @@
     $(".anime-detail"),
     $("[data-detail-content]")
   );
-
   const episodeList = pick($id("episodeList"), $(".episode-list"));
   const seasonList = pick($id("seasonList"), $(".season-list"));
-
   const tabEpisodes = pick($id("tabEpisodes"), $('[data-tab="episodes"]'));
   const tabSeasons = pick($id("tabSeasons"), $('[data-tab="seasons"]'));
-
   const slug = new URLSearchParams(location.search).get("slug");
 
   // ========= safe wrappers =========
-  const toast = (msg) =>
-    typeof window.showToast === "function" && window.showToast(msg);
-
-  const isFav =
-    typeof window.isFavorite === "function" ? window.isFavorite : () => false;
-  const addFav =
-    typeof window.addFavorite === "function" ? window.addFavorite : () => {};
-  const rmFav =
-    typeof window.removeFavorite === "function"
-      ? window.removeFavorite
-      : () => {};
+  const toast = (m) => typeof showToast === "function" && showToast(m);
+  const isFav = typeof isFavorite === "function" ? isFavorite : () => false;
+  const addFav = typeof addFavorite === "function" ? addFavorite : () => {};
+  const rmFav = typeof removeFavorite === "function" ? removeFavorite : () => {};
 
   let episodeSearchWrap = null;
+
+  // ========= remove/hide recommendations (global + season tab) =========
+  const hideRecommendations = () => {
+    const candidates = [
+      $id("recommendationGrid"),
+      $id("seasonRecommendationGrid"),
+      $(".recommendation-grid"),
+      $(".recommendations"),
+      $("[data-recommendation]"),
+      $("[data-rekomendasi]"),
+    ].filter(Boolean);
+
+    candidates.forEach((el) => {
+      el.innerHTML = "";
+      el.style.display = "none";
+      const prev = el.previousElementSibling;
+      if (prev && /rekomendasi/i.test(prev.textContent || "")) prev.style.display = "none";
+    });
+
+    seasonList &&
+      $$(
+        ".recommendation,.recommendations,.recommendation-grid,[data-recommendation],[data-rekomendasi]",
+        seasonList
+      ).forEach((el) => el.remove());
+  };
 
   // ========= Season utils =========
   const cleanBase = (s) =>
@@ -62,14 +78,11 @@
   };
 
   const hasSeason = (t) =>
-    /season\s*\d+|\d+(st|nd|rd|th)\s*season|\bpart\s*\d+\b/i.test(
-      String(t || "")
-    );
+    /season\s*\d+|\d+(st|nd|rd|th)\s*season|\bpart\s*\d+\b/i.test(String(t || ""));
 
   const seasonNo = (t) => {
     const s = String(t || "").toLowerCase();
-    const m =
-      s.match(/season\s*(\d+)/) || s.match(/(\d+)(st|nd|rd|th)\s*season/);
+    const m = s.match(/season\s*(\d+)/) || s.match(/(\d+)(st|nd|rd|th)\s*season/);
     const n = m ? parseInt(m[1], 10) : 1;
     return Number.isFinite(n) && n > 0 ? n : 1;
   };
@@ -83,44 +96,39 @@
       .trim();
 
   // ========= Tabs =========
-  const setTab = (showEpisodes) => {
+  const setTab = (showEps) => {
     if (!episodeList || !seasonList || !tabEpisodes || !tabSeasons) return;
-    tabEpisodes.classList.toggle("active", showEpisodes);
-    tabSeasons.classList.toggle("active", !showEpisodes);
-    episodeList.classList.toggle("hidden", !showEpisodes);
-    seasonList.classList.toggle("hidden", showEpisodes);
-    episodeSearchWrap?.classList.toggle("hidden", !showEpisodes);
+    tabEpisodes.classList.toggle("active", showEps);
+    tabSeasons.classList.toggle("active", !showEps);
+    episodeList.classList.toggle("hidden", !showEps);
+    seasonList.classList.toggle("hidden", showEps);
+    episodeSearchWrap?.classList.toggle("hidden", !showEps);
   };
 
-  // ========= Load seasons =========
-  async function loadSeasons(detail, detailSlug) {
+  // ========= seasons loader =========
+  const setSeasonEmpty = (msg = "Season belum ada") => {
     if (!seasonList) return;
+    seasonList.innerHTML = "";
+    const div = document.createElement("div");
+    div.className = "season-empty";
+    div.textContent = msg;
+    seasonList.appendChild(div);
+  };
 
-    const setEmpty = (msg = "Season belum ada") => {
-      seasonList.innerHTML = "";
-      const div = document.createElement("div");
-      div.className = "season-empty";
-      div.textContent = msg;
-      seasonList.appendChild(div);
-    };
-
+  async function loadSeasons(d, currentSlug) {
+    if (!seasonList) return;
     seasonList.innerHTML = "";
 
     const title =
-      [detail?.english, detail?.synonyms, detail?.title]
-        .map((v) => String(v || "").trim())
-        .find(Boolean) || "";
-
-    if (!title) return setEmpty();
+      [d?.english, d?.synonyms, d?.title].map((v) => String(v || "").trim()).find(Boolean) || "";
+    if (!title) return setSeasonEmpty();
 
     const q = normRoot(title) || normFull(title) || title;
-    if (!q) return setEmpty();
+    if (!q) return setSeasonEmpty();
 
     let json;
     try {
-      json = await apiGet(
-        `/anime/samehadaku/search?q=${encodeURIComponent(q)}`
-      );
+      json = await apiGet(`/anime/samehadaku/search?q=${encodeURIComponent(q)}`);
     } catch {
       return;
     }
@@ -137,10 +145,10 @@
     });
 
     const seasonLike = hasSeason(title) || related.some((a) => hasSeason(a.title));
-    if (!seasonLike) return setEmpty();
+    if (!seasonLike) return setSeasonEmpty();
 
     const seasons = related
-      .filter((a) => a.animeId !== detailSlug)
+      .filter((a) => a.animeId !== currentSlug)
       .map((a) => ({
         slug: a.animeId,
         title: seasonTitle(a.title),
@@ -149,7 +157,7 @@
         raw: String(a.title || ""),
       }));
 
-    if (!seasons.length) return setEmpty();
+    if (!seasons.length) return setSeasonEmpty();
 
     seasons.sort((a, b) => (a.n - b.n) || a.raw.localeCompare(b.raw));
 
@@ -162,7 +170,7 @@
         <div class="season-info"><div class="season-title"></div></div>
       `;
 
-      const img = item.querySelector("img");
+      const img = $("img", item);
       img.src = s.poster || "/assets/img/placeholder-poster.png";
       img.alt = s.title || "Season";
       img.onerror = () => {
@@ -170,7 +178,7 @@
         img.src = "/assets/img/placeholder-poster.png";
       };
 
-      item.querySelector(".season-title").textContent = s.title || "-";
+      $(".season-title", item).textContent = s.title || "-";
       item.addEventListener("click", () => {
         location.href = `/anime/detail?slug=${encodeURIComponent(s.slug)}`;
       });
@@ -178,18 +186,18 @@
       frag.appendChild(item);
     }
     seasonList.appendChild(frag);
+
+    // jaga-jaga kalau rekomendasi di-inject setelah render season
+    hideRecommendations();
   }
 
-  // ========= Load detail =========
+  // ========= detail loader =========
   async function loadDetail(animeSlug) {
-    if (!animeDetailContent)
-      return toast('Element detail tidak ketemu (id "animeDetailContent").');
+    if (!animeDetailContent) return toast('Element detail tidak ketemu (id "animeDetailContent").');
 
     let json;
     try {
-      json = await apiGet(
-        `/anime/samehadaku/anime/${encodeURIComponent(animeSlug)}`
-      );
+      json = await apiGet(`/anime/samehadaku/anime/${encodeURIComponent(animeSlug)}`);
     } catch {
       return toast("Gagal memuat detail.");
     }
@@ -235,10 +243,10 @@
       <p id="synopsisText" class="synopsis"></p>
     `;
 
-    const card = animeDetailContent.querySelector(".anime-detail-card");
+    const card = $(".anime-detail-card", animeDetailContent);
     if (d.poster) card?.style.setProperty("--detail-bg", `url("${d.poster}")`);
 
-    const posterImg = animeDetailContent.querySelector(".detail-poster img");
+    const posterImg = $(".detail-poster img", animeDetailContent);
     posterImg.src = d.poster || "/assets/img/placeholder-poster.png";
     posterImg.alt = titleMain;
     posterImg.onerror = () => {
@@ -246,11 +254,10 @@
       posterImg.src = "/assets/img/placeholder-poster.png";
     };
 
-    animeDetailContent.querySelector(".detail-main-title").textContent = titleMain;
-    if (titleJapanese)
-      animeDetailContent.querySelector(".detail-sub").textContent = titleJapanese;
+    $(".detail-main-title", animeDetailContent).textContent = titleMain;
+    if (titleJapanese) $(".detail-sub", animeDetailContent).textContent = titleJapanese;
 
-    animeDetailContent.querySelector(".detail-meta").innerHTML = `
+    $(".detail-meta", animeDetailContent).innerHTML = `
       <div><span class="label">Rating:</span> ${scoreVal}</div>
       <div><span class="label">Tipe:</span> ${d.type || "-"}</div>
       <div><span class="label">Status:</span> ${d.status || "-"}</div>
@@ -260,7 +267,7 @@
     `;
 
     // genres
-    const genresWrap = animeDetailContent.querySelector(".detail-genres");
+    const genresWrap = $(".detail-genres", animeDetailContent);
     const genreList = Array.isArray(d.genreList) ? d.genreList : [];
     if (genreList.length) {
       const frag = document.createDocumentFragment();
@@ -271,9 +278,9 @@
         btn.textContent = g?.title || "-";
         btn.addEventListener("click", () => {
           if (!g?.genreId) return;
-          location.href = `/anime/genre?slug=${encodeURIComponent(
-            g.genreId
-          )}&name=${encodeURIComponent(g.title || "")}`;
+          location.href = `/anime/genre?slug=${encodeURIComponent(g.genreId)}&name=${encodeURIComponent(
+            g.title || ""
+          )}`;
         });
         frag.appendChild(btn);
       }
@@ -281,20 +288,18 @@
     }
 
     // play
-    animeDetailContent.querySelector(".btn-play")?.addEventListener("click", () => {
-      const firstEp = eps[0];
-      if (!firstEp?.episodeId) return;
-      location.href = `/anime/episode?slug=${encodeURIComponent(firstEp.episodeId)}`;
+    $(".btn-play", animeDetailContent)?.addEventListener("click", () => {
+      const first = eps[0];
+      if (!first?.episodeId) return;
+      location.href = `/anime/episode?slug=${encodeURIComponent(first.episodeId)}`;
     });
 
     // favorite
-    const favText = animeDetailContent.querySelector(".fav-text");
-    const refreshFav = () => {
-      favText.textContent = isFav(animeSlug) ? "Hapus dari Favorit" : "Favorit";
-    };
+    const favText = $(".fav-text", animeDetailContent);
+    const refreshFav = () => (favText.textContent = isFav(animeSlug) ? "Hapus dari Favorit" : "Favorit");
     refreshFav();
 
-    animeDetailContent.querySelector(".btn-fav")?.addEventListener("click", () => {
+    $(".btn-fav", animeDetailContent)?.addEventListener("click", () => {
       const payload = {
         slug: animeSlug,
         title: titleMain,
@@ -308,23 +313,20 @@
     });
 
     // synopsis
-    const synopsis = animeDetailContent.querySelector("#synopsisText");
-    const paragraphs = Array.isArray(d.synopsis?.paragraphs)
-      ? d.synopsis.paragraphs
-      : [];
-    const text =
-      paragraphs.map((s) => String(s || "").trim()).filter(Boolean).join(" ") ||
-      "Tidak ada sinopsis.";
-    synopsis.textContent = text;
+    const syn = $("#synopsisText", animeDetailContent);
+    const paragraphs = Array.isArray(d.synopsis?.paragraphs) ? d.synopsis.paragraphs : [];
+    const synText =
+      paragraphs.map((s) => String(s || "").trim()).filter(Boolean).join(" ") || "Tidak ada sinopsis.";
+    syn.textContent = synText;
 
-    if (text !== "Tidak ada sinopsis.") {
+    if (synText !== "Tidak ada sinopsis.") {
       const btn = document.createElement("button");
       btn.id = "synopsisToggle";
       btn.type = "button";
       btn.className = "synopsis-toggle";
       btn.textContent = "Baca selengkapnya";
       btn.addEventListener("click", () => {
-        const expanded = synopsis.classList.toggle("expanded");
+        const expanded = syn.classList.toggle("expanded");
         btn.textContent = expanded ? "Tutup" : "Baca selengkapnya";
       });
       animeDetailContent.appendChild(btn);
@@ -333,29 +335,28 @@
     // episodes + search
     if (episodeList) {
       episodeList.innerHTML = "";
-
       const old = $id("episodeSearchWrap");
-      if (old?.parentNode) old.parentNode.removeChild(old);
+      old?.parentNode?.removeChild(old);
       episodeSearchWrap = null;
 
       if (eps.length) {
         const wrap = document.createElement("div");
         wrap.id = "episodeSearchWrap";
         wrap.className = "episode-search-wrap";
-        wrap.innerHTML = `<input class="episode-search-input" type="text" placeholder="Cari episode... (misal: 5 atau 12)">`;
+        wrap.innerHTML =
+          '<input class="episode-search-input" type="text" placeholder="Cari episode... (misal: 5 atau 12)">';
 
-        const input = wrap.querySelector("input");
+        const input = $("input", wrap);
         input.addEventListener("input", () => {
           const q = input.value.trim().toLowerCase();
-          episodeList.querySelectorAll(".episode-item").forEach((it) => {
-            it.style.display =
-              (it.textContent || "").toLowerCase().includes(q) ? "" : "none";
+          $$(".episode-item", episodeList).forEach((it) => {
+            it.style.display = (it.textContent || "").toLowerCase().includes(q) ? "" : "none";
           });
         });
 
         episodeList.parentNode?.insertBefore(wrap, episodeList);
         episodeSearchWrap = wrap;
-        if (tabSeasons?.classList.contains("active")) wrap.classList.add("hidden");
+        tabSeasons?.classList.contains("active") && wrap.classList.add("hidden");
       }
 
       const frag = document.createDocumentFragment();
@@ -365,15 +366,12 @@
 
         const item = document.createElement("div");
         item.className = "episode-item";
-
         const epNum = ep.title != null ? ep.title : eps.length - i;
         item.innerHTML = `<span>Episode ${epNum}</span>`;
-
         item.addEventListener("click", () => {
           if (!ep?.episodeId) return;
           location.href = `/anime/episode?slug=${encodeURIComponent(ep.episodeId)}`;
         });
-
         frag.appendChild(item);
       }
       episodeList.appendChild(frag);
@@ -383,15 +381,23 @@
     loadSeasons(d, animeSlug);
 
     document.title = `AniKuy - ${titleMain}`;
+
+    // jaga-jaga rekomendasi muncul setelah render
+    hideRecommendations();
   }
 
   // ========= init =========
   document.addEventListener("DOMContentLoaded", () => {
     if (!slug) return toast("Slug anime tidak ditemukan");
 
+    hideRecommendations(); // ✅ remove rekomendasi (termasuk tab season)
+
     if (tabEpisodes && tabSeasons && episodeList && seasonList) {
       tabEpisodes.addEventListener("click", () => setTab(true));
-      tabSeasons.addEventListener("click", () => setTab(false));
+      tabSeasons.addEventListener("click", () => {
+        setTab(false);
+        hideRecommendations(); // ✅ kalau ada yang muncul pas pindah tab
+      });
       setTab(true);
     }
 
