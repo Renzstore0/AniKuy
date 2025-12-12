@@ -1,4 +1,4 @@
-// assets/js/detail.js
+/* assets/js/detail.js (full) */
 
 const animeDetailContent = document.getElementById("animeDetailContent");
 const episodeList = document.getElementById("episodeList");
@@ -12,6 +12,67 @@ const detailParams = new URLSearchParams(window.location.search);
 const detailSlugFromUrl = detailParams.get("slug");
 
 let episodeSearchWrap = null;
+
+// ---------- JSON ADAPTER ----------
+// Mengonversi berbagai bentuk JSON (contoh: Otakudesu) -> struktur yang dipakai detail.js
+function adaptDetailResponse(raw) {
+  // raw mungkin objek { status, data } atau langsung data
+  const src = raw && raw.data ? raw.data : raw || {};
+
+  const synopsisText = (() => {
+    if (!src) return "";
+    if (Array.isArray(src.synopsis)) return src.synopsis.join(" ");
+    if (typeof src.synopsis === "string") return src.synopsis;
+    if (src.synopsis && Array.isArray(src.synopsis.paragraphs)) {
+      return src.synopsis.paragraphs.join(" ");
+    }
+    return "";
+  })();
+
+  const genres = (src.genreList || src.genres || []).map((g) => ({
+    name: g.title || g.name || "",
+    slug: g.genreId || g.slug || (g.title || "").toLowerCase().replace(/\s+/g, "-"),
+  }));
+
+  const episode_lists = (src.episodeList || src.episode_lists || []).map((ep, idx) => {
+    return {
+      title: ep.title || ep.title || `Episode ${ep.eps || ep.episode || idx + 1}`,
+      episode_number: ep.eps ?? ep.episode_number ?? ep.episode ?? (ep.episodeId ? undefined : idx + 1),
+      slug:
+        ep.episodeId ||
+        ep.slug ||
+        (ep.href ? ep.href.split("/").filter(Boolean).pop() : undefined) ||
+        ep.animeId ||
+        (`ep-${idx + 1}`),
+      date: ep.date || ep.tanggal || "",
+      poster: ep.poster || ep.image || "",
+    };
+  });
+
+  const recommendations = (src.recommendedAnimeList || src.recommendations || src.recommended || []).map((a) => ({
+    title: a.title || a.name || "",
+    poster: a.poster || a.image || "",
+    slug: a.animeId || a.animeId || a.href?.split("/").filter(Boolean).pop() || a.slug || "",
+  }));
+
+  return {
+    title: src.title || src.name || "",
+    poster: src.poster || src.image || "",
+    japanese_title: src.japanese || src.japanese_title || src.japaneseTitle || "",
+    rating: src.score || src.rating || "",
+    type: src.type || src.tipe || "",
+    status: src.status || "",
+    episode_count: src.episodes ?? src.episode_count ?? (episode_lists.length || "?"),
+    release_date: src.aired || src.release_date || src.released || "",
+    studio: src.studios || src.studio || "",
+    synopsis: synopsisText || "",
+    genres,
+    episode_lists,
+    recommendations,
+    // keep original raw in case needed
+    __raw: src,
+  };
+}
 
 // ---------- UTIL SEASON ----------
 
@@ -204,7 +265,9 @@ async function loadAnimeDetail(slug) {
   }
   if (!json || json.status !== "success") return;
 
-  const d = json.data;
+  // gunakan adapter untuk memastikan struktur sesuai skrip
+  const d = adaptDetailResponse(json);
+
   const apiSlug = slug; // slug dari URL, dipakai untuk My List
 
   animeDetailContent.innerHTML = "";
@@ -491,3 +554,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   loadAnimeDetail(detailSlugFromUrl);
 });
+
+/* 
+  Catatan:
+  - Fungsi adaptDetailResponse(raw) menangani berbagai variasi kunci JSON
+    dan mengembalikan struktur yang persis dipakai oleh sisa skrip.
+  - Kamu tidak perlu ubah sisa kode; adapter ini yang meng-handle mapping.
+*/
