@@ -6,36 +6,53 @@ const scheduleLoading = document.getElementById("scheduleLoading");
 
 let scheduleLoaded = false;
 
-// LOAD GENRES LIST (chip) — tetap
+// LOAD GENRES LIST (chip) — support Samehadaku (robust)
 async function loadGenres() {
   if (!genreChipList) return;
 
   let json;
   try {
-    json = await apiGet("/anime/genre");
+    // jika endpoint ini ada, pakai ini
+    json = await apiGet("/anime/samehadaku/genres");
   } catch {
-    return;
+    // fallback ke endpoint lama kalau project kamu masih pakai itu
+    try {
+      json = await apiGet("/anime/genre");
+    } catch {
+      return;
+    }
   }
+
   if (!json || json.status !== "success") return;
 
+  // beberapa kemungkinan bentuk data:
+  const list =
+    (Array.isArray(json.data) && json.data) ||
+    (json.data && Array.isArray(json.data.genreList) && json.data.genreList) ||
+    [];
+
   genreChipList.innerHTML = "";
-  (json.data || []).forEach((g) => {
+
+  list.forEach((g) => {
+    const name = g.name || g.title || "-";
+    const slug = g.slug || g.genreId || "";
+
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = "genre-chip";
-    chip.textContent = g.name;
+    chip.textContent = name;
+
     chip.addEventListener("click", () => {
-      if (!g.slug) return;
-      const url = `/anime/genre?slug=${encodeURIComponent(
-        g.slug
-      )}&name=${encodeURIComponent(g.name)}`;
+      if (!slug) return;
+      const url = `/anime/genre?slug=${encodeURIComponent(slug)}&name=${encodeURIComponent(name)}`;
       window.location.href = url;
     });
+
     genreChipList.appendChild(chip);
   });
 }
 
-// LOAD SCHEDULE — ✅ ganti respon ke Samehadaku
+// LOAD SCHEDULE (tetap)
 async function loadSchedule() {
   if (!scheduleContainer || !scheduleLoading) return;
 
@@ -44,13 +61,12 @@ async function loadSchedule() {
   scheduleLoading.classList.add("show");
 
   try {
-    const json = await apiGet("/anime/samehadaku/schedule");
+    const json = await apiGet("/anime/schedule");
     if (!json || json.status !== "success") return;
 
-    const days = json.data && Array.isArray(json.data.days) ? json.data.days : [];
     scheduleContainer.innerHTML = "";
 
-    days.forEach((day) => {
+    (json.data || []).forEach((day) => {
       const dayWrap = document.createElement("div");
       dayWrap.className = "schedule-day";
 
@@ -63,7 +79,7 @@ async function loadSchedule() {
 
       const count = document.createElement("div");
       count.className = "schedule-day-count";
-      const len = (day.animeList || []).length;
+      const len = (day.anime_list || []).length;
       count.textContent = len ? `${len} anime` : "Tidak ada anime";
 
       header.appendChild(title);
@@ -73,11 +89,11 @@ async function loadSchedule() {
       const row = document.createElement("div");
       row.className = "anime-row";
 
-      (day.animeList || []).forEach((a) => {
+      (day.anime_list || []).forEach((a) => {
         const item = {
-          title: a.title,
+          title: a.anime_name,
           poster: a.poster,
-          slug: a.animeId, // Samehadaku pakai animeId untuk detail
+          slug: a.slug,
         };
         const card = createAnimeCard(item, {});
         row.appendChild(card);
@@ -92,7 +108,6 @@ async function loadSchedule() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // segmented tabs
   exploreTabs.forEach((btn) => {
     btn.addEventListener("click", () => {
       const tab = btn.dataset.tab;
@@ -105,9 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
         panel.classList.toggle("active", panel.dataset.tab === tab);
       });
 
-      if (tab === "schedule" && !scheduleLoaded) {
-        loadSchedule();
-      }
+      if (tab === "schedule" && !scheduleLoaded) loadSchedule();
     });
   });
 
