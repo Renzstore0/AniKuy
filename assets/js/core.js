@@ -43,9 +43,7 @@ function bindThemeControls(currentTheme) {
   const themeSheetOverlay = document.getElementById("themeSheetOverlay");
 
   function labelText(theme) {
-    return theme === THEME_LIGHT
-      ? "Putih & Hitam"
-      : "Biru & Hitam (Default)";
+    return theme === THEME_LIGHT ? "Putih & Hitam" : "Biru & Hitam (Default)";
   }
 
   function updateCurrentLabel(theme) {
@@ -78,21 +76,14 @@ function bindThemeControls(currentTheme) {
   if (themeToggle && themeSheet) {
     themeToggle.addEventListener("click", () => {
       const isOpen = themeSheet.classList.contains("show");
-      if (isOpen) {
-        closeSheet();
-      } else {
-        openSheet();
-      }
+      if (isOpen) closeSheet();
+      else openSheet();
     });
   }
 
   // tutup dari tombol dan overlay
-  if (themeSheetClose) {
-    themeSheetClose.addEventListener("click", closeSheet);
-  }
-  if (themeSheetOverlay) {
-    themeSheetOverlay.addEventListener("click", closeSheet);
-  }
+  if (themeSheetClose) themeSheetClose.addEventListener("click", closeSheet);
+  if (themeSheetOverlay) themeSheetOverlay.addEventListener("click", closeSheet);
 
   // kalau tidak ada radio, selesai
   if (!radios.length) return;
@@ -105,9 +96,7 @@ function bindThemeControls(currentTheme) {
       localStorage.setItem(LS_KEY_THEME, value);
       applyTheme(value);
       updateCurrentLabel(value);
-      if (typeof showToast === "function") {
-        showToast("Tema berhasil diubah");
-      }
+      if (typeof showToast === "function") showToast("Tema berhasil diubah");
       closeSheet();
     });
   });
@@ -119,12 +108,22 @@ function showToast(msg) {
   if (!toastEl) return;
   toastEl.textContent = msg;
   toastEl.classList.add("show");
-  setTimeout(() => {
-    toastEl.classList.remove("show");
-  }, 1600);
+  setTimeout(() => toastEl.classList.remove("show"), 1600);
 }
 
-// FETCH API SANKA
+// ============ API HELPERS ============
+
+// Convert "href" dari JSON Samehadaku (contoh: "/samehadaku/anime/xxx")
+// -> jadi path API internal: "/anime/samehadaku/anime/xxx"
+function toApiPathFromHref(href) {
+  if (!href) return "";
+  const h = String(href).trim();
+  if (!h.startsWith("/")) return h;
+  if (h.startsWith("/anime/")) return h;
+  // sesuai pola contoh: route API = "/anime" + href
+  return `/anime${h}`;
+}
+
 async function apiGet(path) {
   try {
     const res = await fetch(`${BASE_URL}${path}`);
@@ -135,25 +134,6 @@ async function apiGet(path) {
     showToast("Gagal memuat data");
     throw err;
   }
-}
-
-// --------- NORMALIZER (biar support response baru) ----------
-function pickSlug(item) {
-  return (item && (item.slug || item.animeId || item.anime_id || item.id)) || "";
-}
-function pickTitle(item) {
-  return (
-    (item &&
-      (item.title ||
-        item.anime_name ||
-        item.name ||
-        item.judul ||
-        item.japanese_title)) ||
-    ""
-  );
-}
-function pickPoster(item) {
-  return (item && (item.poster || item.image || item.thumbnail)) || "";
 }
 
 // FAVORITES (My List)
@@ -188,25 +168,22 @@ function isFavorite(slug) {
 }
 
 function addFavorite(anime) {
-  const slug = anime && (anime.slug || pickSlug(anime));
-  if (!anime || !slug) return;
-  if (isFavorite(slug)) return;
+  if (!anime || !anime.slug) return;
+  if (isFavorite(anime.slug)) return;
 
   const fav = {
-    slug,
-    title: anime.title || pickTitle(anime) || "",
-    poster: anime.poster || pickPoster(anime) || "",
+    slug: anime.slug,
+    title: anime.title || "",
+    poster: anime.poster || "",
     rating: anime.rating || "",
-    episode_count: anime.episode_count || anime.episodes || "",
+    episode_count: anime.episode_count || "",
     status: anime.status || "",
   };
 
   favorites.push(fav);
   saveFavorites();
 
-  if (typeof showToast === "function") {
-    showToast("Ditambahkan ke My List");
-  }
+  if (typeof showToast === "function") showToast("Ditambahkan ke My List");
 }
 
 function removeFavorite(slug) {
@@ -214,12 +191,23 @@ function removeFavorite(slug) {
   favorites = getFavorites().filter((a) => a.slug !== slug);
   saveFavorites();
 
-  if (typeof showToast === "function") {
-    showToast("Dihapus dari My List");
-  }
+  if (typeof showToast === "function") showToast("Dihapus dari My List");
 }
 
-// BIKIN KARTU ANIME (dipakai di semua page) — UI sama, cuma fallback data
+// slug picker: dukung beberapa bentuk response
+function pickSlug(item) {
+  if (!item) return "";
+  return (
+    item.slug ||
+    item.animeId ||
+    item.id ||
+    item.anime_id ||
+    item.episodeId ||
+    ""
+  );
+}
+
+// BIKIN KARTU ANIME (dipakai di semua page)
 function createAnimeCard(item, opts = {}) {
   const card = document.createElement("div");
   card.className = "anime-card";
@@ -228,8 +216,8 @@ function createAnimeCard(item, opts = {}) {
   thumb.className = "anime-thumb";
 
   const img = document.createElement("img");
-  img.src = item.poster || pickPoster(item) || "/assets/img/placeholder-poster.png";
-  img.alt = item.title || pickTitle(item) || "-";
+  img.src = item.poster || "/assets/img/placeholder-poster.png";
+  img.alt = item.title || "Anime";
   thumb.appendChild(img);
 
   if (opts.badgeTop) {
@@ -263,7 +251,7 @@ function createAnimeCard(item, opts = {}) {
 
   const title = document.createElement("div");
   title.className = "anime-title";
-  title.textContent = item.title || pickTitle(item) || "-";
+  title.textContent = item.title || "-";
   card.appendChild(title);
 
   if (opts.meta) {
@@ -274,7 +262,7 @@ function createAnimeCard(item, opts = {}) {
   }
 
   card.addEventListener("click", () => {
-    const slug = item.slug || pickSlug(item);
+    const slug = pickSlug(item);
     if (!slug) return;
     const url = `/anime/detail?slug=${encodeURIComponent(slug)}`;
     window.location.href = url;
@@ -305,14 +293,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (backButton) {
     backButton.style.visibility = basePages.has(pageType) ? "hidden" : "visible";
-
     backButton.addEventListener("click", () => {
       const customHref = backButton.dataset.href;
-      if (customHref) {
-        window.location.href = customHref;
-      } else {
-        window.history.back();
-      }
+      if (customHref) window.location.href = customHref;
+      else window.history.back();
     });
   }
 
