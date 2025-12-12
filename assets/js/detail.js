@@ -2,17 +2,19 @@
 
 const animeDetailContent =
   document.getElementById("animeDetailContent") ||
-  document.getElementById("animeDetail") ||
-  document.querySelector(".anime-detail") ||
-  document.querySelector("[data-detail-content]");
+  document.querySelector('[data-role="anime-detail"]');
 
 const episodeList =
   document.getElementById("episodeList") ||
-  document.querySelector(".episode-list");
+  document.querySelector('[data-role="episode-list"]');
 
 const seasonList =
   document.getElementById("seasonList") ||
-  document.querySelector(".season-list");
+  document.querySelector('[data-role="season-list"]');
+
+const recommendationGrid =
+  document.getElementById("recommendationGrid") ||
+  document.querySelector('[data-role="recommendation-grid"]');
 
 const tabEpisodes =
   document.getElementById("tabEpisodes") ||
@@ -21,17 +23,6 @@ const tabEpisodes =
 const tabSeasons =
   document.getElementById("tabSeasons") ||
   document.querySelector('[data-tab="seasons"]');
-
-// rekomendasi: DISABLE / HIDE (biar ga nongol kosong)
-const recommendationGrid = document.getElementById("recommendationGrid");
-if (recommendationGrid) {
-  recommendationGrid.innerHTML = "";
-  recommendationGrid.style.display = "none";
-  const prev = recommendationGrid.previousElementSibling;
-  if (prev && /rekomendasi/i.test(prev.textContent || "")) {
-    prev.style.display = "none";
-  }
-}
 
 const detailParams = new URLSearchParams(window.location.search);
 const detailSlugFromUrl = detailParams.get("slug");
@@ -50,7 +41,7 @@ const safeRemoveFavorite =
   typeof removeFavorite === "function" ? removeFavorite : () => {};
 
 // =====================================================
-// UTIL: SEASON (season dari endpoint search)
+// UTIL: NORMALIZE / SEASON (dari endpoint search)
 // =====================================================
 
 function cleanTextBasic(str) {
@@ -79,7 +70,6 @@ function normalizeBaseTitleFull(title) {
 function normalizeBaseTitleRoot(title) {
   const full = normalizeBaseTitleFull(title);
   if (!full) return "";
-
   const words = full.split(" ").filter(Boolean);
   if (words.length >= 2) return `${words[0]} ${words[1]}`.trim();
   return full;
@@ -120,12 +110,27 @@ function extractSeasonNumber(title) {
 
 function formatSeasonTitle(title) {
   if (!title) return "";
+  // ✅ “Season …” ga ditambahin apa-apa, cukup judul aslinya
   return String(title)
     .replace(/\(.*?\)/g, "")
     .replace(/subtitle indonesia/gi, "")
     .replace(/\s+eps?\.?\s*\d+.*/gi, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function get(obj, path, fallback = undefined) {
+  try {
+    const parts = String(path).split(".");
+    let cur = obj;
+    for (const p of parts) {
+      if (cur == null) return fallback;
+      cur = cur[p];
+    }
+    return cur == null ? fallback : cur;
+  } catch {
+    return fallback;
+  }
 }
 
 // =====================================================
@@ -138,7 +143,6 @@ function showEpisodeTab() {
   tabSeasons.classList.remove("active");
   episodeList.classList.remove("hidden");
   seasonList.classList.add("hidden");
-
   if (episodeSearchWrap) episodeSearchWrap.classList.remove("hidden");
 }
 
@@ -148,26 +152,71 @@ function showSeasonTab() {
   tabSeasons.classList.add("active");
   episodeList.classList.add("hidden");
   seasonList.classList.remove("hidden");
-
   if (episodeSearchWrap) episodeSearchWrap.classList.add("hidden");
 }
 
 // =====================================================
-// LOAD SEASON LIST (endpoint search baru)
+// SEARCH HELPER (coba beberapa endpoint supaya fleksibel)
+// =====================================================
+
+async function searchAnimeList(q) {
+  const enc = encodeURIComponent(String(q || "").trim());
+  if (!enc) return [];
+
+  const candidates = [
+    `/anime/search/${enc}`, // versi lama (kalau ada)
+    `/anime/search?q=${enc}`, // versi query param (kalau ada)
+    `/anime/samehadaku/search?q=${enc}`, // samehadaku (yang kamu pakai di search.js)
+  ];
+
+  for (const url of candidates) {
+    try {
+      const json = await apiGet(url);
+      if (!json || json.status !== "success") continue;
+
+      // kemungkinan bentuk:
+      // 1) json.data = array
+      // 2) json.data.animeList = array
+      const listA = Array.isArray(json.data) ? json.data : null;
+      const listB = Array.isArray(get(json, "data.animeList"))
+        ? get(json, "data.animeList")
+        : null;
+
+      const list = listA || listB || [];
+      if (!list.length) continue;
+
+      // normalisasi output -> { slug, title, poster }
+      return list
+        .map((a) => {
+          const title = a?.title || "";
+          const poster = a?.poster || a?.image || "";
+          const slug = a?.animeId || a?.slug || "";
+          return { title, poster, slug };
+        })
+        .filter((x) => x.slug && x.title);
+    } catch {
+      // lanjut coba endpoint lain
+    }
+  }
+
+  return [];
+}
+
+// =====================================================
+// LOAD SEASON LIST (pakai hasil search)
 // =====================================================
 
 async function loadSeasonListForAnime(detailData, detailSlug) {
   if (!seasonList) return;
-
   seasonList.innerHTML = "";
 
-  // search query: pakai data.title dulu, kalau kosong fallback japanese
-  const titleForSeason =
+  // untuk query season: pakai title dulu, kalau kosong fallback japanese
+  const titleForSeasonQuery =
     (detailData && String(detailData.title || "").trim()) ||
     (detailData && String(detailData.japanese || "").trim()) ||
     "";
 
-  if (!titleForSeason) {
+  if (!titleForSeasonQuery) {
     const empty = document.createElement("div");
     empty.className = "season-empty";
     empty.textContent = "Season belum ada";
@@ -175,37 +224,16 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
     return;
   }
 
-  const searchQuery = getSeasonSearchQuery(titleForSeason);
-  if (!searchQuery) {
-    const empty = document.createElement("div");
-    empty.className = "season-empty";
-    empty.textContent = "Season belum ada";
-    seasonList.appendChild(empty);
-    return;
-  }
+  const searchQuery = getSeasonSearchQuery(titleForSeasonQuery);
+  const list = await searchAnimeList(searchQuery);
 
-  let json;
-  try {
-    json = await apiGet(
-      `/anime/samehadaku/search?q=${encodeURIComponent(searchQuery)}`
-    );
-  } catch {
-    return;
-  }
-
-  if (!json || json.status !== "success" || !json.data) return;
-
-  const list = Array.isArray(json.data.animeList) ? json.data.animeList : [];
-
-  const currentFull = normalizeBaseTitleFull(titleForSeason);
-  const currentRoot = normalizeBaseTitleRoot(titleForSeason);
+  const currentFull = normalizeBaseTitleFull(titleForSeasonQuery);
+  const currentRoot = normalizeBaseTitleRoot(titleForSeasonQuery);
 
   const relatedAll = [];
-  let hasSeasonLike = hasSeasonKeyword(titleForSeason);
+  let hasSeasonLike = hasSeasonKeyword(titleForSeasonQuery);
 
   list.forEach((a) => {
-    if (!a || !a.animeId || !a.title) return;
-
     const otherFull = normalizeBaseTitleFull(a.title);
     const otherRoot = normalizeBaseTitleRoot(a.title);
 
@@ -226,18 +254,15 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
     return;
   }
 
-  const seasons = [];
-  relatedAll.forEach((a) => {
-    if (a.animeId === detailSlug) return;
-
-    seasons.push({
-      slug: a.animeId,
-      title: formatSeasonTitle(a.title), // ✅ judul asli aja
-      poster: a.poster || "", // ✅ poster dari search
+  const seasons = relatedAll
+    .filter((a) => a.slug !== detailSlug)
+    .map((a) => ({
+      slug: a.slug,
+      title: formatSeasonTitle(a.title),
+      poster: a.poster || "",
       seasonNumber: extractSeasonNumber(a.title),
-      rawTitle: String(a.title || ""),
-    });
-  });
+      rawTitle: a.title || "",
+    }));
 
   if (!seasons.length) {
     const empty = document.createElement("div");
@@ -291,21 +316,52 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
 }
 
 // =====================================================
-// LOAD DETAIL (endpoint SAMEHADAKU)
+// EPISODE HELPERS (buat endpoint /anime/anime/*)
+// =====================================================
+
+function extractEpisodeNumber(ep) {
+  const n1 = ep && typeof ep.eps === "number" ? ep.eps : null;
+  if (n1 != null && !Number.isNaN(n1)) return n1;
+
+  const title = String(ep?.title || "");
+  let m = title.match(/episode\s*(\d+)/i);
+  if (m && m[1]) return parseInt(m[1], 10);
+
+  const id = String(ep?.episodeId || "");
+  m = id.match(/episode[-_]?(\d+)/i);
+  if (m && m[1]) return parseInt(m[1], 10);
+
+  return 0;
+}
+
+function getEpisodeLabel(ep) {
+  const n = extractEpisodeNumber(ep);
+  if (n === 0) return "Episode 0";
+  return `Episode ${n}`;
+}
+
+// =====================================================
+// LOAD DETAIL (utamanya endpoint /anime/anime/<slug>)
 // =====================================================
 
 async function loadAnimeDetail(slug) {
   if (!animeDetailContent) {
-    safeToast('Element detail tidak ketemu (id "animeDetailContent").');
+    safeToast('Container detail tidak ketemu (cek id "animeDetailContent").');
     return;
   }
 
+  // ✅ endpoint yang kamu kasih: /anime/anime/<slug>
   let json;
   try {
-    json = await apiGet(`/anime/samehadaku/anime/${encodeURIComponent(slug)}`);
+    json = await apiGet(`/anime/anime/${encodeURIComponent(slug)}`);
   } catch {
-    safeToast("Gagal memuat detail.");
-    return;
+    // fallback biar tetep aman kalau slug ini ternyata samehadaku
+    try {
+      json = await apiGet(`/anime/samehadaku/anime/${encodeURIComponent(slug)}`);
+    } catch {
+      safeToast("Gagal memuat detail.");
+      return;
+    }
   }
 
   if (!json || json.status !== "success" || !json.data) {
@@ -316,8 +372,7 @@ async function loadAnimeDetail(slug) {
   const d = json.data;
   const apiSlug = slug;
 
-  // ✅ sesuai request: judul hanya dari data.title dan data.japanese
-  // kalau title kosong, biarin "-" (jangan fallback ke english/synonyms)
+  // ✅ sesuai request: judul hanya data.title & data.japanese (ga pake english/synonyms)
   const titleMain = (d.title && String(d.title).trim()) || "-";
   const titleJapanese = (d.japanese && String(d.japanese).trim()) || "";
 
@@ -326,7 +381,6 @@ async function loadAnimeDetail(slug) {
   // ===== KARTU UTAMA =====
   const card = document.createElement("div");
   card.className = "anime-detail-card";
-
   if (d.poster) card.style.setProperty("--detail-bg", `url("${d.poster}")`);
 
   const posterCol = document.createElement("div");
@@ -355,8 +409,11 @@ async function loadAnimeDetail(slug) {
     metaCol.appendChild(jp);
   }
 
+  // score bisa string (otakudesu) atau object (samehadaku)
   const scoreVal =
-    d.score && d.score.value != null ? String(d.score.value) : "N/A";
+    (typeof d.score === "string" && d.score.trim()) ||
+    (d.score && d.score.value != null ? String(d.score.value) : "") ||
+    "N/A";
 
   const info = document.createElement("div");
   info.className = "detail-meta";
@@ -374,7 +431,6 @@ async function loadAnimeDetail(slug) {
 
   const genresWrap = document.createElement("div");
   genresWrap.className = "detail-genres";
-
   (Array.isArray(d.genreList) ? d.genreList : []).forEach((g) => {
     const chip = document.createElement("button");
     chip.type = "button";
@@ -388,7 +444,6 @@ async function loadAnimeDetail(slug) {
     });
     genresWrap.appendChild(chip);
   });
-
   metaCol.appendChild(genresWrap);
 
   card.appendChild(posterCol);
@@ -418,9 +473,17 @@ async function loadAnimeDetail(slug) {
 
   playBtn.addEventListener("click", () => {
     const eps = Array.isArray(d.episodeList) ? d.episodeList : [];
-    if (!eps.length || !eps[0].episodeId) return;
+    if (!eps.length) return;
+
+    // pilih episode paling kecil (biar “Putar” mulai dari awal)
+    const sorted = [...eps].sort(
+      (a, b) => extractEpisodeNumber(a) - extractEpisodeNumber(b)
+    );
+    const first = sorted[0];
+    if (!first || !first.episodeId) return;
+
     window.location.href = `/anime/episode?slug=${encodeURIComponent(
-      eps[0].episodeId
+      first.episodeId
     )}`;
   });
 
@@ -444,8 +507,8 @@ async function loadAnimeDetail(slug) {
       ? "Hapus dari Favorit"
       : "Favorit";
   };
-
   refreshFavBtn();
+
   favBtn.appendChild(favIcon);
   favBtn.appendChild(favText);
 
@@ -543,19 +606,18 @@ async function loadAnimeDetail(slug) {
       });
     }
 
+    // render episode ascending (Episode 0,1,2,...)
+    const sorted = [...eps].sort(
+      (a, b) => extractEpisodeNumber(a) - extractEpisodeNumber(b)
+    );
+
     episodeList.innerHTML = "";
-
-    for (let i = eps.length - 1; i >= 0; i--) {
-      const ep = eps[i];
-      if (!ep) continue;
-
+    sorted.forEach((ep) => {
       const item = document.createElement("div");
       item.className = "episode-item";
 
-      const epNum = ep.title != null ? ep.title : eps.length - i;
-
       const left = document.createElement("span");
-      left.textContent = `Episode ${epNum}`;
+      left.textContent = getEpisodeLabel(ep);
       item.appendChild(left);
 
       item.addEventListener("click", () => {
@@ -566,11 +628,29 @@ async function loadAnimeDetail(slug) {
       });
 
       episodeList.appendChild(item);
-    }
+    });
   }
 
   // ===== SEASON LIST =====
   loadSeasonListForAnime(d, apiSlug);
+
+  // ===== REKOMENDASI (pakai recommendedAnimeList untuk endpoint /anime/anime/*) =====
+  if (recommendationGrid) {
+    recommendationGrid.innerHTML = "";
+    const recs = Array.isArray(d.recommendedAnimeList)
+      ? d.recommendedAnimeList
+      : [];
+
+    recs.forEach((a) => {
+      const item = {
+        title: a.title || "-",
+        poster: a.poster || "",
+        slug: a.animeId || "",
+      };
+      const card = createAnimeCard(item, { meta: "" });
+      recommendationGrid.appendChild(card);
+    });
+  }
 
   document.title = `AniKuy - ${titleMain}`;
 }
