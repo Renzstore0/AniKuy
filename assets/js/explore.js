@@ -1,5 +1,3 @@
-// assets/js/explore.js
-
 const exploreTabs = document.querySelectorAll(".explore-tab");
 const explorePanels = document.querySelectorAll(".explore-panel");
 const genreChipList = document.getElementById("genreChipList");
@@ -8,7 +6,7 @@ const scheduleLoading = document.getElementById("scheduleLoading");
 
 let scheduleLoaded = false;
 
-// LOAD GENRES LIST (chip)
+// LOAD GENRES LIST (chip) — tetap
 async function loadGenres() {
   if (!genreChipList) return;
 
@@ -37,7 +35,7 @@ async function loadGenres() {
   });
 }
 
-// LOAD SCHEDULE
+// LOAD SCHEDULE — ✅ ganti respon ke Samehadaku
 async function loadSchedule() {
   if (!scheduleContainer || !scheduleLoading) return;
 
@@ -46,12 +44,13 @@ async function loadSchedule() {
   scheduleLoading.classList.add("show");
 
   try {
-    const json = await apiGet("/anime/schedule");
+    const json = await apiGet("/anime/samehadaku/schedule");
     if (!json || json.status !== "success") return;
 
+    const days = json.data && Array.isArray(json.data.days) ? json.data.days : [];
     scheduleContainer.innerHTML = "";
 
-    (json.data || []).forEach((day) => {
+    days.forEach((day) => {
       const dayWrap = document.createElement("div");
       dayWrap.className = "schedule-day";
 
@@ -64,7 +63,7 @@ async function loadSchedule() {
 
       const count = document.createElement("div");
       count.className = "schedule-day-count";
-      const len = (day.anime_list || []).length;
+      const len = (day.animeList || []).length;
       count.textContent = len ? `${len} anime` : "Tidak ada anime";
 
       header.appendChild(title);
@@ -74,11 +73,11 @@ async function loadSchedule() {
       const row = document.createElement("div");
       row.className = "anime-row";
 
-      (day.anime_list || []).forEach((a) => {
+      (day.animeList || []).forEach((a) => {
         const item = {
-          title: a.anime_name,
+          title: a.title,
           poster: a.poster,
-          slug: a.slug,
+          slug: a.animeId, // Samehadaku pakai animeId untuk detail
         };
         const card = createAnimeCard(item, {});
         row.appendChild(card);
