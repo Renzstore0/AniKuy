@@ -3,7 +3,7 @@ const completeRowHome = document.getElementById("completeRowHome");
 const seeAllOngoingBtn = document.getElementById("seeAllOngoingBtn");
 const seeAllCompleteBtn = document.getElementById("seeAllCompleteBtn");
 
-// elemen "Rilis Hari Ini" (hero)
+// elemen "Rilis Hari Ini" (hero) — tetap dipertahankan (kalau endpoint ada)
 const todaySection = document.getElementById("todaySection");
 const todayHeaderTitle = document.getElementById("todayHeaderTitle");
 const todayPosterPrev = document.getElementById("todayPosterPrev");
@@ -20,37 +20,30 @@ let todayIndex = 0;
 let todayAutoTimer = null;
 const TODAY_AUTO_MS = 7000;
 
-// --- UTIL HARI (buat cari schedule Samehadaku yang pakai EN) ---
+// --- UTIL HARI ---
 function getTodayName() {
-  const daysId = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-  const daysEn = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const idx = new Date().getDay();
-  return { id: daysId[idx], en: daysEn[idx] };
+  const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+  return days[new Date().getDay()];
 }
 
-// --- FORMAT LABEL EPISODE (dipakai Home & Ongoing) ---
+// --- FORMAT LABEL EPISODE ---
 function formatEpisodeLabel(text) {
-  if (!text) return "";
-
+  if (!text && text !== 0) return "";
   let t = String(text).trim();
 
-  // "Total 10 Episode" / "Total 10 Eps"
   let m = t.match(/^Total\s+(\d+)\s*(Episode|Eps?)?/i);
   if (m) return `Eps ${m[1]}`;
 
-  // "Episode 10"
   m = t.match(/^Episode\s+(\d+)/i);
   if (m) return `Eps ${m[1]}`;
 
-  // "10 Episode" / "10 Eps" / "10"
   m = t.match(/^(\d+)\s*(Episode|Eps?)?$/i);
   if (m) return `Eps ${m[1]}`;
 
-  // fallback: ganti kata Episode → Eps
   return t.replace(/Episode/gi, "Eps");
 }
 
-// --- RILIS HARI INI (HERO) ---
+// --- RILIS HARI INI (HERO) --- (tetap seperti awal)
 function scrollTodayDotsIntoView() {
   if (!todayDots) return;
   const active = todayDots.querySelector("span.active");
@@ -65,15 +58,7 @@ function scrollTodayDotsIntoView() {
 }
 
 function updateTodayHero() {
-  if (
-    !todaySection ||
-    !todayPoster ||
-    !todayTitle ||
-    !todayDots ||
-    !todayAnimeList.length
-  ) {
-    return;
-  }
+  if (!todaySection || !todayPoster || !todayTitle || !todayDots || !todayAnimeList.length) return;
 
   const current = todayAnimeList[todayIndex];
   if (!current) return;
@@ -85,24 +70,19 @@ function updateTodayHero() {
   const prev = todayAnimeList[prevIndex];
   const next = todayAnimeList[nextIndex];
 
-  // poster utama
   todayPoster.src = current.poster;
   todayPoster.alt = current.title;
   todayTitle.textContent = current.title;
 
-  // poster sebelum
   if (todayPosterPrev && prev) {
     todayPosterPrev.src = prev.poster;
     todayPosterPrev.alt = prev.title;
   }
-
-  // poster sesudah
   if (todayPosterNext && next) {
     todayPosterNext.src = next.poster;
     todayPosterNext.alt = next.title;
   }
 
-  // dots
   todayDots.innerHTML = "";
   todayAnimeList.forEach((_, i) => {
     const dot = document.createElement("span");
@@ -142,37 +122,29 @@ async function loadTodayAnime() {
 
   let json;
   try {
-    // ✅ ganti respon: schedule Samehadaku
-    json = await apiGet("/anime/samehadaku/schedule");
+    // kalau endpoint schedule kamu masih ada, ini tetap jalan
+    json = await apiGet("/anime/schedule");
   } catch {
     return;
   }
 
-  const days = json && json.data && Array.isArray(json.data.days) ? json.data.days : [];
-  if (!json || json.status !== "success" || !Array.isArray(days)) return;
+  if (!json || json.status !== "success" || !Array.isArray(json.data)) return;
 
   const todayName = getTodayName();
-  const todayObj = days.find(
-    (d) => String(d.day || "").toLowerCase() === String(todayName.en).toLowerCase()
-  );
+  const todayObj = json.data.find((d) => d.day === todayName);
 
-  if (!todayObj || !Array.isArray(todayObj.animeList) || !todayObj.animeList.length) {
-    return;
-  }
+  if (!todayObj || !Array.isArray(todayObj.anime_list) || !todayObj.anime_list.length) return;
 
-  // ✅ mapping ke bentuk internal UI (tetap sama)
-  todayAnimeList = todayObj.animeList.map((a) => ({
-    title: a.title,
+  todayAnimeList = todayObj.anime_list.map((a) => ({
+    title: a.anime_name,
     poster: a.poster,
-    slug: a.animeId, // Samehadaku pakai animeId untuk detail
+    slug: a.slug,
   }));
 
   if (!todayAnimeList.length) return;
 
   todaySection.style.display = "block";
-  if (todayHeaderTitle) {
-    todayHeaderTitle.textContent = `Anime Rilis Hari Ini - ${todayName.id}`;
-  }
+  if (todayHeaderTitle) todayHeaderTitle.textContent = `Anime Rilis Hari Ini - ${todayName}`;
 
   todayIndex = 0;
   updateTodayHero();
@@ -183,17 +155,17 @@ async function loadTodayAnime() {
 
   if (todayPosterPrev) todayPosterPrev.addEventListener("click", () => goTodayStep(-1, true));
   if (todayPosterNext) todayPosterNext.addEventListener("click", () => goTodayStep(1, true));
+
   if (todayPrevBtn) todayPrevBtn.addEventListener("click", () => goTodayStep(-1, true));
   if (todayNextBtn) todayNextBtn.addEventListener("click", () => goTodayStep(1, true));
 }
 
-// --- HOME (SEDANG TAYANG & SELESAI) ---
+// --- HOME (RECENT & TOP10 dari Samehadaku) ---
 async function loadHome() {
   if (!ongoingGridHome || !completeRowHome) return;
 
   let data;
   try {
-    // ✅ ganti respon: home Samehadaku
     data = await apiGet("/anime/samehadaku/home");
   } catch {
     return;
@@ -204,24 +176,19 @@ async function loadHome() {
     return;
   }
 
-  const ongoing = (data.data.recent && Array.isArray(data.data.recent.animeList))
-    ? data.data.recent.animeList
-    : [];
-
-  // UI kamu menamai "complete", kita mapping ke Top10 (biar ada konten)
-  const complete = (data.data.top10 && Array.isArray(data.data.top10.animeList))
-    ? data.data.top10.animeList
-    : [];
+  const recentList = (data.data.recent && data.data.recent.animeList) || [];
+  const top10List = (data.data.top10 && data.data.top10.animeList) || [];
 
   ongoingGridHome.innerHTML = "";
   completeRowHome.innerHTML = "";
 
-  // SEDANG TAYANG (home) – badge bawah: Eps ..
-  ongoing.slice(0, 9).forEach((a) => {
+  // SEDANG TAYANG / TERBARU (pakai recent)
+  recentList.slice(0, 9).forEach((a) => {
     const item = {
-      title: a.title,
-      poster: a.poster,
-      slug: a.slug, // Samehadaku home recent biasanya sudah ada slug
+      title: a.title || "-",
+      poster: a.poster || "",
+      slug: a.animeId || a.slug || "", // PENTING: animeId = slug internal
+      animeId: a.animeId,
     };
 
     const card = createAnimeCard(item, {
@@ -229,21 +196,24 @@ async function loadHome() {
       badgeBottom: formatEpisodeLabel(a.episodes || ""),
       meta: a.releasedOn || "",
     });
+
     ongoingGridHome.appendChild(card);
   });
 
-  // SELESAI DITAYANGKAN (home) – pakai rating (score)
-  complete.slice(0, 15).forEach((a) => {
+  // SELESAI / POPULER (pakai top10)
+  top10List.slice(0, 15).forEach((a) => {
     const item = {
-      title: a.title,
-      poster: a.poster,
-      slug: a.slug,
+      title: a.title || "-",
+      poster: a.poster || "",
+      slug: a.animeId || a.slug || "",
+      animeId: a.animeId,
     };
 
     const card = createAnimeCard(item, {
       rating: a.score && a.score !== "" ? a.score : "N/A",
-      meta: "",
+      meta: a.rank ? `#${a.rank}` : "",
     });
+
     completeRowHome.appendChild(card);
   });
 }
@@ -254,7 +224,6 @@ if (seeAllOngoingBtn) {
     window.location.href = "/anime/ongoing";
   });
 }
-
 if (seeAllCompleteBtn) {
   seeAllCompleteBtn.addEventListener("click", () => {
     window.location.href = "/anime/complete";
