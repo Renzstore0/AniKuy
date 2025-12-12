@@ -1,124 +1,111 @@
 // assets/js/genre.js
+(() => {
+  "use strict";
 
-const genreTitle = document.getElementById("genreTitle");
-const genreAnimeGrid = document.getElementById("genreAnimeGrid");
-const genrePrevBtn = document.getElementById("genrePrevBtn");
-const genreNextBtn = document.getElementById("genreNextBtn");
-const genrePageInfo = document.getElementById("genrePageInfo");
+  const $ = (id) => document.getElementById(id);
+  const el = {
+    title: $("genreTitle"),
+    grid: $("genreAnimeGrid"),
+    prev: $("genrePrevBtn"),
+    next: $("genreNextBtn"),
+    info: $("genrePageInfo"),
+    sc: $("mainContent") || window,
+  };
 
-// container scroll utama (di layout kamu ini #mainContent)
-const genreScrollContainer =
-  document.getElementById("mainContent") || window;
+  const p = new URLSearchParams(location.search);
+  const slug = p.get("slug");
+  const name = p.get("name");
 
-const urlParams = new URLSearchParams(window.location.search);
-const currentGenreSlug = urlParams.get("slug");
-const currentGenreName = urlParams.get("name");
+  let page = 1,
+    last = 1,
+    loading = false,
+    hasMore = true;
 
-let currentGenrePage = 1;
-let currentGenreLastPage = 1;
-let genreHasMore = true;
-let genreIsLoading = false;
+  const OFFSET = 400;
 
-const GENRE_SCROLL_OFFSET = 400; // jarak 400px sebelum mentok bawah
+  const hide = (...xs) => xs.forEach((x) => x && (x.style.display = "none"));
 
-async function loadGenreList(page = 1) {
-  if (!currentGenreSlug || !genreAnimeGrid) return;
-  if (genreIsLoading) return;
-  if (!genreHasMore && page > 1) return;
+  const parseHrefSlug = (href) => {
+    const s = String(href || "").trim();
+    if (!s) return "";
+    const parts = s.split("/").filter(Boolean);
+    return parts[parts.length - 1] || "";
+  };
 
-  genreIsLoading = true;
+  async function load(nextPage = 1) {
+    if (!slug || !el.grid || loading || (!hasMore && nextPage > 1)) return;
+    loading = true;
+    if (nextPage === 1) el.grid.innerHTML = "";
 
-  // kalau pertama kali load, kosongkan grid
-  if (page === 1) {
-    genreAnimeGrid.innerHTML = "";
-  }
+    let json;
+    try {
+      json = await apiGet(
+        `/anime/samehadaku/genres/${encodeURIComponent(slug)}?page=${encodeURIComponent(nextPage)}`
+      );
+    } catch {
+      loading = false;
+      return;
+    }
 
-  let json;
-  try {
-    json = await apiGet(`/anime/genre/${currentGenreSlug}?page=${page}`);
-  } catch {
-    genreIsLoading = false;
-    return;
-  }
+    if (!json || json.status !== "success") return (loading = false);
 
-  if (!json || json.status !== "success") {
-    genreIsLoading = false;
-    return;
-  }
+    const list = Array.isArray(json?.data?.animeList) ? json.data.animeList : [];
+    const pag = json.pagination || {};
 
-  const pag = json.data.pagination || {};
-  currentGenrePage = pag.current_page || page;
-  currentGenreLastPage =
-    pag.last_visible_page || currentGenreLastPage || currentGenrePage;
+    page = pag.currentPage || nextPage;
+    last = pag.totalPages || last || page;
+    hasMore = pag.hasNextPage === true || page < last;
 
-  // masih ada page berikutnya?
-  genreHasMore =
-    pag.has_next_page === true || currentGenrePage < currentGenreLastPage;
+    list.forEach((a) => {
+      const item = {
+        title: a?.title || "-",
+        poster: a?.poster || "",
+        slug: a?.animeId || parseHrefSlug(a?.href) || a?.slug || "",
+        animeId: a?.animeId,
+        rating: a?.score || "N/A",
+        status: a?.status || "",
+        type: a?.type || "",
+      };
 
-  (json.data.anime || []).forEach((a) => {
-    const card = createAnimeCard(a, {
-      rating: a.rating && a.rating !== "" ? a.rating : "N/A",
-      badgeBottom: a.episode_count ? `${a.episode_count} Eps` : "",
-      meta: a.season || "",
+      // ✅ pakai fungsi card kamu (core.js)
+      el.grid.appendChild(
+        createAnimeCard(item, {
+          rating: item.rating,
+          badgeBottom: item.type || "",
+          meta: item.status || "",
+        })
+      );
     });
-    genreAnimeGrid.appendChild(card);
+
+    if (el.info) el.info.textContent = `Page ${page} / ${last}`;
+    loading = false;
+  }
+
+  function onScroll() {
+    if (!hasMore || loading) return;
+
+    let top, height, client;
+    if (el.sc === window) {
+      const d = document.documentElement;
+      top = window.scrollY || d.scrollTop;
+      height = d.scrollHeight;
+      client = window.innerHeight;
+    } else {
+      top = el.sc.scrollTop;
+      height = el.sc.scrollHeight;
+      client = el.sc.clientHeight;
+    }
+
+    if (top + client >= height - OFFSET) load(page + 1);
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    if (el.title) el.title.textContent = name || "Genre";
+    hide(el.prev, el.next, el.info);
+
+    load(1);
+
+    const opt = { passive: true };
+    (el.sc === window ? window : el.sc).addEventListener("scroll", onScroll, opt);
   });
-
-  // kita tetap update text (opsional), tapi nanti elemen-nya di-hide
-  if (genrePageInfo) {
-    genrePageInfo.textContent = `Page ${currentGenrePage} / ${currentGenreLastPage}`;
-  }
-
-  genreIsLoading = false;
-}
-
-// handler infinite scroll
-function handleGenreInfiniteScroll() {
-  if (!genreHasMore || genreIsLoading) return;
-
-  let scrollTop, scrollHeight, clientHeight;
-
-  if (genreScrollContainer === window) {
-    const doc = document.documentElement;
-    scrollTop = window.scrollY || doc.scrollTop;
-    scrollHeight = doc.scrollHeight;
-    clientHeight = window.innerHeight;
-  } else {
-    scrollTop = genreScrollContainer.scrollTop;
-    scrollHeight = genreScrollContainer.scrollHeight;
-    clientHeight = genreScrollContainer.clientHeight;
-  }
-
-  if (scrollTop + clientHeight >= scrollHeight - GENRE_SCROLL_OFFSET) {
-    loadGenreList(currentGenrePage + 1);
-  }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  if (genreTitle) {
-    genreTitle.textContent = currentGenreName || "Genre";
-  }
-
-  // sembunyikan tombol Back / Next kalau masih ada di HTML
-  if (genrePrevBtn) genrePrevBtn.style.display = "none";
-  if (genreNextBtn) genreNextBtn.style.display = "none";
-
-  // SEMBUNYIKAN INFO PAGE
-  if (genrePageInfo) {
-    genrePageInfo.style.display = "none";
-  }
-
-  loadGenreList(1);
-
-  if (genreScrollContainer === window) {
-    window.addEventListener("scroll", handleGenreInfiniteScroll, {
-      passive: true,
-    });
-  } else {
-    genreScrollContainer.addEventListener(
-      "scroll",
-      handleGenreInfiniteScroll,
-      { passive: true }
-    );
-  }
-});
+})();
