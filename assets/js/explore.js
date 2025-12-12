@@ -6,16 +6,30 @@ const scheduleLoading = document.getElementById("scheduleLoading");
 
 let scheduleLoaded = false;
 
+// --- HARI (EN -> ID) ---
+function toIndoDay(day) {
+  const map = {
+    monday: "Senin",
+    tuesday: "Selasa",
+    wednesday: "Rabu",
+    thursday: "Kamis",
+    friday: "Jumat",
+    saturday: "Sabtu",
+    sunday: "Minggu",
+  };
+  if (!day) return "-";
+  const key = String(day).trim().toLowerCase();
+  return map[key] || day; // fallback kalau sudah Indonesia / format lain
+}
+
 // LOAD GENRES LIST (chip) — support Samehadaku (robust)
 async function loadGenres() {
   if (!genreChipList) return;
 
   let json;
   try {
-    // jika endpoint ini ada, pakai ini
     json = await apiGet("/anime/samehadaku/genres");
   } catch {
-    // fallback ke endpoint lama kalau project kamu masih pakai itu
     try {
       json = await apiGet("/anime/genre");
     } catch {
@@ -25,7 +39,6 @@ async function loadGenres() {
 
   if (!json || json.status !== "success") return;
 
-  // beberapa kemungkinan bentuk data:
   const list =
     (Array.isArray(json.data) && json.data) ||
     (json.data && Array.isArray(json.data.genreList) && json.data.genreList) ||
@@ -44,7 +57,9 @@ async function loadGenres() {
 
     chip.addEventListener("click", () => {
       if (!slug) return;
-      const url = `/anime/genre?slug=${encodeURIComponent(slug)}&name=${encodeURIComponent(name)}`;
+      const url = `/anime/genre?slug=${encodeURIComponent(
+        slug
+      )}&name=${encodeURIComponent(name)}`;
       window.location.href = url;
     });
 
@@ -52,7 +67,19 @@ async function loadGenres() {
   });
 }
 
-// LOAD SCHEDULE (tetap)
+// helper: ambil animeId dari href samehadaku kalau animeId kosong
+function parseAnimeIdFromHref(href) {
+  if (!href) return "";
+  try {
+    const s = String(href).trim();
+    const parts = s.split("/").filter(Boolean);
+    return parts[parts.length - 1] || "";
+  } catch {
+    return "";
+  }
+}
+
+// LOAD SCHEDULE — pakai Samehadaku schedule (baru), fallback ke schedule lama
 async function loadSchedule() {
   if (!scheduleContainer || !scheduleLoading) return;
 
@@ -61,12 +88,28 @@ async function loadSchedule() {
   scheduleLoading.classList.add("show");
 
   try {
-    const json = await apiGet("/anime/schedule");
+    let json;
+
+    // 1) endpoint baru
+    try {
+      json = await apiGet("/anime/samehadaku/schedule");
+    } catch {
+      // 2) fallback endpoint lama
+      json = await apiGet("/anime/schedule");
+    }
+
     if (!json || json.status !== "success") return;
 
     scheduleContainer.innerHTML = "";
 
-    (json.data || []).forEach((day) => {
+    // bentuk data baru: json.data.days = [{ day, animeList: [...] }]
+    // bentuk data lama: json.data = [{ day, anime_list: [...] }]
+    const days =
+      (json.data && Array.isArray(json.data.days) && json.data.days) ||
+      (Array.isArray(json.data) && json.data) ||
+      [];
+
+    days.forEach((day) => {
       const dayWrap = document.createElement("div");
       dayWrap.className = "schedule-day";
 
@@ -75,11 +118,16 @@ async function loadSchedule() {
 
       const title = document.createElement("div");
       title.className = "schedule-day-title";
-      title.textContent = day.day || "-";
+      title.textContent = toIndoDay(day.day) || "-";
+
+      const list =
+        (Array.isArray(day.animeList) && day.animeList) ||
+        (Array.isArray(day.anime_list) && day.anime_list) ||
+        [];
 
       const count = document.createElement("div");
       count.className = "schedule-day-count";
-      const len = (day.anime_list || []).length;
+      const len = list.length;
       count.textContent = len ? `${len} anime` : "Tidak ada anime";
 
       header.appendChild(title);
@@ -89,12 +137,16 @@ async function loadSchedule() {
       const row = document.createElement("div");
       row.className = "anime-row";
 
-      (day.anime_list || []).forEach((a) => {
+      list.forEach((a) => {
+        const slug =
+          a.animeId || a.slug || parseAnimeIdFromHref(a.href) || "";
+
         const item = {
-          title: a.anime_name,
-          poster: a.poster,
-          slug: a.slug,
+          title: a.title || a.anime_name || "-",
+          poster: a.poster || "/assets/img/placeholder-poster.png",
+          slug,
         };
+
         const card = createAnimeCard(item, {});
         row.appendChild(card);
       });
@@ -102,6 +154,8 @@ async function loadSchedule() {
       dayWrap.appendChild(row);
       scheduleContainer.appendChild(dayWrap);
     });
+  } catch (e) {
+    if (typeof showToast === "function") showToast("Gagal memuat jadwal");
   } finally {
     scheduleLoading.classList.remove("show");
   }
