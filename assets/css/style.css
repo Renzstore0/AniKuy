@@ -1411,7 +1411,7 @@ img {
   font-weight: 700;
   letter-spacing: 0.06em;
   margin-bottom: 12px;
-  color: #e5e7eb;        /* jelas di tema gelap */
+  color: #e5e7eb; /* jelas di tema gelap */
 }
 
 .settings-pill {
@@ -1868,4 +1868,25 @@ body.theme-light .episode-search-input {
 
 body.theme-light .episode-search-input::placeholder {
   color: #9ca3af;
+}
+
+/* =========================
+   MOVIES (INFINITE SCROLL)
+   ========================= */
+
+.movie-loading {
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.movie-end {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 13px;
+  color: #9ca3af;
+  opacity: 0.9;
+}
+
+.movie-end.hidden {
+  display: none;
 }
