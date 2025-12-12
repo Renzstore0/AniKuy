@@ -26,49 +26,114 @@ let prevSlug = null;
 let nextSlug = null;
 
 // data toolbar
-let streamGroups = []; // [{ quality, servers: [] }]
-let downloadData = null; // d.download_urls
+let streamGroups = []; // [{ quality, servers: [{name, id, href, url?}] }]
+let downloadData = null; // d.downloadUrl.formats
 let selectedQuality = null;
 let selectedServerName = null;
 
 // ---------------- UTIL ----------------
 
-// normalisasi group stream: pastikan ada field quality
-function normalizeStreamGroups(raw) {
-  return (raw || []).map((g) => {
-    const servers = g.servers || [];
-    let quality = g.quality || "";
-
-    if (!quality && servers.length) {
-      const sample =
-        servers[0].quality || servers[0].label || servers[0].id || "";
-      const m = String(sample).match(/(\d{3,4}p)/i);
-      if (m) quality = m[1];
-    }
-
-    if (!quality) quality = "Auto";
-
-    return {
-      quality,
-      servers,
-    };
-  });
+function samehadakuApiPathFromHref(href) {
+  // API route kamu konsisten: "/anime" + href
+  // contoh href: "/samehadaku/server/XXXX" -> "/anime/samehadaku/server/XXXX"
+  if (!href) return null;
+  const h = String(href).trim();
+  if (!h.startsWith("/")) return null;
+  return `/anime${h}`;
 }
 
-// resolve url server (bisa langsung url, atau lewat endpoint id)
+function cleanServerName(title, quality) {
+  if (!title) return "Server";
+  let t = String(title).trim();
+
+  // buang kualitas di ujung (misal: "Blogspot 360p")
+  if (quality) {
+    const q = String(quality).trim();
+    t = t.replace(new RegExp(`\\s*${q}\\s*$`, "i"), "").trim();
+  }
+
+  // buang pola 360p/480p/720p/1080p/4k di ujung
+  t = t.replace(/\s*(\d{3,4}p|4k)\s*$/i, "").trim();
+
+  return t || "Server";
+}
+
+function normalizeStreamGroupsFromSamehadaku(serverObj) {
+  const qualities = serverObj && Array.isArray(serverObj.qualities) ? serverObj.qualities : [];
+  const groups = [];
+
+  qualities.forEach((q) => {
+    const qLabel = (q && q.title ? String(q.title).trim() : "") || "Auto";
+    const serversRaw = q && Array.isArray(q.serverList) ? q.serverList : [];
+
+    const servers = serversRaw
+      .map((s) => {
+        const name = cleanServerName(s && s.title, qLabel);
+        const id = s && s.serverId ? String(s.serverId).trim() : null;
+        const href = s && s.href ? String(s.href).trim() : null;
+        return { name, id, href };
+      })
+      .filter((s) => s && (s.id || s.href));
+
+    // skip group yang kosong
+    if (servers.length) {
+      groups.push({
+        quality: qLabel || "Auto",
+        servers,
+      });
+    }
+  });
+
+  return groups;
+}
+
+// resolve url server dari href/id
 async function resolveServerUrl(server) {
   if (!server) return null;
+
+  // kalau nanti API langsung kasih url
   if (server.url) return server.url;
   if (server.embed_url) return server.embed_url;
   if (server.link) return server.link;
 
+  // prioritas href (karena raw JSON ada href)
+  const pathFromHref = samehadakuApiPathFromHref(server.href);
+  if (pathFromHref) {
+    try {
+      const res = await apiGet(pathFromHref);
+      const d = (res && res.data) ? res.data : res;
+
+      return (
+        d?.stream_url ||
+        d?.streamUrl ||
+        d?.streamingUrl ||
+        d?.url ||
+        d?.embed_url ||
+        d?.embedUrl ||
+        d?.defaultStreamingUrl ||
+        null
+      );
+    } catch {
+      // lanjut coba by id
+    }
+  }
+
+  // fallback: by serverId (kalau kamu punya endpoint /anime/samehadaku/server/{id})
   if (server.id) {
     try {
-      const res = await apiGet(server.id); // contoh: "/anime/server/188041-0-360p"
-      if (!res) return null;
-      const d = res.data || res;
-      return d.stream_url || d.url || d.embed_url || null;
-    } catch (e) {
+      const res = await apiGet(`/anime/samehadaku/server/${encodeURIComponent(server.id)}`);
+      const d = (res && res.data) ? res.data : res;
+      return (
+        d?.stream_url ||
+        d?.streamUrl ||
+        d?.streamingUrl ||
+        d?.url ||
+        d?.embed_url ||
+        d?.embedUrl ||
+        d?.defaultStreamingUrl ||
+        null
+      );
+    } catch {
       return null;
     }
   }
@@ -122,7 +187,7 @@ async function setStreamSource(targetQuality, targetServerName) {
 
   const url = await resolveServerUrl(server);
   if (!url) {
-    showToast("Gagal memuat server");
+    if (typeof showToast === "function") showToast("Gagal memuat server");
     return;
   }
 
@@ -184,7 +249,7 @@ function renderServerMenu() {
       btn.addEventListener("click", () => {
         setStreamSource(qLabel, s.name || null);
         closeAllDropdowns();
-        showToast(`Server: ${s.name || "Server"} ${qLabel}`);
+        if (typeof showToast === "function") showToast(`Server: ${s.name || "Server"} ${qLabel}`);
       });
 
       serverMenu.appendChild(btn);
@@ -224,18 +289,20 @@ function renderQualityMenu() {
     btn.addEventListener("click", () => {
       setStreamSource(q || null, null);
       closeAllDropdowns();
-      showToast(`Kualitas: ${q || "Auto"}`);
+      if (typeof showToast === "function") showToast(`Kualitas: ${q || "Auto"}`);
     });
     qualityMenu.appendChild(btn);
   });
 }
 
-// list kualitas download (mp4 + mkv)
+// list kualitas download (berdasarkan downloadUrl.formats)
 function renderDownloadMenu() {
   if (!downloadMenu) return;
   downloadMenu.innerHTML = "";
 
-  if (!downloadData) {
+  const formats = Array.isArray(downloadData) ? downloadData : null;
+
+  if (!formats || !formats.length) {
     const empty = document.createElement("div");
     empty.className = "dropdown-empty";
     empty.textContent = "Link unduhan belum tersedia";
@@ -248,38 +315,40 @@ function renderDownloadMenu() {
   title.textContent = "Unduh berdasarkan kualitas";
   downloadMenu.appendChild(title);
 
-  const types = Object.keys(downloadData); // mp4, mkv, dll
-
-  types.forEach((ext, idx) => {
-    const items = downloadData[ext] || [];
-    if (!items.length) return;
+  formats.forEach((fmt, idx) => {
+    const fmtTitle = fmt && fmt.title ? String(fmt.title).trim() : "";
+    const qualities = fmt && Array.isArray(fmt.qualities) ? fmt.qualities : [];
+    if (!qualities.length) return;
 
     const header = document.createElement("div");
     header.className = "dropdown-subtitle";
-    header.textContent = ext.toUpperCase();
+    header.textContent = fmtTitle || "Format";
     if (idx > 0) header.style.marginTop = "6px";
     downloadMenu.appendChild(header);
 
-    items.forEach((item) => {
-      const res = item.resolution || "Auto";
-      (item.urls || []).forEach((u) => {
-        if (!u || !u.url) return;
+    qualities.forEach((q) => {
+      const qTitle = q && q.title ? String(q.title).trim() : "Auto";
+      const urls = q && Array.isArray(q.urls) ? q.urls : [];
+      urls.forEach((u) => {
+        const url = u && u.url ? String(u.url).trim() : "";
+        if (!url) return;
+
         const link = document.createElement("a");
         link.className = "dropdown-item";
-        link.href = u.url;
+        link.href = url;
         link.target = "_blank";
         link.rel = "noopener noreferrer";
         link.download = "";
 
-        const provider = u.provider || "Server";
-        link.textContent = `${res} - ${provider}`;
+        const provider = u && u.title ? String(u.title).trim() : "Server";
+        link.textContent = `${qTitle} - ${provider}`.trim();
+
         downloadMenu.appendChild(link);
       });
     });
   });
 
   if (downloadMenu.children.length === 1) {
-    // cuma title
     const empty = document.createElement("div");
     empty.className = "dropdown-empty";
     empty.textContent = "Link unduhan belum tersedia";
@@ -300,20 +369,14 @@ function handleShare() {
   const text = "Tonton episode anime di AniKuy";
 
   if (navigator.share) {
-    navigator
-      .share({
-        title,
-        text,
-        url: shareUrl,
-      })
-      .catch(() => {});
+    navigator.share({ title, text, url: shareUrl }).catch(() => {});
   } else if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(shareUrl).then(
       () => {
-        showToast("Link episode disalin");
+        if (typeof showToast === "function") showToast("Link episode disalin");
       },
       () => {
-        showToast("Gagal menyalin link");
+        if (typeof showToast === "function") showToast("Gagal menyalin link");
       }
     );
   } else {
@@ -328,40 +391,45 @@ async function loadEpisode(slug) {
 
   let json;
   try {
-    json = await apiGet(`/anime/episode/${slug}`);
+    // ✅ endpoint baru
+    json = await apiGet(`/anime/samehadaku/episode/${encodeURIComponent(slug)}`);
   } catch {
-    showToast("Gagal memuat episode");
+    if (typeof showToast === "function") showToast("Gagal memuat episode");
     return;
   }
-  if (!json || json.status !== "success") {
-    showToast("Episode tidak ditemukan");
+
+  if (!json || json.status !== "success" || !json.data) {
+    if (typeof showToast === "function") showToast("Episode tidak ditemukan");
     return;
   }
 
   const d = json.data;
-  currentEpisodeSlug = slug;
-  currentAnimeSlug = (d.anime && d.anime.slug) || currentAnimeSlug;
-  prevSlug = d.has_previous_episode ? d.previous_episode.slug : null;
-  nextSlug = d.has_next_episode ? d.next_episode.slug : null;
 
-  // set target custom untuk tombol back → selalu balik ke halaman detail anime
+  currentEpisodeSlug = slug;
+  currentAnimeSlug = d.animeId || currentAnimeSlug;
+
+  prevSlug = d.hasPrevEpisode && d.prevEpisode ? d.prevEpisode.episodeId : null;
+  nextSlug = d.hasNextEpisode && d.nextEpisode ? d.nextEpisode.episodeId : null;
+
+  // tombol back -> balik ke detail anime (pakai animeId)
   const backButton = document.getElementById("backButton");
   if (backButton && currentAnimeSlug) {
-    backButton.dataset.href = `/anime/detail?slug=${encodeURIComponent(
-      currentAnimeSlug
-    )}`;
+    backButton.dataset.href = `/anime/detail?slug=${encodeURIComponent(currentAnimeSlug)}`;
   }
 
-  episodeTitleEl.textContent = d.episode || "Episode";
+  // judul episode
+  episodeTitleEl.textContent = d.title || "Episode";
 
   // stream default
-  if (d.stream_url) {
-    episodePlayer.src = d.stream_url;
+  if (d.defaultStreamingUrl) {
+    episodePlayer.src = d.defaultStreamingUrl;
+  } else {
+    episodePlayer.removeAttribute("src");
   }
 
-  // normalisasi data stream & download
-  streamGroups = normalizeStreamGroups(d.stream_servers || []);
-  downloadData = d.download_urls || null;
+  // normalisasi data stream & download sesuai struktur baru
+  streamGroups = normalizeStreamGroupsFromSamehadaku(d.server || {});
+  downloadData = (d.downloadUrl && Array.isArray(d.downloadUrl.formats)) ? d.downloadUrl.formats : null;
 
   // set default quality + server (tanpa fetch lagi)
   if (streamGroups.length && streamGroups[0].servers.length) {
@@ -374,8 +442,8 @@ async function loadEpisode(slug) {
 
   updateToolbarLabels();
 
-  if (prevEpisodeBtn) prevEpisodeBtn.disabled = !d.has_previous_episode;
-  if (nextEpisodeBtn) nextEpisodeBtn.disabled = !d.has_next_episode;
+  if (prevEpisodeBtn) prevEpisodeBtn.disabled = !prevSlug;
+  if (nextEpisodeBtn) nextEpisodeBtn.disabled = !nextSlug;
 
   // render UI
   renderServerMenu();
@@ -431,7 +499,7 @@ if (downloadBtn) {
   downloadBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     if (!downloadData) {
-      showToast("Link unduhan belum tersedia");
+      if (typeof showToast === "function") showToast("Link unduhan belum tersedia");
       return;
     }
     renderDownloadMenu();
@@ -453,7 +521,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const params = new URLSearchParams(window.location.search);
   const slug = params.get("slug");
   if (!slug) {
-    showToast("Episode tidak ditemukan");
+    if (typeof showToast === "function") showToast("Episode tidak ditemukan");
     return;
   }
   loadEpisode(slug);
