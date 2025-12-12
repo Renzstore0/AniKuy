@@ -30,6 +30,17 @@ function formatEpisodeLabel(text) {
   return t.replace(/Episode/gi, "Eps");
 }
 
+function parseAnimeIdFromHref(href) {
+  if (!href) return "";
+  try {
+    const s = String(href).trim();
+    const parts = s.split("/").filter(Boolean);
+    return parts[parts.length - 1] || "";
+  } catch {
+    return "";
+  }
+}
+
 async function loadOngoingList(page = 1, append = false) {
   if (!ongoingGridFull || ongoingLoading) return;
 
@@ -37,12 +48,13 @@ async function loadOngoingList(page = 1, append = false) {
 
   let json;
   try {
-    // ✅ ganti respon: recent Samehadaku
-    json = await apiGet(`/anime/samehadaku/recent?page=${page}`);
+    // ✅ recent Samehadaku
+    json = await apiGet(`/anime/samehadaku/recent?page=${encodeURIComponent(page)}`);
   } catch {
     ongoingLoading = false;
     return;
   }
+
   if (!json || json.status !== "success") {
     ongoingLoading = false;
     return;
@@ -54,13 +66,18 @@ async function loadOngoingList(page = 1, append = false) {
 
   if (!append) ongoingGridFull.innerHTML = "";
 
-  const list = json.data && Array.isArray(json.data.animeList) ? json.data.animeList : [];
+  const list =
+    json.data && Array.isArray(json.data.animeList) ? json.data.animeList : [];
 
   list.forEach((a) => {
+    // ✅ PENTING: slug detail harus animeId (atau fallback dari href)
+    const slug = a.animeId || parseAnimeIdFromHref(a.href) || a.slug || "";
+
     const item = {
-      title: a.title,
-      poster: a.poster,
-      slug: a.slug,
+      title: a.title || "-",
+      poster: a.poster || "",
+      slug,
+      animeId: a.animeId,
     };
 
     const card = createAnimeCard(item, {
@@ -68,6 +85,7 @@ async function loadOngoingList(page = 1, append = false) {
       badgeBottom: formatEpisodeLabel(a.episodes || ""),
       meta: a.releasedOn || "",
     });
+
     ongoingGridFull.appendChild(card);
   });
 
