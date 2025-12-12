@@ -1,5 +1,3 @@
-/* assets/js/detail.js (full) */
-
 const animeDetailContent = document.getElementById("animeDetailContent");
 const episodeList = document.getElementById("episodeList");
 const seasonList = document.getElementById("seasonList");
@@ -13,69 +11,7 @@ const detailSlugFromUrl = detailParams.get("slug");
 
 let episodeSearchWrap = null;
 
-// ---------- JSON ADAPTER ----------
-// Mengonversi berbagai bentuk JSON (contoh: Otakudesu) -> struktur yang dipakai detail.js
-function adaptDetailResponse(raw) {
-  // raw mungkin objek { status, data } atau langsung data
-  const src = raw && raw.data ? raw.data : raw || {};
-
-  const synopsisText = (() => {
-    if (!src) return "";
-    if (Array.isArray(src.synopsis)) return src.synopsis.join(" ");
-    if (typeof src.synopsis === "string") return src.synopsis;
-    if (src.synopsis && Array.isArray(src.synopsis.paragraphs)) {
-      return src.synopsis.paragraphs.join(" ");
-    }
-    return "";
-  })();
-
-  const genres = (src.genreList || src.genres || []).map((g) => ({
-    name: g.title || g.name || "",
-    slug: g.genreId || g.slug || (g.title || "").toLowerCase().replace(/\s+/g, "-"),
-  }));
-
-  const episode_lists = (src.episodeList || src.episode_lists || []).map((ep, idx) => {
-    return {
-      title: ep.title || ep.title || `Episode ${ep.eps || ep.episode || idx + 1}`,
-      episode_number: ep.eps ?? ep.episode_number ?? ep.episode ?? (ep.episodeId ? undefined : idx + 1),
-      slug:
-        ep.episodeId ||
-        ep.slug ||
-        (ep.href ? ep.href.split("/").filter(Boolean).pop() : undefined) ||
-        ep.animeId ||
-        (`ep-${idx + 1}`),
-      date: ep.date || ep.tanggal || "",
-      poster: ep.poster || ep.image || "",
-    };
-  });
-
-  const recommendations = (src.recommendedAnimeList || src.recommendations || src.recommended || []).map((a) => ({
-    title: a.title || a.name || "",
-    poster: a.poster || a.image || "",
-    slug: a.animeId || a.animeId || a.href?.split("/").filter(Boolean).pop() || a.slug || "",
-  }));
-
-  return {
-    title: src.title || src.name || "",
-    poster: src.poster || src.image || "",
-    japanese_title: src.japanese || src.japanese_title || src.japaneseTitle || "",
-    rating: src.score || src.rating || "",
-    type: src.type || src.tipe || "",
-    status: src.status || "",
-    episode_count: src.episodes ?? src.episode_count ?? (episode_lists.length || "?"),
-    release_date: src.aired || src.release_date || src.released || "",
-    studio: src.studios || src.studio || "",
-    synopsis: synopsisText || "",
-    genres,
-    episode_lists,
-    recommendations,
-    // keep original raw in case needed
-    __raw: src,
-  };
-}
-
 // ---------- UTIL SEASON ----------
-
 function normalizeBaseTitle(title) {
   if (!title) return "";
   return title
@@ -122,7 +58,6 @@ function formatSeasonTitle(title) {
 }
 
 // ---------- TAB EPISODE / SEASON ----------
-
 function showEpisodeTab() {
   if (!episodeList || !seasonList || !tabEpisodes || !tabSeasons) return;
   tabEpisodes.classList.add("active");
@@ -148,7 +83,6 @@ function showSeasonTab() {
 }
 
 // ---------- LOAD SEASON LIST ----------
-
 async function loadSeasonListForAnime(detailData, detailSlug) {
   if (!seasonList || !detailData || !detailData.title) return;
 
@@ -178,15 +112,18 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
   let hasSeasonLike = hasSeasonKeyword(detailData.title);
 
   list.forEach((a) => {
-    if (!a || !a.slug || !a.title) return;
+    if (!a) return;
 
-    const base = normalizeBaseTitle(a.title);
+    const aSlug = a.slug || a.animeId;
+    const aTitle = a.title || a.name;
+
+    if (!aSlug || !aTitle) return;
+
+    const base = normalizeBaseTitle(aTitle);
     if (!base || base !== currentBase) return;
 
-    relatedAll.push(a);
-    if (hasSeasonKeyword(a.title)) {
-      hasSeasonLike = true;
-    }
+    relatedAll.push({ ...a, slug: aSlug, title: aTitle });
+    if (hasSeasonKeyword(aTitle)) hasSeasonLike = true;
   });
 
   if (!hasSeasonLike) {
@@ -198,10 +135,8 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
   }
 
   const seasons = [];
-
   relatedAll.forEach((a) => {
     if (a.slug === detailSlug) return;
-
     const seasonNumber = extractSeasonNumber(a.title);
     seasons.push({
       slug: a.slug,
@@ -253,22 +188,27 @@ async function loadSeasonListForAnime(detailData, detailSlug) {
 }
 
 // ---------- LOAD DETAIL ----------
-
 async function loadAnimeDetail(slug) {
   if (!animeDetailContent) return;
 
   let json;
   try {
-    json = await apiGet(`/anime/anime/${slug}`);
+    // ✅ ganti respon: detail Samehadaku
+    json = await apiGet(`/anime/samehadaku/anime/${slug}`);
   } catch {
     return;
   }
-  if (!json || json.status !== "success") return;
+  if (!json || json.status !== "success" || !json.data) return;
 
-  // gunakan adapter untuk memastikan struktur sesuai skrip
-  const d = adaptDetailResponse(json);
+  const d = json.data;
+  const apiSlug = slug;
 
-  const apiSlug = slug; // slug dari URL, dipakai untuk My List
+  // mapping title biar aman
+  const mainTitle =
+    (d.title && String(d.title).trim()) ||
+    (d.english && String(d.english).trim()) ||
+    (d.japanese && String(d.japanese).trim()) ||
+    apiSlug;
 
   animeDetailContent.innerHTML = "";
 
@@ -283,48 +223,54 @@ async function loadAnimeDetail(slug) {
   const posterCol = document.createElement("div");
   posterCol.className = "detail-poster";
   const img = document.createElement("img");
-  img.src = d.poster;
-  img.alt = d.title;
+  img.src = d.poster || "/assets/img/placeholder-poster.png";
+  img.alt = mainTitle;
   posterCol.appendChild(img);
 
   const metaCol = document.createElement("div");
 
   const titleEl = document.createElement("div");
   titleEl.className = "detail-main-title";
-  titleEl.textContent = d.title;
+  titleEl.textContent = mainTitle;
   metaCol.appendChild(titleEl);
 
-  if (d.japanese_title) {
+  if (d.japanese) {
     const jp = document.createElement("div");
     jp.className = "detail-sub";
-    jp.textContent = d.japanese_title;
+    jp.textContent = d.japanese;
     metaCol.appendChild(jp);
   }
+
+  // rating (score) bisa object atau string
+  const ratingVal =
+    (d.score && typeof d.score === "object" && d.score.value) ||
+    (typeof d.score === "string" ? d.score : null) ||
+    "N/A";
 
   const info = document.createElement("div");
   info.className = "detail-meta";
   info.innerHTML = `
-    <div><span class="label">Rating:</span> ${d.rating || "N/A"}</div>
+    <div><span class="label">Rating:</span> ${ratingVal}</div>
     <div><span class="label">Tipe:</span> ${d.type || "-"}</div>
     <div><span class="label">Status:</span> ${d.status || "-"}</div>
-    <div><span class="label">Episode:</span> ${d.episode_count || "?"}</div>
-    <div><span class="label">Rilis:</span> ${d.release_date || "-"}</div>
-    <div><span class="label">Studio:</span> ${d.studio || "-"}</div>
+    <div><span class="label">Episode:</span> ${d.episodes != null ? d.episodes : "?"}</div>
+    <div><span class="label">Rilis:</span> ${d.season || "-"}</div>
+    <div><span class="label">Studio:</span> ${d.studios || "-"}</div>
   `;
   metaCol.appendChild(info);
 
   const genresWrap = document.createElement("div");
   genresWrap.className = "detail-genres";
-  (d.genres || []).forEach((g) => {
+  (d.genreList || []).forEach((g) => {
     const chip = document.createElement("button");
     chip.type = "button";
     chip.className = "genre-pill";
-    chip.textContent = g.name;
+    const gName = g.title || g.name || "-";
+    const gSlug = g.genreId || g.slug || "";
+    chip.textContent = gName;
     chip.addEventListener("click", () => {
-      if (!g.slug) return;
-      const url = `/anime/genre?slug=${encodeURIComponent(
-        g.slug
-      )}&name=${encodeURIComponent(g.name)}`;
+      if (!gSlug) return;
+      const url = `/anime/genre?slug=${encodeURIComponent(gSlug)}&name=${encodeURIComponent(gName)}`;
       window.location.href = url;
     });
     genresWrap.appendChild(chip);
@@ -344,15 +290,9 @@ async function loadAnimeDetail(slug) {
   playBtn.type = "button";
   playBtn.className = "btn-play";
 
-  const playIcon = document.createElementNS(
-    "http://www.w3.org/2000/svg",
-    "svg"
-  );
+  const playIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   playIcon.setAttribute("viewBox", "0 0 24 24");
-  const playPath = document.createElementNS(
-    "http://www.w3.org/2000/svg",
-    "path"
-  );
+  const playPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
   playPath.setAttribute("d", "M8 5v14l11-7z");
   playPath.setAttribute("fill", "currentColor");
   playIcon.appendChild(playPath);
@@ -364,9 +304,12 @@ async function loadAnimeDetail(slug) {
   playBtn.appendChild(playText);
 
   playBtn.addEventListener("click", () => {
-    const eps = d.episode_lists || [];
-    if (!eps.length || !eps[0].slug) return;
-    const url = `/anime/episode?slug=${encodeURIComponent(eps[0].slug)}`;
+    const eps = d.episodeList || [];
+    if (!eps.length) return;
+    const first = eps[0];
+    const epId = first && (first.episodeId || first.slug);
+    if (!epId) return;
+    const url = `/anime/episode?slug=${encodeURIComponent(epId)}`;
     window.location.href = url;
   });
 
@@ -374,15 +317,9 @@ async function loadAnimeDetail(slug) {
   favBtn.type = "button";
   favBtn.className = "btn-fav";
 
-  const favIcon = document.createElementNS(
-    "http://www.w3.org/2000/svg",
-    "svg"
-  );
+  const favIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   favIcon.setAttribute("viewBox", "0 0 24 24");
-  const favPath = document.createElementNS(
-    "http://www.w3.org/2000/svg",
-    "path"
-  );
+  const favPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
   favPath.setAttribute(
     "d",
     "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4 8.04 4 9.54 4.81 10.35 6.09 11.16 4.81 12.66 4 14.2 4 16.7 4 18.7 6 18.7 8.5c0 3.78-3.4 6.86-8.55 11.54z"
@@ -406,11 +343,11 @@ async function loadAnimeDetail(slug) {
 
   favBtn.addEventListener("click", () => {
     const favData = {
-      slug: apiSlug, // pakai slug dari URL
-      title: d.title,
+      slug: apiSlug,
+      title: mainTitle,
       poster: d.poster,
-      rating: d.rating || "",
-      episode_count: d.episode_count || "",
+      rating: ratingVal || "",
+      episode_count: d.episodes || "",
       status: d.status || "",
     };
     if (isFavorite(apiSlug)) {
@@ -430,12 +367,21 @@ async function loadAnimeDetail(slug) {
   syn.id = "synopsisText";
   syn.className = "synopsis";
 
-  let cleanSynopsis = (d.synopsis || "")
+  let synopsisText = "";
+  if (d.synopsis) {
+    if (typeof d.synopsis === "string") synopsisText = d.synopsis;
+    else if (d.synopsis.paragraphs && Array.isArray(d.synopsis.paragraphs)) {
+      synopsisText = d.synopsis.paragraphs.map((p) => String(p).trim()).filter(Boolean).join(" ");
+    }
+  }
+
+  let cleanSynopsis = (synopsisText || "")
     .replace(/\r\n/g, "\n")
     .split("\n")
     .map((s) => s.trim())
     .filter(Boolean)
     .join(" ");
+
   if (!cleanSynopsis) cleanSynopsis = "Tidak ada sinopsis.";
   syn.textContent = cleanSynopsis;
   animeDetailContent.appendChild(syn);
@@ -457,7 +403,7 @@ async function loadAnimeDetail(slug) {
 
   // ===== EPISODE LIST + SEARCH =====
   if (episodeList) {
-    const eps = d.episode_lists || [];
+    const eps = d.episodeList || [];
 
     const existingSearch = document.getElementById("episodeSearchWrap");
     if (existingSearch && existingSearch.parentNode) {
@@ -499,47 +445,51 @@ async function loadAnimeDetail(slug) {
     }
 
     episodeList.innerHTML = "";
-    for (let i = eps.length - 1; i >= 0; i--) {
-      const ep = eps[i];
-      if (!ep) continue;
+
+    // supaya urut kecil -> besar, pakai parse angka dari title
+    const sorted = eps.slice().sort((a, b) => {
+      const na = parseInt(a && a.title, 10);
+      const nb = parseInt(b && b.title, 10);
+      if (Number.isNaN(na) || Number.isNaN(nb)) return 0;
+      return na - nb;
+    });
+
+    sorted.forEach((ep, idx) => {
+      if (!ep) return;
 
       const item = document.createElement("div");
       item.className = "episode-item";
 
-      const epNum =
-        ep.episode_number != null ? ep.episode_number : ep.episode ?? i + 1;
+      const epNum = ep.title != null ? ep.title : idx + 1;
 
       const left = document.createElement("span");
       left.textContent = `Episode ${epNum}`;
       item.appendChild(left);
 
       item.addEventListener("click", () => {
-        if (!ep.slug) return;
-        const url = `/anime/episode?slug=${encodeURIComponent(ep.slug)}`;
+        const epId = ep.episodeId || ep.slug;
+        if (!epId) return;
+        const url = `/anime/episode?slug=${encodeURIComponent(epId)}`;
         window.location.href = url;
       });
 
       episodeList.appendChild(item);
-    }
-  }
-
-  // ===== SEASON LIST =====
-  loadSeasonListForAnime(d, apiSlug);
-
-  // ===== REKOMENDASI =====
-  if (recommendationGrid) {
-    recommendationGrid.innerHTML = "";
-    (d.recommendations || []).forEach((a) => {
-      const card = createAnimeCard(a, { meta: "" });
-      recommendationGrid.appendChild(card);
     });
   }
 
-  document.title = `AniKuy - ${d.title}`;
+  // ===== SEASON LIST =====
+  loadSeasonListForAnime({ ...d, title: mainTitle }, apiSlug);
+
+  // ===== REKOMENDASI =====
+  // Samehadaku detail tidak selalu ada rekomendasi
+  if (recommendationGrid) {
+    recommendationGrid.innerHTML = "";
+  }
+
+  document.title = `AniKuy - ${mainTitle}`;
 }
 
 // ---------- INIT ----------
-
 document.addEventListener("DOMContentLoaded", () => {
   if (!detailSlugFromUrl) {
     showToast("Slug anime tidak ditemukan");
@@ -554,10 +504,3 @@ document.addEventListener("DOMContentLoaded", () => {
 
   loadAnimeDetail(detailSlugFromUrl);
 });
-
-/* 
-  Catatan:
-  - Fungsi adaptDetailResponse(raw) menangani berbagai variasi kunci JSON
-    dan mengembalikan struktur yang persis dipakai oleh sisa skrip.
-  - Kamu tidak perlu ubah sisa kode; adapter ini yang meng-handle mapping.
-*/
