@@ -6,74 +6,69 @@
   <title>AniKuy - Episode</title>
   <link rel="stylesheet" href="/assets/css/style.css">
 </head>
-
 <body data-page="episode">
-<div class="app-root">
+  <div class="app-root">
+    <main id="mainContent">
+      <div class="page-container">
+        <h2 id="episodeTitle" class="page-title">Episode</h2>
 
-<main id="mainContent">
-  <div class="page-container">
-    <h2 id="episodeTitle" class="page-title">Episode</h2>
+        <div class="player-wrapper">
+          <iframe id="episodePlayer" src="" loading="lazy" referrerpolicy="no-referrer" allow="autoplay; fullscreen" allowfullscreen></iframe>
+        </div>
 
-    <div class="player-wrapper">
-      <iframe id="episodePlayer" allowfullscreen loading="lazy" referrerpolicy="no-referrer"></iframe>
-    </div>
+        <div class="player-toolbar">
+          <button id="serverBtn" class="toolbar-btn" type="button">
+            <span class="toolbar-icon-wrap">
+              <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 5h16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm0 8h16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2zm2 3v2h2v-2zM6 8v2h2V8z"/></svg>
+            </span>
+            <span class="toolbar-text"><span class="toolbar-text-main">Server</span><span class="toolbar-text-sub" id="serverLabel">Auto</span></span>
+          </button>
 
-    <div class="player-toolbar">
-      <button class="toolbar-btn" id="serverBtn" type="button">
-        <span class="toolbar-icon-wrap">
-          <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 5h16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm0 8h16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2zm2 3v2h2v-2zM6 8v2h2V8z"/></svg>
-        </span>
-        <span class="toolbar-text"><span class="toolbar-text-main">Server</span><span class="toolbar-text-sub" id="serverLabel">Auto</span></span>
-      </button>
+          <button id="qualityBtn" class="toolbar-btn" type="button">
+            <span class="toolbar-icon-wrap">
+              <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 4a8 8 0 1 0 8 8 8.01 8.01 0 0 0-8-8zm3.46 9.88-1.42 1.42L12 13.41l-2.05 1.89-1.41-1.42L10.59 12 8.54 9.88l1.41-1.42L12 10.59l2.04-2.13 1.42 1.42L13.41 12z"/></svg>
+            </span>
+            <span class="toolbar-text"><span class="toolbar-text-main">Kualitas</span><span class="toolbar-text-sub" id="qualityLabel">Auto</span></span>
+          </button>
 
-      <button class="toolbar-btn" id="qualityBtn" type="button">
-        <span class="toolbar-icon-wrap">
-          <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 4a8 8 0 1 0 8 8 8.01 8.01 0 0 0-8-8zm3.46 9.88-1.42 1.42L12 13.41l-2.05 1.89-1.41-1.42L10.59 12 8.54 9.88l1.41-1.42L12 10.59l2.04-2.13 1.42 1.42L13.41 12z"/></svg>
-        </span>
-        <span class="toolbar-text"><span class="toolbar-text-main">Kualitas</span><span class="toolbar-text-sub" id="qualityLabel">Auto</span></span>
-      </button>
+          <button id="downloadBtn" class="toolbar-btn" type="button">
+            <span class="toolbar-icon-wrap">
+              <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 20h14v-2H5v2zm7-16-5 5h3v4h4v-4h3l-5-5z"/></svg>
+            </span>
+            <span class="toolbar-text"><span class="toolbar-text-main">Unduh</span><span class="toolbar-text-sub">Pilih kualitas</span></span>
+          </button>
 
-      <button class="toolbar-btn" id="downloadBtn" type="button">
-        <span class="toolbar-icon-wrap">
-          <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 20h14v-2H5v2zm7-16-5 5h3v4h4v-4h3l-5-5z"/></svg>
-        </span>
-        <span class="toolbar-text"><span class="toolbar-text-main">Unduh</span><span class="toolbar-text-sub">Pilih kualitas</span></span>
-      </button>
+          <button id="shareBtn" class="toolbar-btn" type="button">
+            <span class="toolbar-icon-wrap">
+              <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18 16a3 3 0 0 0-2.24 1.03L9.91 13.7a3.09 3.09 0 0 0 0-1.4l5.85-3.33A3 3 0 1 0 15 7a2.94 2.94 0 0 0 .07.64L9.22 11a3 3 0 1 0 0 4l5.85 3.36A3 3 0 1 0 18 16z"/></svg>
+            </span>
+            <span class="toolbar-text"><span class="toolbar-text-main">Bagikan</span><span class="toolbar-text-sub">Link episode</span></span>
+          </button>
+        </div>
 
-      <button class="toolbar-btn" id="shareBtn" type="button">
-        <span class="toolbar-icon-wrap">
-          <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18 16a3 3 0 0 0-2.24 1.03L9.91 13.7a3.09 3.09 0 0 0 0-1.4l5.85-3.33A3 3 0 1 0 15 7a2.94 2.94 0 0 0 .07.64L9.22 11a3 3 0 1 0 0 4l5.85 3.36A3 3 0 1 0 18 16z"/></svg>
-        </span>
-        <span class="toolbar-text"><span class="toolbar-text-main">Bagikan</span><span class="toolbar-text-sub">Link episode</span></span>
-      </button>
-    </div>
+        <div id="playerDropdownContainer" class="dropdown-container">
+          <div id="serverMenu" class="dropdown-panel"></div>
+          <div id="qualityMenu" class="dropdown-panel"></div>
+          <div id="downloadMenu" class="dropdown-panel"></div>
+        </div>
 
-    <div class="dropdown-container" id="playerDropdownContainer">
-      <div class="dropdown-panel" id="serverMenu"></div>
-      <div class="dropdown-panel" id="qualityMenu"></div>
-      <div class="dropdown-panel" id="downloadMenu"></div>
-    </div>
-
-    <div class="episode-selector" id="episodeSelector">
-      <div class="episode-selector-header">
-        <div class="section-title small-title">Episode</div>
+        <div class="episode-selector" id="episodeSelector">
+          <div class="episode-selector-header"><div class="section-title small-title">Episode</div></div>
+          <div id="episodeChipList" class="episode-chip-list"></div>
+        </div>
       </div>
-      <div class="episode-chip-list" id="episodeChipList"></div>
-    </div>
+    </main>
+
+    <nav class="bottom-nav">
+      <a class="nav-item" href="/"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span class="nav-label">Home</span></a>
+      <a class="nav-item active" href="/explore"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm3.94 6.06-2.12 5.3a1 1 0 0 1-.56.56l-5.3 2.12a.25.25 0 0 1-.32-.32z"/></svg><span class="nav-label">Explore</span></a>
+      <a class="nav-item" href="/my-list"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 12h3v8z"/></svg><span class="nav-label">My List</span></a>
+      <a class="nav-item" href="/profile"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5.006 5.006 0 0 0 5 5zm0 2c-4.33 0-8 2.17-8 4.5V21h16v-2.5C20 16.17 16.33 14 12 14z"/></svg><span class="nav-label">Profile</span></a>
+    </nav>
   </div>
-</main>
 
-<nav class="bottom-nav">
-  <a class="nav-item" href="/"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span class="nav-label">Home</span></a>
-  <a class="nav-item active" href="/explore"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm3.94 6.06-2.12 5.3a1 1 0 0 1-.56.56l-5.3 2.12a.25.25 0 0 1-.32-.32z"/></svg><span class="nav-label">Explore</span></a>
-  <a class="nav-item" href="/my-list"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 12h3v8z"/></svg><span class="nav-label">My List</span></a>
-  <a class="nav-item" href="/profile"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5.006 5.006 0 0 0 5 5zm0 2c-4.33 0-8 2.17-8 4.5V21h16v-2.5C20 16.17 16.33 14 12 14z"/></svg><span class="nav-label">Profile</span></a>
-</nav>
-
-</div>
-
-<div class="toast" id="toast"></div>
-<script src="/assets/js/core.js"></script>
-<script src="/assets/js/episode.js"></script>
+  <div id="toast" class="toast"></div>
+  <script src="/assets/js/core.js"></script>
+  <script src="/assets/js/episode.js"></script>
 </body>
 </html>
