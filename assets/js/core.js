@@ -1,348 +1,169 @@
-const BASE_URL = "https://www.sankavollerei.com";
-const LS_KEY_FAVORITES = "anikuy_favorites";
-const LS_KEY_THEME = "anikuy_theme";
-const THEME_DARK = "dark";
-const THEME_LIGHT = "light";
+(() => {
+  "use strict";
 
-function applyTheme(theme) {
-  const body = document.body;
-  if (!body) return;
-  body.classList.remove("theme-dark", "theme-light");
-  const t = theme === THEME_LIGHT ? THEME_LIGHT : THEME_DARK;
-  body.classList.add(t === THEME_LIGHT ? "theme-light" : "theme-dark");
-}
+  /* ========= CONST ========= */
+  const BASE = "https://www.sankavollerei.com",
+        LS_FAV = "anikuy_favorites",
+        LS_THEME = "anikuy_theme",
+        DARK = "dark",
+        LIGHT = "light";
 
-function initThemeFromStorage() {
-  try {
-    const saved = localStorage.getItem(LS_KEY_THEME);
-    const theme = saved === THEME_LIGHT ? THEME_LIGHT : THEME_DARK;
-    applyTheme(theme);
-    return theme;
-  } catch (e) {
-    applyTheme(THEME_DARK);
-    return THEME_DARK;
-  }
-}
+  const $ = (q) => document.getElementById(q);
+  const $$ = (q) => document.querySelectorAll(q);
 
-/**
- * Kontrol tema (dipakai di halaman Settings)
- * - Tombol pill: #themeToggle
- * - Bottom sheet: #themeSheet
- *   - overlay: #themeSheetOverlay
- *   - tombol Tutup: #themeSheetClose
- *   - radio: input[name="theme-option"]
- */
-function bindThemeControls(currentTheme) {
-  const radios = document.querySelectorAll('input[name="theme-option"]');
-
-  const themeToggle = document.getElementById("themeToggle");
-  const currentLabelEl = document.getElementById("currentThemeLabel");
-
-  const themeSheet = document.getElementById("themeSheet");
-  const themeSheetClose = document.getElementById("themeSheetClose");
-  const themeSheetOverlay = document.getElementById("themeSheetOverlay");
-
-  function labelText(theme) {
-    return theme === THEME_LIGHT ? "Putih & Hitam" : "Biru & Hitam (Default)";
-  }
-
-  function updateCurrentLabel(theme) {
-    if (currentLabelEl) {
-      currentLabelEl.textContent = labelText(theme);
-    }
-  }
-
-  updateCurrentLabel(currentTheme);
-
-  function openSheet() {
-    if (!themeSheet) return;
-    themeSheet.classList.add("show");
-    themeSheet.setAttribute("aria-hidden", "false");
-    if (themeToggle) {
-      themeToggle.setAttribute("aria-expanded", "true");
-    }
-  }
-
-  function closeSheet() {
-    if (!themeSheet) return;
-    themeSheet.classList.remove("show");
-    themeSheet.setAttribute("aria-hidden", "true");
-    if (themeToggle) {
-      themeToggle.setAttribute("aria-expanded", "false");
-    }
-  }
-
-  // buka / tutup bottom sheet dari tombol pill
-  if (themeToggle && themeSheet) {
-    themeToggle.addEventListener("click", () => {
-      const isOpen = themeSheet.classList.contains("show");
-      if (isOpen) closeSheet();
-      else openSheet();
-    });
-  }
-
-  // tutup dari tombol dan overlay
-  if (themeSheetClose) themeSheetClose.addEventListener("click", closeSheet);
-  if (themeSheetOverlay) themeSheetOverlay.addEventListener("click", closeSheet);
-
-  // kalau tidak ada radio, selesai
-  if (!radios.length) return;
-
-  // set radio & handle perubahan tema
-  radios.forEach((radio) => {
-    radio.checked = radio.value === currentTheme;
-    radio.addEventListener("change", (e) => {
-      const value = e.target.value === THEME_LIGHT ? THEME_LIGHT : THEME_DARK;
-      localStorage.setItem(LS_KEY_THEME, value);
-      applyTheme(value);
-      updateCurrentLabel(value);
-      if (typeof showToast === "function") showToast("Tema berhasil diubah");
-      closeSheet();
-    });
-  });
-}
-
-// TOAST
-function showToast(msg) {
-  const toastEl = document.getElementById("toast");
-  if (!toastEl) return;
-  toastEl.textContent = msg;
-  toastEl.classList.add("show");
-  setTimeout(() => toastEl.classList.remove("show"), 1600);
-}
-
-// ============ API HELPERS ============
-
-// Convert "href" dari JSON Samehadaku (contoh: "/samehadaku/anime/xxx")
-// -> jadi path API internal: "/anime/samehadaku/anime/xxx"
-function toApiPathFromHref(href) {
-  if (!href) return "";
-  const h = String(href).trim();
-  if (!h.startsWith("/")) return h;
-  if (h.startsWith("/anime/")) return h;
-  // sesuai pola contoh: route API = "/anime" + href
-  return `/anime${h}`;
-}
-
-async function apiGet(path) {
-  try {
-    const res = await fetch(`${BASE_URL}${path}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
-  } catch (err) {
-    console.error(err);
-    showToast("Gagal memuat data");
-    throw err;
-  }
-}
-
-// FAVORITES (My List)
-function loadFavoritesFromStorage() {
-  try {
-    const raw = localStorage.getItem(LS_KEY_FAVORITES);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-let favorites = loadFavoritesFromStorage();
-
-function saveFavorites() {
-  try {
-    localStorage.setItem(LS_KEY_FAVORITES, JSON.stringify(favorites || []));
-  } catch {
-    // abaikan
-  }
-}
-
-function getFavorites() {
-  return Array.isArray(favorites) ? favorites.slice() : [];
-}
-
-function isFavorite(slug) {
-  if (!slug) return false;
-  return getFavorites().some((a) => a.slug === slug);
-}
-
-function addFavorite(anime) {
-  if (!anime || !anime.slug) return;
-  if (isFavorite(anime.slug)) return;
-
-  const fav = {
-    slug: anime.slug,
-    title: anime.title || "",
-    poster: anime.poster || "",
-    rating: anime.rating || "",
-    episode_count: anime.episode_count || "",
-    status: anime.status || "",
+  /* ========= TOAST ========= */
+  window.showToast = (msg) => {
+    const t = $("toast");
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 1600);
   };
 
-  favorites.push(fav);
-  saveFavorites();
+  /* ========= THEME ========= */
+  const applyTheme = (t) => {
+    document.body.classList.remove("theme-dark", "theme-light");
+    document.body.classList.add(t === LIGHT ? "theme-light" : "theme-dark");
+  };
 
-  if (typeof showToast === "function") showToast("Ditambahkan ke My List");
-}
+  const initTheme = () => {
+    const t = localStorage.getItem(LS_THEME) === LIGHT ? LIGHT : DARK;
+    applyTheme(t);
+    return t;
+  };
 
-function removeFavorite(slug) {
-  if (!slug) return;
-  favorites = getFavorites().filter((a) => a.slug !== slug);
-  saveFavorites();
+  const bindTheme = (current) => {
+    const sheet = $("themeSheet"),
+          toggle = $("themeToggle"),
+          label = $("currentThemeLabel"),
+          close = $("themeSheetClose"),
+          overlay = $("themeSheetOverlay"),
+          radios = $$('input[name="theme-option"]');
 
-  if (typeof showToast === "function") showToast("Dihapus dari My List");
-}
+    const txt = (t) => t === LIGHT ? "Putih & Hitam" : "Biru & Hitam (Default)";
+    label && (label.textContent = txt(current));
 
-// slug picker: dukung beberapa bentuk response
-function pickSlug(item) {
-  if (!item) return "";
-  return (
-    item.slug ||
-    item.animeId ||
-    item.id ||
-    item.anime_id ||
-    item.episodeId ||
-    ""
-  );
-}
+    const open = () => sheet?.classList.add("show");
+    const hide = () => sheet?.classList.remove("show");
 
-// BIKIN KARTU ANIME (dipakai di semua page)
-function createAnimeCard(item, opts = {}) {
-  const card = document.createElement("div");
-  card.className = "anime-card";
+    toggle?.addEventListener("click", () => sheet.classList.toggle("show"));
+    close?.addEventListener("click", hide);
+    overlay?.addEventListener("click", hide);
 
-  const thumb = document.createElement("div");
-  thumb.className = "anime-thumb";
-
-  const img = document.createElement("img");
-  img.src = item.poster || "/assets/img/placeholder-poster.png";
-  img.alt = item.title || "Anime";
-  thumb.appendChild(img);
-
-  if (opts.badgeTop) {
-    const b = document.createElement("div");
-    b.className = "badge-top-left";
-    b.textContent = opts.badgeTop;
-    thumb.appendChild(b);
-  }
-
-  if (opts.badgeBottom) {
-    const b = document.createElement("div");
-    b.className = "badge-bottom-left";
-    b.textContent = opts.badgeBottom;
-    thumb.appendChild(b);
-  }
-
-  if (opts.rating) {
-    const rate = document.createElement("div");
-    rate.className = "badge-rating";
-    const star = document.createElement("span");
-    star.className = "star";
-    star.textContent = "★";
-    const val = document.createElement("span");
-    val.textContent = opts.rating;
-    rate.appendChild(star);
-    rate.appendChild(val);
-    thumb.appendChild(rate);
-  }
-
-  card.appendChild(thumb);
-
-  const title = document.createElement("div");
-  title.className = "anime-title";
-  title.textContent = item.title || "-";
-  card.appendChild(title);
-
-  if (opts.meta) {
-    const m = document.createElement("div");
-    m.className = "anime-meta";
-    m.textContent = opts.meta;
-    card.appendChild(m);
-  }
-
-  card.addEventListener("click", () => {
-    const slug = pickSlug(item);
-    if (!slug) return;
-    const url = `/anime/detail?slug=${encodeURIComponent(slug)}`;
-    window.location.href = url;
-  });
-
-  return card;
-}
-
-// GLOBAL UI
-document.addEventListener("DOMContentLoaded", () => {
-  const currentTheme = initThemeFromStorage();
-  bindThemeControls(currentTheme);
-
-  const backButton = document.getElementById("backButton");
-  const searchButton = document.getElementById("searchButton");
-  const settingsButton = document.getElementById("settingsButton");
-  const pageType = document.body.dataset.page || "";
-  const basePages = new Set(["home", "explore", "my-list", "profile"]);
-
-  // klik logo -> home
-  const logoWrap = document.querySelector(".logo-wrap");
-  if (logoWrap) {
-    logoWrap.style.cursor = "pointer";
-    logoWrap.addEventListener("click", () => {
-      window.location.href = "/";
+    radios.forEach(r => {
+      r.checked = r.value === current;
+      r.onchange = () => {
+        const v = r.value === LIGHT ? LIGHT : DARK;
+        localStorage.setItem(LS_THEME, v);
+        applyTheme(v);
+        label && (label.textContent = txt(v));
+        showToast("Tema berhasil diubah");
+        hide();
+      };
     });
-  }
+  };
 
-  if (backButton) {
-    backButton.style.visibility = basePages.has(pageType) ? "hidden" : "visible";
-    backButton.addEventListener("click", () => {
-      const customHref = backButton.dataset.href;
-      if (customHref) window.location.href = customHref;
-      else window.history.back();
-    });
-  }
-
-  if (searchButton) {
-    searchButton.addEventListener("click", () => {
-      window.location.href = "/search";
-    });
-  }
-
-  if (settingsButton) {
-    settingsButton.addEventListener("click", () => {
-      window.location.href = "/settings";
-    });
-  }
-
-  const mainContent = document.getElementById("mainContent");
-  const bottomNav = document.querySelector(".bottom-nav");
-  if (mainContent && bottomNav) {
-    let lastScrollY = 0;
-    let navHidden = false;
-
-    mainContent.addEventListener("scroll", () => {
-      const current = mainContent.scrollTop;
-
-      if (current > lastScrollY + 10 && !navHidden) {
-        bottomNav.classList.add("hide");
-        navHidden = true;
-      } else if (current < lastScrollY - 10 && navHidden) {
-        bottomNav.classList.remove("hide");
-        navHidden = false;
-      }
-
-      lastScrollY = current;
-    });
-  }
-
-  document.addEventListener("contextmenu", (e) => e.preventDefault());
-  document.addEventListener("dragstart", (e) => e.preventDefault());
-  document.addEventListener("keydown", (e) => {
-    const key = e.key.toLowerCase();
-    if (
-      (e.ctrlKey && ["s", "u", "p"].includes(key)) ||
-      (e.ctrlKey && e.shiftKey && ["i", "j", "c"].includes(key)) ||
-      key === "f12"
-    ) {
-      e.preventDefault();
+  /* ========= API ========= */
+  window.apiGet = async (path) => {
+    try {
+      const r = await fetch(BASE + path);
+      if (!r.ok) throw r.status;
+      return await r.json();
+    } catch (e) {
+      console.error(e);
+      showToast("Gagal memuat data");
+      throw e;
     }
+  };
+
+  /* ========= FAVORITES ========= */
+  let favs = (() => {
+    try { return JSON.parse(localStorage.getItem(LS_FAV)) || []; }
+    catch { return []; }
+  })();
+
+  const saveFav = () => localStorage.setItem(LS_FAV, JSON.stringify(favs));
+
+  window.getFavorites = () => [...favs];
+  window.isFavorite = (s) => favs.some(a => a.slug === s);
+
+  window.addFavorite = (a) => {
+    if (!a?.slug || isFavorite(a.slug)) return;
+    favs.push({
+      slug: a.slug, title: a.title || "", poster: a.poster || "",
+      rating: a.rating || "", episode_count: a.episode_count || "", status: a.status || ""
+    });
+    saveFav();
+    showToast("Ditambahkan ke My List");
+  };
+
+  window.removeFavorite = (slug) => {
+    favs = favs.filter(a => a.slug !== slug);
+    saveFav();
+    showToast("Dihapus dari My List");
+  };
+
+  /* ========= CARD ========= */
+  const means = (o) => o.slug || o.animeId || o.id || o.anime_id || "";
+
+  window.createAnimeCard = (item, o = {}) => {
+    const c = document.createElement("div");
+    c.className = "anime-card";
+    c.innerHTML = `
+      <div class="anime-thumb">
+        <img src="${item.poster || "/assets/img/placeholder-poster.png"}" alt="${item.title || "Anime"}">
+        ${o.badgeTop ? `<div class="badge-top-left">${o.badgeTop}</div>` : ""}
+        ${o.badgeBottom ? `<div class="badge-bottom-left">${o.badgeBottom}</div>` : ""}
+        ${o.rating ? `<div class="badge-rating"><span class="star">★</span><span>${o.rating}</span></div>` : ""}
+      </div>
+      <div class="anime-title">${item.title || "-"}</div>
+      ${o.meta ? `<div class="anime-meta">${o.meta}</div>` : ""}
+    `;
+    c.onclick = () => {
+      const s = means(item);
+      s && (location.href = `/anime/detail?slug=${encodeURIComponent(s)}`);
+    };
+    return c;
+  };
+
+  /* ========= GLOBAL UI ========= */
+  document.addEventListener("DOMContentLoaded", () => {
+    bindTheme(initTheme());
+
+    $(".logo-wrap")?.addEventListener("click", () => location.href = "/");
+    $("searchButton")?.addEventListener("click", () => location.href = "/search");
+    $("settingsButton")?.addEventListener("click", () => location.href = "/settings");
+
+    const back = $("backButton"),
+          page = document.body.dataset.page,
+          root = new Set(["home","explore","my-list","profile"]);
+
+    if (back) {
+      back.style.visibility = root.has(page) ? "hidden" : "visible";
+      back.onclick = () => back.dataset.href ? location.href = back.dataset.href : history.back();
+    }
+
+    const main = $("mainContent"),
+          nav = document.querySelector(".bottom-nav");
+
+    if (main && nav) {
+      let y = 0;
+      main.addEventListener("scroll", () => {
+        const c = main.scrollTop;
+        nav.classList.toggle("hide", c > y + 10);
+        y = c;
+      }, { passive:true });
+    }
+
+    document.oncontextmenu = e => e.preventDefault();
+    document.ondragstart = e => e.preventDefault();
+    document.onkeydown = e => {
+      const k = e.key.toLowerCase();
+      if (
+        (e.ctrlKey && ["s","u","p"].includes(k)) ||
+        (e.ctrlKey && e.shiftKey && ["i","j","c"].includes(k)) ||
+        k === "f12"
+      ) e.preventDefault();
+    };
   });
-});
+})();
