@@ -1,84 +1,59 @@
-const completeGridFull = document.getElementById("completeGridFull");
-const completePrevBtn = document.getElementById("completePrevBtn");
-const completeNextBtn = document.getElementById("completeNextBtn");
-const completePageInfo = document.getElementById("completePageInfo");
+// assets/js/complete.js
+(() => {
+  const grid = document.getElementById("completeGridFull"),
+    main = document.getElementById("mainContent"),
+    hide = (id) => (document.getElementById(id)?.style.setProperty("display", "none"));
 
-let completePage = 1;
-let completeLastPage = 1;
-let completeLoading = false;
+  if (!grid) return;
 
-// sembunyikan control pagination lama
-if (completePrevBtn) completePrevBtn.style.display = "none";
-if (completeNextBtn) completeNextBtn.style.display = "none";
-if (completePageInfo) completePageInfo.style.display = "none";
+  ["completePrevBtn", "completeNextBtn", "completePageInfo"].forEach(hide);
 
-async function loadCompleteList(page = 1, append = false) {
-  if (!completeGridFull || completeLoading) return;
+  let page = 1,
+    last = 1,
+    loading = false;
 
-  completeLoading = true;
+  const genresText = (g) =>
+    Array.isArray(g) ? g.map((x) => x?.title || x?.name).filter(Boolean).join(", ") : "";
 
-  let json;
-  try {
-    // ✅ ganti respon: completed Samehadaku
-    json = await apiGet(`/anime/samehadaku/completed?page=${page}`);
-  } catch {
-    completeLoading = false;
-    return;
-  }
+  async function load(p = 1, append = false) {
+    if (loading) return;
+    loading = true;
 
-  if (!json || json.status !== "success") {
-    completeLoading = false;
-    return;
-  }
+    try {
+      const j = await apiGet(`/anime/samehadaku/completed?page=${encodeURIComponent(p)}`);
+      if (j?.status !== "success") return;
 
-  const pag = json.pagination || {};
-  completePage = pag.currentPage || page;
-  completeLastPage = pag.totalPages || completeLastPage;
+      const pg = j.pagination || {};
+      page = pg.currentPage || p;
+      last = pg.totalPages || last;
 
-  if (!append) completeGridFull.innerHTML = "";
-
-  const list = json.data && Array.isArray(json.data.animeList) ? json.data.animeList : [];
-
-  list.forEach((a) => {
-    const item = {
-      title: a.title,
-      poster: a.poster,
-      slug: a.slug,
-    };
-
-    // episode_count tidak selalu ada di response list completed
-    const epsRaw = a.episode_count || a.episodes || "";
-    const epsLabel = epsRaw ? `Eps ${epsRaw}` : "Eps ?";
-
-    // genreList (kalau ada) untuk meta
-    const genres = Array.isArray(a.genreList)
-      ? a.genreList.map((g) => (g && (g.title || g.name))).filter(Boolean).join(", ")
-      : "";
-
-    const card = createAnimeCard(item, {
-      badgeBottom: epsLabel,
-      meta: genres || a.status || "",
-    });
-    completeGridFull.appendChild(card);
-  });
-
-  completeLoading = false;
-}
-
-// infinite scroll pakai mainContent
-document.addEventListener("DOMContentLoaded", () => {
-  loadCompleteList(1, false);
-
-  const mainContent = document.getElementById("mainContent");
-  if (!mainContent) return;
-
-  mainContent.addEventListener("scroll", () => {
-    const nearBottom =
-      mainContent.scrollTop + mainContent.clientHeight >=
-      mainContent.scrollHeight - 200;
-
-    if (nearBottom && !completeLoading && completePage < completeLastPage) {
-      loadCompleteList(completePage + 1, true);
+      if (!append) grid.innerHTML = "";
+      (j?.data?.animeList || []).forEach((a) => {
+        const eps = a.episode_count || a.episodes || "";
+        grid.appendChild(
+          createAnimeCard(
+            { title: a.title || "-", poster: a.poster || "", slug: a.slug || a.animeId || "" },
+            { badgeBottom: `Eps ${eps || "?"}`, meta: genresText(a.genreList) || a.status || "" }
+          )
+        );
+      });
+    } catch {} 
+    finally {
+      loading = false;
     }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    load(1);
+    if (!main) return;
+    main.addEventListener(
+      "scroll",
+      () =>
+        main.scrollTop + main.clientHeight >= main.scrollHeight - 200 &&
+        !loading &&
+        page < last &&
+        load(page + 1, true),
+      { passive: true }
+    );
   });
-});
+})();
