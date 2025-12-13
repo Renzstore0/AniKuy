@@ -1,340 +1,225 @@
-// assets/js/episode.js
 (() => {
   "use strict";
 
+  /* ===== utils ===== */
   const $ = (id) => document.getElementById(id);
+  const pick = (...v) => v.find(Boolean);
+  const toast = (m) => typeof showToast === "function" && showToast(m);
+
+  /* ===== elements ===== */
   const el = {
     title: $("episodeTitle"),
     player: $("episodePlayer"),
+    chip: $("episodeChipList"),
+    serverMenu: $("serverMenu"),
+    qualityMenu: $("qualityMenu"),
+    downloadMenu: $("downloadMenu"),
     serverBtn: $("serverBtn"),
     qualityBtn: $("qualityBtn"),
     downloadBtn: $("downloadBtn"),
     shareBtn: $("shareBtn"),
-    serverMenu: $("serverMenu"),
-    qualityMenu: $("qualityMenu"),
-    downloadMenu: $("downloadMenu"),
     serverLabel: $("serverLabel"),
     qualityLabel: $("qualityLabel"),
-    chip: $("episodeChipList"),
   };
 
-  const slug = new URLSearchParams(location.search).get("slug") || "";
-  const toast = (m) => typeof showToast === "function" && showToast(m);
-  const enc = encodeURIComponent;
+  const slug = new URLSearchParams(location.search).get("slug");
 
-  const pick = (...v) => v.find(er).find((x) => x != null && x !== "");
-  function er(v) {
-    return v;
-  }
-
-  // ---------- dropdown ----------
+  /* ===== dropdown ===== */
   const panels = [el.serverMenu, el.qualityMenu, el.downloadMenu].filter(Boolean);
   const closePanels = () => panels.forEach((p) => p.classList.remove("show"));
   const toggle = (p) => {
     if (!p) return;
-    const show = !p.classList.contains("show");
+    const on = !p.classList.contains("show");
     closePanels();
-    p.classList.toggle("show", show);
+    p.classList.toggle("show", on);
   };
-
   document.addEventListener("click", (e) => {
-    if (e.target.closest(".player-toolbar,.dropdown-panel")) return;
-    closePanels();
+    if (!e.target.closest(".player-toolbar") && !e.target.closest(".dropdown-panel")) closePanels();
   });
 
-  // ---------- normalize ----------
-  const uniq = (arr, keyFn) => {
-    const s = new Set();
-    return arr.filter((x) => {
-      const k = keyFn(x);
-      if (s.has(k)) return false;
-      s.add(k);
-      return true;
-    });
-  };
-
-  // ✅ support JSON kamu: data.server.qualities[].serverList[].href (butuh fetch server detail)
-  // juga tetap support bentuk lain (sources/serverList/streamList) kalau ada
-  const normStreams = (d) => {
-    const out = [];
-
-    // A) flat sources
-    if (Array.isArray(d?.sources)) {
-      d.sources.forEach((it) => {
-        const url = it?.url || it?.link || it?.src;
-        if (!url) return;
-        out.push({ server: String(it?.server || it?.name || "Server"), quality: String(it?.quality || "Auto"), url: String(url) });
-      });
-    }
-
-    // B) nested serverList->qualityList
-    if (Array.isArray(d?.serverList)) {
-      d.serverList.forEach((s) => {
-        const sName = String(s?.title || s?.serverName || "Server");
-        (Array.isArray(s?.qualityList) ? s.qualityList : []).forEach((q) => {
-          const url = q?.url || q?.link || q?.src;
-          if (!url) return;
-          out.push({ server: sName, quality: String(q?.quality || "Auto"), url: String(url) });
-        });
-      });
-    }
-
-    // C) streamList
-    if (Array.isArray(d?.streamList)) {
-      d.streamList.forEach((it) => {
-        const url = it?.url || it?.link || it?.src;
-        if (!url) return;
-        out.push({ server: String(it?.server || it?.name || "Server"), quality: String(it?.quality || "Auto"), url: String(url) });
-      });
-    }
-
-    return uniq(out, (x) => `${x.server}|${x.quality}|${x.url}`);
-  };
-
-  const normDownloads = (d) => {
-    const out = [];
-    const dl = d?.downloadUrl?.formats;
-
-    // ✅ support JSON kamu: downloadUrl.formats[].qualities[].urls[]
-    if (Array.isArray(dl)) {
-      dl.forEach((fmt) => {
-        const f = String(fmt?.title || "").trim();
-        (Array.isArray(fmt?.qualities) ? fmt.qualities : []).forEach((q) => {
-          const qt = String(q?.title || "").trim();
-          (Array.isArray(q?.urls) ? q.urls : []).forEach((u) => {
-            const url = u?.url;
-            if (!url) return;
-            const host = String(u?.title || "Link").trim();
-            out.push({ label: [f, qt, host].filter(Boolean).join(" • "), url: String(url) });
-          });
-        });
-      });
-      return uniq(out, (x) => x.url);
-    }
-
-    // fallback lama (kalau ada)
-    const list = pick(d?.downloadList, d?.downloads, d?.download) || [];
-    if (Array.isArray(list)) {
-      list.forEach((it) => {
-        const url = it?.url || it?.link;
-        if (url) out.push({ label: String(it?.quality || it?.label || "Link").trim(), url: String(url) });
-        else if (Array.isArray(it?.links)) {
-          const q = String(it?.quality || it?.label || "Link").trim();
-          it.links.forEach((l) => {
-            const u = l?.url || l?.link;
-            if (!u) return;
-            out.push({ label: `${q} - ${String(l?.server || l?.name || "Server").trim()}`, url: String(u) });
-          });
-        }
-      });
-    }
-    return uniq(out, (x) => x.url);
-  };
-
-  const getEmbed = (d) =>
-    pick(d?.defaultStreamingUrl, d?.embedUrl, d?.embed_url, d?.iframeUrl, d?.playerUrl, d?.streamUrl, d?.videoUrl, d?.url);
-
-  // ---------- UI builders ----------
-  const menuTitle = (t) => `<div class="dropdown-title">${t}</div>`;
-  const menuEmpty = (t) => `<div class="dropdown-empty">${t}</div>`;
-
-  const renderMenuButtons = (root, title, items, active, onPick) => {
-    if (!root) return;
-    root.innerHTML = menuTitle(title);
-    if (!items.length) return (root.innerHTML += menuEmpty("Tidak tersedia"));
-    items.forEach((x) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "dropdown-item" + (x === active ? " active" : "");
-      b.textContent = x;
-      b.onclick = () => onPick(x);
-      root.appendChild(b);
-    });
-  };
-
-  const renderDownloads = (list) => {
-    if (!el.downloadMenu) return;
-    el.downloadMenu.innerHTML = menuTitle("Link Unduh");
-    if (!list.length) return (el.downloadMenu.innerHTML += menuEmpty("Link unduh tidak tersedia"));
-    list.forEach((d) => {
-      const a = document.createElement("a");
-      a.className = "dropdown-item";
-      a.href = d.url;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      a.textContent = d.label;
-      el.downloadMenu.appendChild(a);
-    });
-  };
-
-  // ---------- chips (kecil -> besar) ----------
-  const epNum = (t, fb) => {
-    const m = String(t || "").match(/(\d+)(?!.*\d)/);
-    return m ? +m[1] : fb;
-  };
-
-  const renderChips = (list) => {
-    if (!el.chip) return;
-    el.chip.innerHTML = "";
-    if (!Array.isArray(list) || !list.length) return el.chip.parentElement?.classList.add("hidden");
-
-    const items = list
-      .map((it, i) => {
-        const href = it?.href;
-        if (!href) return null;
-        const epSlug = href.split("/").filter(Boolean).pop();
-        return { epSlug, num: epNum(it?.title, i + 1) };
-      })
-      .filter(Boolean)
-      .sort((a, b) => a.num - b.num); // ✅ kecil -> besar
-
-    items.forEach(({ epSlug, num }) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "episode-chip" + (epSlug === slug ? " active" : "");
-      b.textContent = String(num || "?");
-      b.onclick = () => (epSlug === slug ? 0 : (location.href = `/anime/episode?slug=${enc(epSlug)}`));
-      el.chip.appendChild(b);
-    });
-
-    el.chip.querySelector(".episode-chip.active")?.scrollIntoView?.({ behavior: "smooth", inline: "center", block: "nearest" });
-  };
-
-  // ---------- clipboard/share ----------
-  const copy = async (text) => {
+  /* ===== API ===== */
+  const fetchServerStream = async (serverId) => {
     try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      ta.remove();
-    }
-    toast("Link disalin!");
-  };
-
-  // ---------- fetch server stream url (penting untuk kualitas) ----------
-  async function fetchServerUrl(href) {
-    // href contoh: "/samehadaku/server/XXXX" -> route api: "/anime/samehadaku/server/XXXX"
-    if (!href) return "";
-    const id = href.split("/").filter(Boolean).pop();
-    if (!id) return "";
-    try {
-      const j = await apiGet(`/anime/samehadaku/server/${enc(id)}`);
-      const d = j?.status === "success" ? j.data : null;
-      return String(pick(d?.url, d?.streamUrl, d?.iframeUrl, d?.embedUrl, d?.src, d?.link) || "");
+      const j = await apiGet(`/anime/samehadaku/server/${serverId}`);
+      return pick(j?.data?.url, j?.data?.streamingUrl, j?.data?.embedUrl, j?.data?.iframeUrl) || "";
     } catch {
       return "";
     }
-  }
+  };
 
-  // ---------- main ----------
-  async function loadEpisode() {
+  /* ===== normalize ===== */
+  const normalizeServers = (d) =>
+    (d?.server?.qualities || []).flatMap((q) =>
+      (q?.serverList || []).map((s) => ({
+        quality: String(q?.title || "").trim(),
+        server: String(s?.title || "").trim(),
+        serverId: s?.serverId,
+      }))
+    );
+
+  const normalizeDownloads = (d) =>
+    (d?.downloadUrl?.formats || []).flatMap((f) =>
+      (f?.qualities || []).flatMap((q) =>
+        (q?.urls || []).map((u) => ({
+          label: `${f.title} ${q.title} - ${u.title}`,
+          url: u.url,
+        }))
+      )
+    );
+
+  /* ===== episode chips (sorted) ===== */
+  const renderChips = (list) => {
+    if (!Array.isArray(list) || !el.chip) return;
+    el.chip.innerHTML = "";
+
+    const items = list
+      .map((item) => {
+        const href = item?.href;
+        if (!href) return null;
+        const epSlug = href.split("/").filter(Boolean).pop();
+        const num = parseInt((String(item?.title || "").match(/\d+$/) || ["0"])[0], 10);
+        return { epSlug, num };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.num - b.num);
+
+    for (const { epSlug, num } of items) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "episode-chip" + (epSlug === slug ? " active" : "");
+      b.textContent = num || "?";
+      b.onclick = () => epSlug === slug || (location.href = `/anime/episode?slug=${epSlug}`);
+      el.chip.appendChild(b);
+    }
+
+    el.chip.querySelector(".episode-chip.active")?.scrollIntoView?.({
+      behavior: "smooth",
+      inline: "center",
+      block: "nearest",
+    });
+  };
+
+  /* ===== menus ===== */
+  const menu = (root, title, nodes) => {
+    if (!root) return;
+    root.innerHTML = `<div class="dropdown-title">${title}</div>`;
+    if (!nodes.length) return (root.innerHTML += `<div class="dropdown-empty">Tidak tersedia</div>`);
+    nodes.forEach((n) => root.appendChild(n));
+  };
+
+  /* ===== main ===== */
+  const loadEpisode = async () => {
     if (!slug) return toast("Slug episode tidak ditemukan");
 
     let j;
     try {
-      j = await apiGet(`/anime/samehadaku/episode/${enc(slug)}`);
+      j = await apiGet(`/anime/samehadaku/episode/${slug}`);
     } catch {
-      return toast("Gagal memuat episode.");
+      return toast("Gagal memuat episode");
     }
 
-    const d = j?.status === "success" ? j.data : null;
-    if (!d) return toast("Episode tidak ditemukan.");
+    const d = j?.data;
+    if (!d) return toast("Episode tidak ditemukan");
 
-    const title = String(pick(d?.title, d?.episodeTitle, "Episode")).trim();
-    if (el.title) el.title.textContent = title || "Episode";
-    document.title = `AniKuy - ${title || "Episode"}`;
+    el.title && (el.title.textContent = d.title || "Episode");
+    document.title = `AniKuy - ${d.title || "Episode"}`;
+    el.player && (el.player.src = d.defaultStreamingUrl || "");
 
-    const embed = getEmbed(d);
-    if (el.player) el.player.src = embed ? String(embed) : "";
+    renderChips(d.recommendedEpisodeList);
 
-    // ✅ chips episode FIX: pakai recommendedEpisodeList (karena response episode tidak ada episodeList)
-    renderChips(d?.recommendedEpisodeList || []);
+    const matrix = normalizeServers(d);
+    if (!matrix.length) {
+      el.qualityLabel && (el.qualityLabel.textContent = "Auto");
+      el.serverLabel && (el.serverLabel.textContent = "Auto");
+      menu(el.qualityMenu, "Pilih Kualitas", []);
+      menu(el.serverMenu, "Pilih Server", []);
+    } else {
+      let activeQuality = matrix[0].quality;
+      let activeServer = matrix[0].server;
 
-    // ✅ streams (kualitas/server)
-    let streams = normStreams(d);
+      const qualities = [...new Set(matrix.map((x) => x.quality))];
+      const serversOf = (q) => matrix.filter((x) => x.quality === q).map((x) => x.server);
 
-    // jika kosong tapi ada structure "server.qualities" (seperti JSON kamu) -> build stream list via fetch server endpoint
-    if (!streams.length && Array.isArray(d?.server?.qualities)) {
-      const jobs = [];
-      d.server.qualities.forEach((q) => {
-        const qName = String(q?.title || "Auto").trim();
-        (Array.isArray(q?.serverList) ? q.serverList : []).forEach((s) => {
-          const sName = String(s?.title || "Server").trim();
-          const href = s?.href;
-          jobs.push(
-            fetchServerUrl(href).then((url) => url && streams.push({ server: sName, quality: qName, url }))
-          );
-        });
-      });
-      await Promise.all(jobs);
-      streams = uniq(streams, (x) => `${x.server}|${x.quality}|${x.url}`);
+      const setPlayer = async () => {
+        const row = matrix.find((x) => x.quality === activeQuality && x.server === activeServer);
+        if (!row) return;
+        const url = await fetchServerStream(row.serverId);
+        url && el.player && (el.player.src = url);
+      };
+
+      const renderQuality = () =>
+        menu(
+          el.qualityMenu,
+          "Pilih Kualitas",
+          qualities.map((q) => {
+            const b = document.createElement("button");
+            b.className = "dropdown-item" + (q === activeQuality ? " active" : "");
+            b.textContent = q;
+            b.onclick = () => {
+              activeQuality = q;
+              activeServer = serversOf(q)[0] || activeServer;
+              el.qualityLabel && (el.qualityLabel.textContent = activeQuality);
+              el.serverLabel && (el.serverLabel.textContent = activeServer);
+              renderServer();
+              setPlayer();
+              closePanels();
+            };
+            return b;
+          })
+        );
+
+      const renderServer = () =>
+        menu(
+          el.serverMenu,
+          "Pilih Server",
+          serversOf(activeQuality).map((s) => {
+            const b = document.createElement("button");
+            b.className = "dropdown-item" + (s === activeServer ? " active" : "");
+            b.textContent = s;
+            b.onclick = () => {
+              activeServer = s;
+              el.serverLabel && (el.serverLabel.textContent = activeServer);
+              setPlayer();
+              closePanels();
+            };
+            return b;
+          })
+        );
+
+      el.qualityLabel && (el.qualityLabel.textContent = activeQuality);
+      el.serverLabel && (el.serverLabel.textContent = activeServer);
+      renderQuality();
+      renderServer();
+      setPlayer();
     }
 
-    const servers = [...new Set(streams.map((x) => x.server))];
-    const qualitiesOf = (srv) => [...new Set(streams.filter((x) => x.server === srv).map((x) => x.quality))];
-    const findStream = (srv, q) =>
-      streams.find((x) => x.server === srv && x.quality === q) ||
-      streams.find((x) => x.server === srv) ||
-      streams[0];
+    const dls = normalizeDownloads(d);
+    menu(
+      el.downloadMenu,
+      "Link Unduh",
+      dls.map((x) => {
+        const a = document.createElement("a");
+        a.className = "dropdown-item";
+        a.href = x.url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        a.textContent = x.label;
+        return a;
+      })
+    );
 
-    let activeServer = servers[0] || "Auto";
-    let activeQuality = qualitiesOf(activeServer)[0] || "Auto";
-
-    const apply = (srv, q) => {
-      const s = findStream(srv, q);
-      if (!s) return;
-
-      activeServer = s.server;
-      activeQuality = s.quality;
-
-      if (el.serverLabel) el.serverLabel.textContent = activeServer;
-      if (el.qualityLabel) el.qualityLabel.textContent = activeQuality;
-      if (el.player && s.url) el.player.src = s.url;
-
-      renderMenuButtons(el.serverMenu, "Pilih Server", servers, activeServer, (sv) => {
-        const qs = qualitiesOf(sv);
-        apply(sv, qs[0] || "Auto");
-        closePanels();
-      });
-
-      renderMenuButtons(el.qualityMenu, "Pilih Kualitas", qualitiesOf(activeServer), activeQuality, (qq) => {
-        apply(activeServer, qq);
-        closePanels();
-      });
-    };
-
-    if (streams.length) apply(activeServer, activeQuality);
-    else {
-      if (el.serverLabel) el.serverLabel.textContent = "Auto";
-      if (el.qualityLabel) el.qualityLabel.textContent = "Auto";
-      renderMenuButtons(el.serverMenu, "Pilih Server", [], "", () => {});
-      renderMenuButtons(el.qualityMenu, "Pilih Kualitas", [], "", () => {});
-    }
-
-    // downloads
-    renderDownloads(normDownloads(d));
-
-    // bind toolbar
     el.serverBtn && (el.serverBtn.onclick = () => toggle(el.serverMenu));
     el.qualityBtn && (el.qualityBtn.onclick = () => toggle(el.qualityMenu));
     el.downloadBtn && (el.downloadBtn.onclick = () => toggle(el.downloadMenu));
     el.shareBtn &&
-      (el.shareBtn.onclick = async () => {
-        closePanels();
-        const url = location.href;
-        if (navigator.share) {
-          try {
-            await navigator.share({ title: document.title, url });
-            return;
-          } catch {}
-        }
-        copy(url);
-      });
-  }
+      (el.shareBtn.onclick = () =>
+        navigator.share
+          ? navigator.share({ title: document.title, url: location.href })
+          : navigator.clipboard
+              .writeText(location.href)
+              .then(() => toast("Link disalin"))
+              .catch(() => toast("Gagal menyalin link")));
+  };
 
   document.addEventListener("DOMContentLoaded", loadEpisode);
 })();
