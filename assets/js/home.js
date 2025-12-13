@@ -1,325 +1,181 @@
-const ongoingGridHome = document.getElementById("ongoingGridHome");
-const completeRowHome = document.getElementById("completeRowHome");
-const seeAllOngoingBtn = document.getElementById("seeAllOngoingBtn");
-const seeAllCompleteBtn = document.getElementById("seeAllCompleteBtn");
+(() => {
+  "use strict";
 
-// opsional: kalau ada judul section di HTML, biar bisa diganti jadi "Movie"
-const completeSectionTitle = document.getElementById("completeSectionTitle");
+  const $ = (id) => document.getElementById(id);
+  const toast = (m) => typeof showToast === "function" && showToast(m);
 
-// elemen "Rilis Hari Ini" (hero)
-const todaySection = document.getElementById("todaySection");
-const todayHeaderTitle = document.getElementById("todayHeaderTitle");
-const todayPosterPrev = document.getElementById("todayPosterPrev");
-const todayPoster = document.getElementById("todayPoster");
-const todayPosterNext = document.getElementById("todayPosterNext");
-const todayTitle = document.getElementById("todayTitle");
-const todayDots = document.getElementById("todayDots");
-const todayWatchBtn = document.getElementById("todayWatchBtn");
-const todayPrevBtn = document.getElementById("todayPrevBtn");
-const todayNextBtn = document.getElementById("todayNextBtn");
+  const el = {
+    ongoing: $("ongoingGridHome"),
+    movieRow: $("completeRowHome"),
+    btnAllOngoing: $("seeAllOngoingBtn"),
+    btnAllMovie: $("seeAllCompleteBtn"),
+    movieTitle: $("completeSectionTitle"),
 
-let todayAnimeList = [];
-let todayIndex = 0;
-let todayAutoTimer = null;
-const TODAY_AUTO_MS = 7000;
-
-// --- UTIL HARI ---
-function getTodayNameIndo() {
-  const days = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
-  return days[new Date().getDay()];
-}
-
-function getTodayNameEnglish() {
-  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  return days[new Date().getDay()];
-}
-
-function toIndoDay(day) {
-  const map = {
-    monday: "Senin",
-    tuesday: "Selasa",
-    wednesday: "Rabu",
-    thursday: "Kamis",
-    friday: "Jumat",
-    saturday: "Sabtu",
-    sunday: "Minggu",
+    todaySec: $("todaySection"),
+    todayHdr: $("todayHeaderTitle"),
+    prevImg: $("todayPosterPrev"),
+    curImg: $("todayPoster"),
+    nextImg: $("todayPosterNext"),
+    todayTitle: $("todayTitle"),
+    dots: $("todayDots"),
+    watch: $("todayWatchBtn"),
+    prevBtn: $("todayPrevBtn"),
+    nextBtn: $("todayNextBtn"),
   };
-  if (!day) return "-";
-  const key = String(day).trim().toLowerCase();
-  return map[key] || day;
-}
 
-function parseAnimeIdFromHref(href) {
-  if (!href) return "";
-  try {
-    const s = String(href).trim();
-    const parts = s.split("/").filter(Boolean);
-    return parts[parts.length - 1] || "";
-  } catch {
-    return "";
-  }
-}
+  // ===== helpers =====
+  const dayID = () => ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"][new Date().getDay()];
+  const dayEN = () => ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][new Date().getDay()];
+  const toID = (d) => ({monday:"Senin",tuesday:"Selasa",wednesday:"Rabu",thursday:"Kamis",friday:"Jumat",saturday:"Sabtu",sunday:"Minggu"}[String(d||"").trim().toLowerCase()] || d || "-");
+  const slugFromHref = (h) => (String(h || "").trim().split("/").filter(Boolean).pop() || "");
+  const poster = (u) => (String(u || "").trim() ? u : "/assets/img/placeholder-poster.png");
 
-function safePoster(url) {
-  return url && String(url).trim() ? url : "/assets/img/placeholder-poster.png";
-}
+  const epsLabel = (t) => {
+    t = String(t ?? "").trim();
+    let m = t.match(/^Total\s+(\d+)\s*(Episode|Eps?)?/i) || t.match(/^Episode\s+(\d+)/i) || t.match(/^(\d+)\s*(Episode|Eps?)?$/i);
+    return m ? `Eps ${m[1]}` : t.replace(/Episode/gi, "Eps");
+  };
 
-// --- FORMAT LABEL EPISODE ---
-function formatEpisodeLabel(text) {
-  if (!text && text !== 0) return "";
-  let t = String(text).trim();
+  // ===== Today Hero =====
+  let todayList = [], idx = 0, timer = null;
+  const AUTO_MS = 7000;
 
-  let m = t.match(/^Total\s+(\d+)\s*(Episode|Eps?)?/i);
-  if (m) return `Eps ${m[1]}`;
+  const dotCenter = () => {
+    if (!el.dots) return;
+    const a = el.dots.querySelector("span.active");
+    if (!a) return;
+    const w = el.dots.getBoundingClientRect(), d = a.getBoundingClientRect();
+    el.dots.scrollBy({ left: d.left - w.left - w.width / 2 + d.width / 2, behavior: "smooth" });
+  };
 
-  m = t.match(/^Episode\s+(\d+)/i);
-  if (m) return `Eps ${m[1]}`;
+  const renderHero = () => {
+    if (!el.todaySec || !el.curImg || !el.todayTitle || !el.dots || !todayList.length) return;
+    const cur = todayList[idx], len = todayList.length;
+    const prev = todayList[(idx - 1 + len) % len], next = todayList[(idx + 1) % len];
 
-  m = t.match(/^(\d+)\s*(Episode|Eps?)?$/i);
-  if (m) return `Eps ${m[1]}`;
+    el.curImg.src = poster(cur.poster); el.curImg.alt = cur.title || "";
+    el.todayTitle.textContent = cur.title || "-";
 
-  return t.replace(/Episode/gi, "Eps");
-}
+    if (el.prevImg && prev) { el.prevImg.src = poster(prev.poster); el.prevImg.alt = prev.title || ""; }
+    if (el.nextImg && next) { el.nextImg.src = poster(next.poster); el.nextImg.alt = next.title || ""; }
 
-// --- RILIS HARI INI (HERO) ---
-function scrollTodayDotsIntoView() {
-  if (!todayDots) return;
-  const active = todayDots.querySelector("span.active");
-  if (!active) return;
-
-  const wrapRect = todayDots.getBoundingClientRect();
-  const dotRect = active.getBoundingClientRect();
-  const offset =
-    dotRect.left - wrapRect.left - wrapRect.width / 2 + dotRect.width / 2;
-
-  todayDots.scrollBy({ left: offset, behavior: "smooth" });
-}
-
-function updateTodayHero() {
-  if (!todaySection || !todayPoster || !todayTitle || !todayDots || !todayAnimeList.length) return;
-
-  const current = todayAnimeList[todayIndex];
-  if (!current) return;
-
-  const len = todayAnimeList.length;
-  const prevIndex = (todayIndex - 1 + len) % len;
-  const nextIndex = (todayIndex + 1) % len;
-
-  const prev = todayAnimeList[prevIndex];
-  const next = todayAnimeList[nextIndex];
-
-  todayPoster.src = safePoster(current.poster);
-  todayPoster.alt = current.title || "";
-  todayTitle.textContent = current.title || "-";
-
-  if (todayPosterPrev && prev) {
-    todayPosterPrev.src = safePoster(prev.poster);
-    todayPosterPrev.alt = prev.title || "";
-  }
-  if (todayPosterNext && next) {
-    todayPosterNext.src = safePoster(next.poster);
-    todayPosterNext.alt = next.title || "";
-  }
-
-  todayDots.innerHTML = "";
-  todayAnimeList.forEach((_, i) => {
-    const dot = document.createElement("span");
-    if (i === todayIndex) dot.classList.add("active");
-    todayDots.appendChild(dot);
-  });
-
-  scrollTodayDotsIntoView();
-}
-
-function restartTodayAuto() {
-  if (todayAutoTimer) clearInterval(todayAutoTimer);
-  if (!todayAnimeList.length) return;
-
-  todayAutoTimer = setInterval(() => {
-    goTodayStep(1, false);
-  }, TODAY_AUTO_MS);
-}
-
-function goToTodayDetail() {
-  const current = todayAnimeList[todayIndex];
-  if (!current || !current.slug) return;
-  const url = `/anime/detail?slug=${encodeURIComponent(current.slug)}`;
-  window.location.href = url;
-}
-
-function goTodayStep(delta, fromUser = true) {
-  if (!todayAnimeList.length) return;
-  const len = todayAnimeList.length;
-  todayIndex = (todayIndex + delta + len) % len;
-  updateTodayHero();
-  if (fromUser) restartTodayAuto();
-}
-
-// ✅ UPDATE: pakai endpoint baru /anime/samehadaku/schedule
-async function loadTodayAnime() {
-  if (!todaySection) return;
-
-  let json;
-  try {
-    json = await apiGet("/anime/samehadaku/schedule");
-  } catch {
-    // fallback kalau masih ada endpoint lama
-    try {
-      json = await apiGet("/anime/schedule");
-    } catch {
-      return;
+    el.dots.innerHTML = "";
+    for (let i = 0; i < len; i++) {
+      const s = document.createElement("span");
+      if (i === idx) s.classList.add("active");
+      el.dots.appendChild(s);
     }
+    dotCenter();
+  };
+
+  const stepHero = (d, user = true) => {
+    if (!todayList.length) return;
+    idx = (idx + d + todayList.length) % todayList.length;
+    renderHero();
+    if (user) startAuto();
+  };
+
+  const gotoDetail = () => {
+    const cur = todayList[idx];
+    if (cur?.slug) location.href = `/anime/detail?slug=${encodeURIComponent(cur.slug)}`;
+  };
+
+  const startAuto = () => {
+    clearInterval(timer);
+    if (!todayList.length) return;
+    timer = setInterval(() => stepHero(1, false), AUTO_MS);
+  };
+
+  async function loadToday() {
+    if (!el.todaySec) return;
+
+    let json = null;
+    try { json = await apiGet("/anime/samehadaku/schedule"); }
+    catch { try { json = await apiGet("/anime/schedule"); } catch {} }
+
+    if (!json || json.status !== "success") return;
+
+    const indo = dayID(), eng = dayEN();
+    const daysNew = Array.isArray(json.data?.days) ? json.data.days : null;
+    const daysOld = Array.isArray(json.data) ? json.data : null;
+
+    let list = [];
+    if (daysNew) {
+      const o =
+        daysNew.find((d) => String(d.day || "").toLowerCase() === eng.toLowerCase()) ||
+        daysNew.find((d) => toID(d.day) === indo);
+      list = (o?.animeList || []).map((a) => ({
+        title: a.title || "-",
+        poster: a.poster || "",
+        slug: a.animeId || slugFromHref(a.href) || "",
+      }));
+    } else if (daysOld) {
+      const o = daysOld.find((d) => String(d.day || "") === indo);
+      list = (o?.anime_list || []).map((a) => ({
+        title: a.anime_name || "-",
+        poster: a.poster || "",
+        slug: a.slug || "",
+      }));
+    }
+
+    todayList = list.filter((x) => x?.slug);
+    if (!todayList.length) return (el.todaySec.style.display = "none");
+
+    el.todaySec.style.display = "block";
+    if (el.todayHdr) el.todayHdr.textContent = `Anime Rilis Hari Ini - ${indo}`;
+    idx = 0;
+    renderHero();
+    startAuto();
+
+    el.watch?.addEventListener("click", gotoDetail);
+    el.curImg?.addEventListener("click", gotoDetail);
+    el.prevImg?.addEventListener("click", () => stepHero(-1, true));
+    el.nextImg?.addEventListener("click", () => stepHero(1, true));
+    el.prevBtn?.addEventListener("click", () => stepHero(-1, true));
+    el.nextBtn?.addEventListener("click", () => stepHero(1, true));
   }
 
-  if (!json || json.status !== "success") return;
+  // ===== Home (Recent + Movies) =====
+  async function loadHome() {
+    if (!el.ongoing || !el.movieRow) return;
+    if (el.movieTitle) el.movieTitle.textContent = "Movie";
 
-  const todayIndo = getTodayNameIndo();
-  const todayEng = getTodayNameEnglish();
+    let home;
+    try { home = await apiGet("/anime/samehadaku/home"); } catch { return; }
+    if (!home?.data || home.status !== "success") return toast("Data home tidak valid");
 
-  // bentuk baru: json.data.days = [{ day: "Friday", animeList: [...] }]
-  const daysNew =
-    json.data && Array.isArray(json.data.days) ? json.data.days : null;
-
-  // bentuk lama: json.data = [{ day: "Jumat", anime_list: [...] }]
-  const daysOld = Array.isArray(json.data) ? json.data : null;
-
-  let list = [];
-
-  if (daysNew) {
-    const obj =
-      daysNew.find((d) => String(d.day || "").toLowerCase() === todayEng.toLowerCase()) ||
-      daysNew.find((d) => toIndoDay(d.day) === todayIndo);
-
-    const arr = obj && Array.isArray(obj.animeList) ? obj.animeList : [];
-    list = arr.map((a) => ({
-      title: a.title || "-",
-      poster: a.poster || "",
-      slug: a.animeId || parseAnimeIdFromHref(a.href) || "",
-    }));
-  } else if (daysOld) {
-    const obj = daysOld.find((d) => String(d.day || "") === todayIndo);
-    const arr = obj && Array.isArray(obj.anime_list) ? obj.anime_list : [];
-    list = arr.map((a) => ({
-      title: a.anime_name || "-",
-      poster: a.poster || "",
-      slug: a.slug || "",
-    }));
-  }
-
-  todayAnimeList = list.filter((x) => x && x.slug);
-
-  if (!todayAnimeList.length) {
-    // kalau tidak ada rilis hari ini, sembunyikan
-    todaySection.style.display = "none";
-    return;
-  }
-
-  todaySection.style.display = "block";
-  if (todayHeaderTitle) todayHeaderTitle.textContent = `Anime Rilis Hari Ini - ${todayIndo}`;
-
-  todayIndex = 0;
-  updateTodayHero();
-  restartTodayAuto();
-
-  if (todayWatchBtn) todayWatchBtn.addEventListener("click", () => goToTodayDetail());
-  if (todayPoster) todayPoster.addEventListener("click", () => goToTodayDetail());
-
-  if (todayPosterPrev) todayPosterPrev.addEventListener("click", () => goTodayStep(-1, true));
-  if (todayPosterNext) todayPosterNext.addEventListener("click", () => goTodayStep(1, true));
-
-  if (todayPrevBtn) todayPrevBtn.addEventListener("click", () => goTodayStep(-1, true));
-  if (todayNextBtn) todayNextBtn.addEventListener("click", () => goTodayStep(1, true));
-}
-
-// --- HOME: RECENT + MOVIE (Samehadaku) ---
-async function loadHome() {
-  if (!ongoingGridHome || !completeRowHome) return;
-
-  // ganti label "Selesai Tayang" -> "Movie" kalau elemennya ada
-  if (completeSectionTitle) completeSectionTitle.textContent = "Movie";
-
-  let homeJson;
-  try {
-    homeJson = await apiGet("/anime/samehadaku/home");
-  } catch {
-    return;
-  }
-
-  if (!homeJson || homeJson.status !== "success" || !homeJson.data) {
-    if (typeof showToast === "function") showToast("Data home tidak valid");
-    return;
-  }
-
-  // RECENT
-  const recentList = (homeJson.data.recent && homeJson.data.recent.animeList) || [];
-
-  ongoingGridHome.innerHTML = "";
-
-  recentList.slice(0, 9).forEach((a) => {
-    const item = {
-      title: a.title || "-",
-      poster: a.poster || "",
-      slug: a.animeId || a.slug || "", // animeId = slug internal
-      animeId: a.animeId,
-    };
-
-    const card = createAnimeCard(item, {
-      badgeTop: "Baru",
-      badgeBottom: formatEpisodeLabel(a.episodes || ""),
-      meta: a.releasedOn || "",
+    el.ongoing.innerHTML = "";
+    (home.data?.recent?.animeList || []).slice(0, 9).forEach((a) => {
+      el.ongoing.appendChild(
+        createAnimeCard(
+          { title: a.title || "-", poster: a.poster || "", slug: a.animeId || a.slug || "", animeId: a.animeId },
+          { badgeTop: "Baru", badgeBottom: epsLabel(a.episodes || ""), meta: a.releasedOn || "" }
+        )
+      );
     });
 
-    ongoingGridHome.appendChild(card);
-  });
+    let mv = null;
+    try { mv = await apiGet("/anime/samehadaku/movies"); } catch {}
+    const movies = mv?.status === "success" ? mv.data?.animeList || [] : [];
 
-  // ✅ MOVIES (ganti dari top10/selsai tayang)
-  let movieJson;
-  try {
-    movieJson = await apiGet("/anime/samehadaku/movies");
-  } catch {
-    movieJson = null;
+    el.movieRow.innerHTML = "";
+    movies.slice(0, 15).forEach((a) => {
+      el.movieRow.appendChild(
+        createAnimeCard(
+          { title: a.title || "-", poster: a.poster || "", slug: a.animeId || slugFromHref(a.href) || "", animeId: a.animeId },
+          { rating: a.score ? String(a.score) : "N/A", meta: a.releaseDate || a.status || "" }
+        )
+      );
+    });
   }
 
-  const movieList =
-    movieJson && movieJson.status === "success" && movieJson.data
-      ? movieJson.data.animeList || []
-      : [];
+  // ===== buttons =====
+  el.btnAllOngoing?.addEventListener("click", () => (location.href = "/anime/ongoing"));
+  el.btnAllMovie?.addEventListener("click", () => (location.href = "/anime/movies"));
 
-  completeRowHome.innerHTML = "";
-
-  movieList.slice(0, 15).forEach((a) => {
-    const item = {
-      title: a.title || "-",
-      poster: a.poster || "",
-      slug: a.animeId || parseAnimeIdFromHref(a.href) || "",
-      animeId: a.animeId,
-    };
-
-    const card = createAnimeCard(item, {
-      rating: a.score && a.score !== "" ? a.score : "N/A",
-      meta: a.releaseDate ? a.releaseDate : (a.status || ""),
-    });
-
-    completeRowHome.appendChild(card);
+  // ===== init =====
+  document.addEventListener("DOMContentLoaded", () => {
+    loadHome();
+    loadToday();
   });
-}
-
-// --- BUTTON "SEMUA" ---
-if (seeAllOngoingBtn) {
-  seeAllOngoingBtn.addEventListener("click", () => {
-    window.location.href = "/anime/ongoing";
-  });
-}
-
-if (seeAllCompleteBtn) {
-  seeAllCompleteBtn.addEventListener("click", () => {
-    // ✅ ganti ke halaman list Movie
-    window.location.href = "/anime/movies";
-  });
-}
-
-// --- INIT ---
-document.addEventListener("DOMContentLoaded", () => {
-  loadHome();
-  loadTodayAnime();
-});
+})();
