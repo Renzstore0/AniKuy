@@ -28,11 +28,10 @@
   const closePanels = () => panels.forEach((p) => p.classList.remove("show"));
   const toggle = (p) => {
     if (!p) return;
-    const on = !p.classList.contains("show"); // <-- FIX: cek dulu sebelum close
+    const on = !p.classList.contains("show");
     closePanels();
-    if (on) p.classList.add("show");
+    on && p.classList.add("show");
   };
-
   document.addEventListener("click", (e) => {
     if (!e.target.closest(".player-toolbar") && !e.target.closest(".dropdown-panel")) closePanels();
   });
@@ -79,7 +78,6 @@
   const renderChips = (list) => {
     if (!Array.isArray(list) || !el.chip) return;
     el.chip.innerHTML = "";
-
     list
       .map((it) => {
         const href = it?.href;
@@ -98,12 +96,7 @@
         b.onclick = () => epSlug === slug || (location.href = `/anime/episode?slug=${epSlug}`);
         el.chip.appendChild(b);
       });
-
-    el.chip.querySelector(".episode-chip.active")?.scrollIntoView?.({
-      behavior: "smooth",
-      inline: "center",
-      block: "nearest",
-    });
+    el.chip.querySelector(".episode-chip.active")?.scrollIntoView?.({ behavior: "smooth", inline: "center", block: "nearest" });
   };
 
   const loadEpisode = async () => {
@@ -124,13 +117,14 @@
     el.player && (el.player.src = d.defaultStreamingUrl || "");
     renderChips(d.recommendedEpisodeList);
 
-    /* quality + server */
+    /* QUALITY + SERVER (active biru ngikut pilihan) */
     const raw = normalizeServers(d);
     const byQ = new Map();
 
     raw.forEach(({ quality, serverId }) => {
       if (!byQ.has(quality)) byQ.set(quality, []);
-      byQ.get(quality).push({ serverId, label: "" }); // <-- FIX: jangan dedupe biar count server bener
+      const arr = byQ.get(quality);
+      if (!arr.some((x) => x.serverId === serverId)) arr.push({ serverId, label: "" });
     });
 
     const qualities = [...byQ.keys()].filter(Boolean);
@@ -141,20 +135,21 @@
       removeIfEmpty(el.serverBtn, el.serverMenu);
     } else {
       let qAct = qualities[0];
-      let sIdx = 0;
+      let sAct = (byQ.get(qAct) || [])[0]?.serverId || null;
 
-      const servers = () => byQ.get(qAct) || [];
+      const servers = (q) => byQ.get(q) || [];
+      const serverLabel = () => servers(qAct).find((x) => x.serverId === sAct)?.label || "-";
+
       const setLabels = () => {
         el.qualityLabel && (el.qualityLabel.textContent = qAct || "-");
+        el.serverLabel && (el.serverLabel.textContent = serverLabel());
         el.downloadLabel && (el.downloadLabel.textContent = qAct || "Pilih kualitas");
-        el.serverLabel && (el.serverLabel.textContent = servers()[sIdx]?.label || "-");
       };
 
       const setPlayer = async () => {
-        const id = servers()[sIdx]?.serverId;
-        if (!id) return;
-        const url = await fetchStream(id);
-        if (url && el.player) el.player.src = url;
+        if (!sAct) return;
+        const url = await fetchStream(sAct);
+        url && el.player && (el.player.src = url);
       };
 
       const renderQuality = () => {
@@ -168,9 +163,10 @@
             b.textContent = q;
             b.onclick = () => {
               qAct = q;
-              sIdx = 0;
+              sAct = servers(qAct)[0]?.serverId || null;
               setLabels();
-              renderServer();
+              renderQuality();   // <-- FIX: active biru ikut pilihan
+              renderServer();    // <-- ikut update server list
               setPlayer();
               closePanels();
             };
@@ -181,18 +177,19 @@
 
       const renderServer = () => {
         if (!el.serverMenu) return;
-        const list = servers();
+        const list = servers(qAct);
         if (!list.length) return removeIfEmpty(el.serverBtn, el.serverMenu);
         menu(
           el.serverMenu,
           "Pilih Server",
-          list.map((s, i) => {
+          list.map((s) => {
             const b = document.createElement("button");
-            b.className = "dropdown-item" + (i === sIdx ? " active" : "");
+            b.className = "dropdown-item" + (s.serverId === sAct ? " active" : "");
             b.textContent = s.label;
             b.onclick = () => {
-              sIdx = i;
+              sAct = s.serverId;
               setLabels();
+              renderServer();   // <-- FIX: active biru ikut pilihan
               setPlayer();
               closePanels();
             };
@@ -206,11 +203,11 @@
       renderServer();
       setPlayer();
 
-      el.serverBtn && (el.serverBtn.onclick = () => toggle(el.serverMenu));
       el.qualityBtn && (el.qualityBtn.onclick = () => toggle(el.qualityMenu));
+      el.serverBtn && (el.serverBtn.onclick = () => toggle(el.serverMenu));
     }
 
-    /* downloads */
+    /* DOWNLOAD */
     const dls = normalizeDownloads(d);
     if (!dls.length) {
       removeIfEmpty(el.downloadBtn, el.downloadMenu);
@@ -243,7 +240,7 @@
       el.downloadBtn.onclick = () => toggle(el.downloadMenu);
     }
 
-    /* share */
+    /* SHARE */
     el.shareBtn &&
       (el.shareBtn.onclick = () =>
         navigator.share
