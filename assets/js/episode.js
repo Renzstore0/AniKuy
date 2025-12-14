@@ -26,17 +26,22 @@
   /* dropdown */
   const panels = [el.serverMenu, el.qualityMenu, el.downloadMenu].filter(Boolean);
   const closePanels = () => panels.forEach((p) => p.classList.remove("show"));
-  const toggle = (p) => (p ? (closePanels(), p.classList.toggle("show", !p.classList.contains("show"))) : 0);
+  const toggle = (p) => {
+    if (!p) return;
+    const on = !p.classList.contains("show"); // <-- FIX: cek dulu sebelum close
+    closePanels();
+    if (on) p.classList.add("show");
+  };
 
   document.addEventListener("click", (e) => {
     if (!e.target.closest(".player-toolbar") && !e.target.closest(".dropdown-panel")) closePanels();
   });
 
   const removeIfEmpty = (btn, panel) => (btn?.remove(), panel?.remove());
-
   const menu = (root, title, nodes) => {
     if (!root) return;
-    root.innerHTML = `<div class="dropdown-title">${title}</div>` + (nodes.length ? "" : `<div class="dropdown-empty">Tidak tersedia</div>`);
+    root.innerHTML = `<div class="dropdown-title">${title}</div>`;
+    if (!nodes.length) return (root.innerHTML += `<div class="dropdown-empty">Tidak tersedia</div>`);
     nodes.forEach((n) => root.appendChild(n));
   };
 
@@ -94,7 +99,11 @@
         el.chip.appendChild(b);
       });
 
-    el.chip.querySelector(".episode-chip.active")?.scrollIntoView?.({ behavior: "smooth", inline: "center", block: "nearest" });
+    el.chip.querySelector(".episode-chip.active")?.scrollIntoView?.({
+      behavior: "smooth",
+      inline: "center",
+      block: "nearest",
+    });
   };
 
   const loadEpisode = async () => {
@@ -115,14 +124,13 @@
     el.player && (el.player.src = d.defaultStreamingUrl || "");
     renderChips(d.recommendedEpisodeList);
 
-    /* server + quality (hanya tampil kalau ada) */
+    /* quality + server */
     const raw = normalizeServers(d);
     const byQ = new Map();
 
     raw.forEach(({ quality, serverId }) => {
       if (!byQ.has(quality)) byQ.set(quality, []);
-      const arr = byQ.get(quality);
-      if (!arr.some((x) => x.serverId === serverId)) arr.push({ serverId, label: "" });
+      byQ.get(quality).push({ serverId, label: "" }); // <-- FIX: jangan dedupe biar count server bener
     });
 
     const qualities = [...byQ.keys()].filter(Boolean);
@@ -133,25 +141,24 @@
       removeIfEmpty(el.serverBtn, el.serverMenu);
     } else {
       let qAct = qualities[0];
-      let sAct = (byQ.get(qAct) || [])[0]?.serverId || null;
+      let sIdx = 0;
 
-      const servers = (q) => byQ.get(q) || [];
+      const servers = () => byQ.get(qAct) || [];
       const setLabels = () => {
         el.qualityLabel && (el.qualityLabel.textContent = qAct || "-");
         el.downloadLabel && (el.downloadLabel.textContent = qAct || "Pilih kualitas");
-        const sLabel = servers(qAct).find((x) => x.serverId === sAct)?.label || "-";
-        el.serverLabel && (el.serverLabel.textContent = sLabel);
+        el.serverLabel && (el.serverLabel.textContent = servers()[sIdx]?.label || "-");
       };
 
       const setPlayer = async () => {
-        if (!sAct) return;
-        const url = await fetchStream(sAct);
+        const id = servers()[sIdx]?.serverId;
+        if (!id) return;
+        const url = await fetchStream(id);
         if (url && el.player) el.player.src = url;
       };
 
       const renderQuality = () => {
-        if (!el.qualityBtn || !el.qualityMenu) return;
-        if (qualities.length <= 1) return (el.qualityBtn.disabled = true, (el.qualityMenu.innerHTML = ""));
+        if (!el.qualityMenu) return;
         menu(
           el.qualityMenu,
           "Pilih Kualitas",
@@ -161,7 +168,7 @@
             b.textContent = q;
             b.onclick = () => {
               qAct = q;
-              sAct = servers(qAct)[0]?.serverId || sAct;
+              sIdx = 0;
               setLabels();
               renderServer();
               setPlayer();
@@ -173,21 +180,18 @@
       };
 
       const renderServer = () => {
-        if (!el.serverBtn || !el.serverMenu) return;
-        const list = servers(qAct);
+        if (!el.serverMenu) return;
+        const list = servers();
         if (!list.length) return removeIfEmpty(el.serverBtn, el.serverMenu);
-
-        if (list.length <= 1) return (el.serverBtn.disabled = true, (el.serverMenu.innerHTML = ""), setLabels());
-
         menu(
           el.serverMenu,
           "Pilih Server",
-          list.map((s) => {
+          list.map((s, i) => {
             const b = document.createElement("button");
-            b.className = "dropdown-item" + (s.serverId === sAct ? " active" : "");
+            b.className = "dropdown-item" + (i === sIdx ? " active" : "");
             b.textContent = s.label;
             b.onclick = () => {
-              sAct = s.serverId;
+              sIdx = i;
               setLabels();
               setPlayer();
               closePanels();
@@ -202,11 +206,11 @@
       renderServer();
       setPlayer();
 
-      el.serverBtn && (el.serverBtn.onclick = () => !el.serverBtn.disabled && toggle(el.serverMenu));
-      el.qualityBtn && (el.qualityBtn.onclick = () => !el.qualityBtn.disabled && toggle(el.qualityMenu));
+      el.serverBtn && (el.serverBtn.onclick = () => toggle(el.serverMenu));
+      el.qualityBtn && (el.qualityBtn.onclick = () => toggle(el.qualityMenu));
     }
 
-    /* downloads (rapi + grouping) */
+    /* downloads */
     const dls = normalizeDownloads(d);
     if (!dls.length) {
       removeIfEmpty(el.downloadBtn, el.downloadMenu);
@@ -232,7 +236,6 @@
           a.target = "_blank";
           a.rel = "noopener noreferrer";
           a.textContent = x.host;
-          a.title = `${k} - ${x.host}`;
           el.downloadMenu.appendChild(a);
         });
       }
