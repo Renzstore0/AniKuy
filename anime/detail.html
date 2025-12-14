@@ -6,7 +6,6 @@
   <title>AniKuy - Detail Anime</title>
   <link rel="stylesheet" href="/assets/css/style.css">
 </head>
-
 <body data-page="detail">
 <div class="app-root">
 
@@ -14,11 +13,7 @@
   <button class="icon-button back-button" id="backButton" aria-label="Kembali">
     <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
   </button>
-
-  <div class="logo-wrap">
-    <img class="logo-img" src="https://pomf2.lain.la/f/22yuvdrk.png" alt="AniKuy Logo">
-  </div>
-
+  <div class="logo-wrap"><img class="logo-img" src="https://pomf2.lain.la/f/22yuvdrk.png" alt="AniKuy Logo"></div>
   <button class="icon-button" id="searchButton" aria-label="Cari Anime">
     <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L19 20.49 20.49 19 15.5 14zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
   </button>
@@ -35,7 +30,7 @@
       </div>
     </div>
 
-    <div id="episodeList" class="episode-list"></div>
+    <div id="episodeList" class="episode-list episode-scroll"></div>
     <div id="seasonList" class="episode-list season-list"></div>
 
     <h3 class="section-title small-title">Rekomendasi</h3>
@@ -51,7 +46,6 @@
 </nav>
 
 </div>
-
 <div id="toast" class="toast"></div>
 <script src="/assets/js/core.js"></script>
 <script src="/assets/js/detail.js"></script>
