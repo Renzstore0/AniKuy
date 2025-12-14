@@ -99,6 +99,12 @@ img{pointer-events:none}
 .episode-tab::after{content:"";position:absolute;left:0;right:0;bottom:-4px;margin:0 auto;width:44px;height:3px;border-radius:999px;background:#e5e7eb;opacity:0}
 .episode-tab.active{color:#e5e7eb}
 .episode-tab.active::after{opacity:1}
+
+/* ✅ scroll khusus episode saja */
+.episode-scroll{max-height:52vh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.episode-scroll::-webkit-scrollbar{width:4px}
+.episode-scroll::-webkit-scrollbar-thumb{background:rgba(30,64,175,.7);border-radius:999px}
+
 .episode-list{margin-top:6px;display:flex;flex-direction:column;gap:6px}
 .episode-list.hidden{display:none}
 .episode-item{border-radius:10px;padding:8px 10px;background:rgba(15,23,42,.95);font-size:13px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
