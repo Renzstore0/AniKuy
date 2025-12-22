@@ -1,3 +1,4 @@
+// assets/js/core.js
 (() => {
   "use strict";
 
@@ -43,10 +44,9 @@
     const txt = (t) => t === LIGHT ? "Putih & Hitam" : "Biru & Hitam (Default)";
     label && (label.textContent = txt(current));
 
-    const open = () => sheet?.classList.add("show");
     const hide = () => sheet?.classList.remove("show");
 
-    toggle?.addEventListener("click", () => sheet.classList.toggle("show"));
+    toggle?.addEventListener("click", () => sheet?.classList.toggle("show"));
     close?.addEventListener("click", hide);
     overlay?.addEventListener("click", hide);
 
@@ -74,6 +74,17 @@
       showToast("Gagal memuat data");
       throw e;
     }
+  };
+
+  // coba beberapa endpoint, ambil yang sukses pertama
+  window.apiGetTry = async (paths = []) => {
+    for (const p of paths) {
+      try {
+        const j = await apiGet(p);
+        if (j?.status === "success" || j?.ok === true) return j;
+      } catch {}
+    }
+    return null;
   };
 
   /* ========= FAVORITES ========= */
