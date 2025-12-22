@@ -26,10 +26,16 @@
 
   const normalizeList = (j) => {
     if (Array.isArray(j)) return j;
+
+    // ✅ format anabot: { success:true, data:{ result:[...] } }
+    if (Array.isArray(j?.data?.result)) return j.data.result;
+    if (Array.isArray(j?.data?.list)) return j.data.list;
     if (Array.isArray(j?.data)) return j.data;
+
     if (Array.isArray(j?.list)) return j.list;
     if (Array.isArray(j?.result)) return j.result;
     if (Array.isArray(j?.items)) return j.items;
+
     return null;
   };
 
@@ -82,7 +88,8 @@
   // HERO "Untuk Kamu" (optional)
   function initForYouHero(list) {
     const items = (list || [])
-      .filter((x) => x && x.cardType === 1 && x.bookId && x.coverWap)
+      // ✅ anabot result umumnya tidak punya cardType, jadi dibuat fleksibel
+      .filter((x) => x && x.bookId && (x.coverWap || x.cover) && (x.cardType === 1 || x.cardType == null))
       .slice(0, 12);
 
     if (!el.heroSection || items.length === 0) return;
@@ -107,6 +114,8 @@
       });
     };
 
+    const posterOf = (x) => (x?.coverWap || x?.cover || "");
+
     const render = () => {
       const n = items.length;
       const cur = items[idx];
@@ -115,9 +124,9 @@
 
       if (el.heroName) el.heroName.textContent = (cur.bookName || "").trim();
 
-      if (el.heroPosterPrev) el.heroPosterPrev.src = prev.coverWap || "";
-      if (el.heroPoster) el.heroPoster.src = cur.coverWap || "";
-      if (el.heroPosterNext) el.heroPosterNext.src = next.coverWap || "";
+      if (el.heroPosterPrev) el.heroPosterPrev.src = posterOf(prev);
+      if (el.heroPoster) el.heroPoster.src = posterOf(cur);
+      if (el.heroPosterNext) el.heroPosterNext.src = posterOf(next);
 
       setDots();
     };
