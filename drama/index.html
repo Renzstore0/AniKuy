@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/assets/css/style.css" />
   <link rel="icon" href="https://pomf2.lain.la/f/leu65s82.png" />
 
+  <!-- ✅ khusus home drama: grid 2 kolom -->
   <style>
     body[data-page="drama"] .drama-grid {
       display: grid;
@@ -22,7 +23,7 @@
   </style>
 </head>
 
-<body data-page="drama" class="is-loading">
+<body data-page="drama">
   <div class="app-root">
     <header class="app-header">
       <button class="icon-button back-button" id="backButton" aria-label="Menu">
@@ -45,11 +46,12 @@
     <main id="mainContent">
       <div class="page-container">
 
-        <!-- ✅ FULLSCREEN LOADING OVERLAY -->
-        <div id="dramaLoading" class="loading-indicator show" aria-label="Loading">
-          <div class="spinner"></div>
+        <!-- Loading (fullscreen via CSS saat body.is-loading) -->
+        <div id="dramaLoading" class="loading-indicator show">
+          <div class="spinner"></div><span>Memuat drama...</span>
         </div>
 
+        <!-- ✅ HERO: "Untuk Kamu" -->
         <div id="todaySection" class="today-hero-section" style="display:none;">
           <div class="section-header today-section-header">
             <div>
@@ -77,46 +79,40 @@
           </div>
         </div>
 
-        <div class="section-header section-header-spaced">
-          <div><h2 class="section-title">Trending</h2></div>
-        </div>
-        <div id="dramaTrendingRow" class="drama-grid"></div>
-
+        <!-- ✅ HANYA TERBARU -->
         <div class="section-header section-header-spaced">
           <div><h2 class="section-title">Terbaru</h2></div>
         </div>
         <div id="dramaLatestRow" class="drama-grid"></div>
 
-        <div class="section-header section-header-spaced">
-          <div><h2 class="section-title">Populer Search</h2></div>
-        </div>
-        <div id="dramaPopularRow" class="drama-grid"></div>
-
       </div>
     </main>
 
     <nav class="bottom-nav">
-      <a class="nav-item" data-tab="home" href="/drama">
+      <!-- ✅ Home drama harus ke /drama -->
+      <a class="nav-item active" href="/drama">
         <svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
         <span class="nav-label">Home</span>
       </a>
-      <a class="nav-item" data-tab="explore" href="/explore">
+      <a class="nav-item" href="/explore">
         <svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 1 0 10 10z"/></svg>
         <span class="nav-label">Explore</span>
       </a>
-      <a class="nav-item" data-tab="my-list" href="/my-list">
+      <a class="nav-item" href="/my-list">
         <svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 17.27 18.18 21l-1.64-7.03z"/></svg>
         <span class="nav-label">My List</span>
       </a>
-      <a class="nav-item" data-tab="profile" href="/profile">
+      <a class="nav-item" href="/profile">
         <svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12a5 5 0 1 0-5-5z"/></svg>
         <span class="nav-label">Profile</span>
       </a>
     </nav>
   </div>
 
+  <!-- Drawer Overlay -->
   <div id="drawerOverlay" class="drawer-overlay" hidden></div>
 
+  <!-- Side Drawer -->
   <aside id="sideDrawer" class="side-drawer" aria-hidden="true">
     <div class="side-drawer-head">
       <div class="side-drawer-title">Menu</div>
