@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AniKuy - Nonton Drama</title>
+  <link rel="stylesheet" href="/assets/css/style.css" />
+</head>
+
+<body data-page="drama-watch">
+  <div class="app-root">
+    <header class="app-header">
+      <button class="icon-button back-button" id="backButton" aria-label="Kembali">
+        <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+      </button>
+      <div class="logo-wrap">
+        <img class="logo-img" src="https://pomf2.lain.la/f/22yuvdrk.png" alt="AniKuy Logo" />
+      </div>
+      <div class="icon-button" aria-hidden="true" style="visibility:hidden"></div>
+    </header>
+
+    <main id="mainContent">
+      <div class="page-container">
+        <h2 id="dramaWatchTitle" class="page-title">Nonton Drama</h2>
+
+        <div class="player-wrapper">
+          <video id="dramaPlayer" controls playsinline preload="metadata"></video>
+        </div>
+
+        <div class="player-toolbar">
+          <button id="dramaQualityBtn" class="toolbar-btn" type="button">
+            <span class="toolbar-icon-wrap">
+              <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 4a8 8 0 1 0 8 8 8.01 8.01 0 0 0-8-8zm3.46 9.88-1.42 1.42L12 13.41l-2.05 1.89-1.41-1.42L10.59 12 8.54 9.88l1.41-1.42L12 10.59l2.04-2.13 1.42 1.42L13.41 12z"/></svg>
+            </span>
+            <span class="toolbar-text"><span class="toolbar-text-main">Kualitas</span><span class="toolbar-text-sub" id="dramaQualityLabel">-</span></span>
+          </button>
+
+          <button id="dramaShareBtn" class="toolbar-btn" type="button">
+            <span class="toolbar-icon-wrap">
+              <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M18 16a3 3 0 0 0-2.24 1.03L9.91 13.7a3.09 3.09 0 0 0 0-1.4l5.85-3.33A3 3 0 1 0 15 7a2.94 2.94 0 0 0 .07.64L9.22 11a3 3 0 1 0 0 4l5.85 3.36A3 3 0 1 0 18 16z"/></svg>
+            </span>
+            <span class="toolbar-text"><span class="toolbar-text-main">Bagikan</span><span class="toolbar-text-sub">Link</span></span>
+          </button>
+        </div>
+
+        <div class="dropdown-container">
+          <div id="dramaQualityMenu" class="dropdown-panel"></div>
+        </div>
+
+        <div class="episode-selector">
+          <div class="episode-selector-header"><div class="section-title small-title">Episode</div></div>
+          <div id="dramaEpisodeChipList" class="episode-chip-list"></div>
+        </div>
+      </div>
+    </main>
+
+    <nav class="bottom-nav">
+      <a class="nav-item" href="/"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span class="nav-label">Home</span></a>
+      <a class="nav-item" href="/explore"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 1 0 10 10z"/></svg><span class="nav-label">Explore</span></a>
+      <a class="nav-item" href="/my-list"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 17.27 18.18 21l-1.64-7.03z"/></svg><span class="nav-label">My List</span></a>
+      <a class="nav-item" href="/profile"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12a5 5 0 1 0-5-5z"/></svg><span class="nav-label">Profile</span></a>
+    </nav>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="/assets/js/core.js"></script>
+  <script src="/assets/js/drama-watch.js"></script>
+</body>
+</html>
