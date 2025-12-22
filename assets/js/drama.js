@@ -32,6 +32,7 @@
     if (Array.isArray(j?.data?.list)) return j.data.list;
     if (Array.isArray(j?.data)) return j.data;
 
+    // fallback format lain
     if (Array.isArray(j?.list)) return j.list;
     if (Array.isArray(j?.result)) return j.result;
     if (Array.isArray(j?.items)) return j.items;
@@ -76,6 +77,7 @@
   };
 
   async function loadLatestOnce() {
+    // bisa "/api/dramabox/latest" (akan dimap ke "/latest")
     const j = await apiGetDrama("/api/dramabox/latest");
     const listRaw = normalizeList(j);
     if (!Array.isArray(listRaw)) throw new Error("DRAMA_INVALID_RESPONSE");
@@ -88,8 +90,10 @@
   // HERO "Untuk Kamu" (optional)
   function initForYouHero(list) {
     const items = (list || [])
-      // ✅ anabot result umumnya tidak punya cardType, jadi dibuat fleksibel
-      .filter((x) => x && x.bookId && (x.coverWap || x.cover) && (x.cardType === 1 || x.cardType == null))
+      // ✅ anabot result biasanya tidak punya cardType, jadi fleksibel
+      .filter(
+        (x) => x && x.bookId && (x.coverWap || x.cover) && (x.cardType === 1 || x.cardType == null)
+      )
       .slice(0, 12);
 
     if (!el.heroSection || items.length === 0) return;
@@ -138,15 +142,17 @@
       location.href = toHref(cur);
     };
 
-    el.heroPrevBtn && (el.heroPrevBtn.onclick = () => {
-      idx = mod(idx - 1, items.length);
-      render();
-    });
+    el.heroPrevBtn &&
+      (el.heroPrevBtn.onclick = () => {
+        idx = mod(idx - 1, items.length);
+        render();
+      });
 
-    el.heroNextBtn && (el.heroNextBtn.onclick = () => {
-      idx = mod(idx + 1, items.length);
-      render();
-    });
+    el.heroNextBtn &&
+      (el.heroNextBtn.onclick = () => {
+        idx = mod(idx + 1, items.length);
+        render();
+      });
 
     el.heroWatchBtn && (el.heroWatchBtn.onclick = goDetail);
 
