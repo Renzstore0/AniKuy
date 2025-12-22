@@ -7,6 +7,20 @@
   <meta name="description" content="Drama China di AniKuy" />
   <link rel="stylesheet" href="/assets/css/style.css" />
   <link rel="icon" href="https://pomf2.lain.la/f/leu65s82.png" />
+
+  <!-- ✅ khusus home drama: grid 2 kolom -->
+  <style>
+    body[data-page="drama"] .drama-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px 10px;
+    }
+    body[data-page="drama"] .drama-grid .anime-card {
+      min-width: 0 !important;
+      max-width: none !important;
+      flex: initial !important;
+    }
+  </style>
 </head>
 
 <body data-page="drama">
@@ -31,31 +45,55 @@
 
     <main id="mainContent">
       <div class="page-container">
-        <h2 class="page-title">Drama China</h2>
 
         <div id="dramaLoading" class="loading-indicator show">
           <div class="spinner"></div><span>Memuat drama...</span>
         </div>
 
-        <div class="section-header section-header-spaced">
-          <div><h2 class="section-title">Untuk Kamu</h2></div>
-        </div>
-        <div id="dramaForYouRow" class="anime-row"></div>
+        <!-- ✅ HERO mirip "Anime Rilis Hari Ini", tapi jadi "Untuk Kamu" -->
+        <div id="todaySection" class="today-hero-section" style="display:none;">
+          <div class="section-header today-section-header">
+            <div>
+              <h2 class="section-title today-section-title" id="todayHeaderTitle">Untuk Kamu</h2>
+            </div>
+          </div>
 
+          <div class="today-hero-card">
+            <button class="today-hero-nav prev" id="todayPrevBtn" aria-label="Sebelumnya">&#10094;</button>
+
+            <div class="today-hero-poster-row">
+              <div class="today-hero-poster side"><img id="todayPosterPrev" src="" alt="Poster drama sebelumnya" /></div>
+              <div class="today-hero-poster main"><img id="todayPoster" src="" alt="Poster drama" /></div>
+              <div class="today-hero-poster side"><img id="todayPosterNext" src="" alt="Poster drama selanjutnya" /></div>
+            </div>
+
+            <button class="today-hero-nav next" id="todayNextBtn" aria-label="Selanjutnya">&#10095;</button>
+
+            <div class="today-hero-info">
+              <h3 class="today-hero-title" id="todayTitle"></h3>
+              <button class="today-hero-btn" id="todayWatchBtn" type="button">Lihat Detail</button>
+            </div>
+
+            <div class="today-hero-dots" id="todayDots"></div>
+          </div>
+        </div>
+
+        <!-- ✅ LIST GRID 2 kolom -->
         <div class="section-header section-header-spaced">
           <div><h2 class="section-title">Trending</h2></div>
         </div>
-        <div id="dramaTrendingRow" class="anime-row"></div>
+        <div id="dramaTrendingRow" class="drama-grid"></div>
 
         <div class="section-header section-header-spaced">
           <div><h2 class="section-title">Terbaru</h2></div>
         </div>
-        <div id="dramaLatestRow" class="anime-row"></div>
+        <div id="dramaLatestRow" class="drama-grid"></div>
 
         <div class="section-header section-header-spaced">
           <div><h2 class="section-title">Populer Search</h2></div>
         </div>
-        <div id="dramaPopularRow" class="anime-row"></div>
+        <div id="dramaPopularRow" class="drama-grid"></div>
+
       </div>
     </main>
 
@@ -66,6 +104,21 @@
       <a class="nav-item" href="/profile"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12a5 5 0 1 0-5-5z"/></svg><span class="nav-label">Profile</span></a>
     </nav>
   </div>
+
+  <!-- Drawer Overlay -->
+  <div id="drawerOverlay" class="drawer-overlay" hidden></div>
+
+  <!-- Side Drawer -->
+  <aside id="sideDrawer" class="side-drawer" aria-hidden="true">
+    <div class="side-drawer-head">
+      <div class="side-drawer-title">Menu</div>
+      <button id="drawerClose" class="icon-button" type="button" aria-label="Tutup menu">✕</button>
+    </div>
+    <nav class="side-drawer-nav">
+      <a class="side-drawer-link" href="/">Anime</a>
+      <a class="side-drawer-link active" href="/drama">Drama China</a>
+    </nav>
+  </aside>
 
   <div id="toast" class="toast"></div>
 
