@@ -3,7 +3,7 @@
 
   /* ========= CONST ========= */
   const BASE = "https://www.sankavollerei.com",
-    // ✅ ganti base dramabox ke gateway anabot
+    // ✅ Gateway anabot untuk dramabox
     DRAMA_BASE = "https://anabot.my.id/api/search/drama/dramabox",
     LS_FAV = "anikuy_favorites",
     LS_THEME = "anikuy_theme",
@@ -149,7 +149,7 @@
 
   const mapDramaPath = (path) => {
     const p = String(path || "");
-    // support pemanggilan lama: "/api/dramabox/foryou" -> "/foryou"
+    // support pemanggilan lama: "/api/dramabox/latest" -> "/latest"
     if (p.startsWith("/api/dramabox/")) return p.replace("/api/dramabox", "");
     return p.startsWith("/") ? p : `/${p}`;
   };
