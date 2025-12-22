@@ -12,11 +12,8 @@
   const $ = (q) => document.getElementById(q);
   const $$ = (q) => document.querySelectorAll(q);
 
-  const isDramaContext = () => {
-    const p = location.pathname || "";
-    const page = document.body?.dataset?.page || "";
-    return page === "drama" || p.startsWith("/drama");
-  };
+  const isDramaRoute = () =>
+    document.body?.dataset?.page === "drama" || (location.pathname || "").startsWith("/drama");
 
   /* ========= TOAST ========= */
   window.showToast = (msg) => {
@@ -136,19 +133,22 @@
       return await fetchJsonWithFallback(url);
     } catch (e) {
       console.error(e);
-      // ✅ di halaman drama: jangan tampilkan toast gagal
-      if (!isDramaContext()) showToast("Gagal memuat drama");
+      // ✅ di route drama: jangan kasih toast (biar retry aja)
+      if (!isDramaRoute()) showToast("Gagal memuat drama");
       throw e;
     }
   };
 
+  // kunci biar nggak ketimpa script lain
   try {
     Object.defineProperty(window, "apiGetDrama", {
       value: apiGetDramaStable,
       writable: false,
       configurable: false,
     });
-  } catch {}
+  } catch {
+    window.apiGetDrama = apiGetDramaStable;
+  }
 
   /* ========= FAVORITES ========= */
   let favs = (() => {
@@ -218,27 +218,7 @@
     return c;
   };
 
-  /* ========= SIDEDRAWER (yang kamu punya tetap aman) ========= */
-  const highlightActiveDrawer = () => {
-    const drawer = $("sideDrawer");
-    if (!drawer) return;
-
-    const path = (location.pathname || "/").replace(/\/+$/, "") || "/";
-    const isDrama = path.startsWith("/drama");
-
-    drawer.querySelectorAll(".drawer-item[data-href]").forEach((btn) => {
-      const href = btn.getAttribute("data-href") || "/";
-      const active = href.startsWith("/drama") ? isDrama : !isDrama;
-      btn.classList.toggle("active", !!active);
-    });
-
-    drawer.querySelectorAll("a.side-drawer-link[href]").forEach((a) => {
-      const href = (a.getAttribute("href") || "/").replace(/\/+$/, "") || "/";
-      const active = href.startsWith("/drama") ? isDrama : !isDrama;
-      a.classList.toggle("active", !!active);
-    });
-  };
-
+  /* ========= DRAWER (bind markup existing) ========= */
   function closeDrawer() {
     const d = $("sideDrawer");
     const o = $("drawerOverlay");
@@ -251,9 +231,7 @@
     document.documentElement.classList.remove("drawer-open");
     document.body.classList.remove("drawer-open");
 
-    setTimeout(() => {
-      o.hidden = true;
-    }, 170);
+    setTimeout(() => (o.hidden = true), 170);
   }
 
   function bindExistingDrawerOnce() {
@@ -271,24 +249,14 @@
     drawer.querySelectorAll('a[href^="/"]').forEach((a) => {
       a.addEventListener("click", () => closeDrawer());
     });
-
-    highlightActiveDrawer();
   }
 
-  const ensureDrawer = () => {
-    if ($("sideDrawer") && $("drawerOverlay")) {
-      bindExistingDrawerOnce();
-      return;
-    }
-  };
-
   function openDrawer() {
-    ensureDrawer();
+    bindExistingDrawerOnce();
+
     const d = $("sideDrawer");
     const o = $("drawerOverlay");
     if (!d || !o) return;
-
-    highlightActiveDrawer();
 
     d.classList.add("show");
     d.setAttribute("aria-hidden", "false");
@@ -303,7 +271,7 @@
   window.openSideDrawer = openDrawer;
   window.closeSideDrawer = closeDrawer;
 
-  /* ========= LEFT BUTTON ========= */
+  /* ========= LEFT BUTTON MODE ========= */
   const ICON_BACK = `
     <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
       <path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
@@ -351,22 +319,25 @@
     bindTheme(initTheme());
 
     const page = document.body?.dataset?.page || "";
-    const dramaNow = isDramaContext();
-
-    // tombol Home di bottom-nav ngikut konteks
-    const homeNav = document.querySelector('.bottom-nav a.nav-item[data-tab="home"]');
-    if (homeNav) homeNav.setAttribute("href", dramaNow ? "/drama" : "/");
+    const dramaPage = isDramaRoute();
 
     $(".logo-wrap")?.addEventListener("click", () => (location.href = "/"));
 
     $("searchButton")?.addEventListener("click", () => {
-      location.href = dramaNow ? "/drama/search" : "/search";
+      location.href = dramaPage ? "/drama/search" : "/search";
     });
 
     $("settingsButton")?.addEventListener("click", () => (location.href = "/settings"));
 
     setLeftButtonMode(page);
 
+    // ✅ Home nav: kalau di drama => /drama, kalau anime => /
+    const homeNav =
+      document.querySelector('.bottom-nav a[data-tab="home"]') ||
+      document.querySelector(".bottom-nav a.nav-item");
+    if (homeNav) homeNav.setAttribute("href", dramaPage ? "/drama" : "/");
+
+    // hide bottom-nav saat scroll
     const main = $("mainContent"),
       nav = document.querySelector(".bottom-nav");
 
