@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AniKuy - Pencarian Drama</title>
+  <meta name="description" content="Cari drama China di AniKuy dengan cepat.">
+
+  <link rel="stylesheet" href="/assets/css/style.css">
+  <link rel="icon" href="https://pomf2.lain.la/f/leu65s82.png">
+</head>
+
+<body data-page="drama-search">
+<div class="app-root">
+
+<header class="app-header">
+  <button class="icon-button back-button" id="backButton" aria-label="Kembali">
+    <svg class="icon-svg" viewBox="0 0 24 24"><path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+  </button>
+
+  <div class="logo-wrap">
+    <img class="logo-img" src="https://pomf2.lain.la/f/22yuvdrk.png" alt="AniKuy">
+  </div>
+
+  <div class="icon-button" aria-hidden="true" style="visibility:hidden"></div>
+</header>
+
+<main id="mainContent">
+  <div class="page-container">
+    <h2 class="page-title">Pencarian Drama</h2>
+
+    <form id="dramaSearchForm" class="search-form">
+      <input id="dramaSearchInput" class="search-input" type="text" placeholder="Cari drama (cth: istriku)" autocomplete="off">
+      <button class="btn-primary" type="submit">Cari</button>
+    </form>
+
+    <div id="dramaSearchInfo" class="section-subtitle"></div>
+    <div id="dramaSearchGrid" class="anime-grid full-grid"></div>
+  </div>
+</main>
+
+<nav class="bottom-nav">
+  <a class="nav-item" href="/"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>Home</span></a>
+  <a class="nav-item" href="/explore"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 1 0 10 10z"/></svg><span>Explore</span></a>
+  <a class="nav-item" href="/my-list"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 17.27 18.18 21l-1.64-7.03z"/></svg><span>My List</span></a>
+  <a class="nav-item" href="/profile"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12a5 5 0 1 0-5-5z"/></svg><span>Profile</span></a>
+</nav>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="/assets/js/core.js"></script>
+<script src="/assets/js/drama-search.js"></script>
+
+<!-- ✅ supaya input bisa select/copy walau core.js blok contextmenu -->
+<script>
+(() => {
+  const input = document.getElementById("dramaSearchInput");
+  ["contextmenu","selectstart"].forEach(ev =>
+    window.addEventListener(ev,e=>{
+      if(input && (e.target===input || input.contains(e.target))) e.stopImmediatePropagation();
+    },true)
+  );
+})();
+</script>
+
+</body>
+</html>
