@@ -42,9 +42,7 @@
         transition: transform .08s ease, background .12s ease;
       }
       .episode-box:active{ transform: scale(.98); }
-      .episode-box[data-vip="1"]{
-        opacity:.65;
-      }
+      .episode-box[data-vip="1"]{ opacity:.65; }
       .episode-box .vip-badge{
         font-size:10px;
         margin-left:6px;
@@ -57,24 +55,35 @@
     document.head.appendChild(st);
   };
 
-  // ====== FETCH JSON via SAME-ORIGIN PROXY ======
-  const fetchJson = async (url, { timeoutMs = 15000 } = {}) => {
+  // ====== DRAMA API (Anabot) + apikey ======
+  const DRAMA_BASE = "https://anabot.my.id/api/search/drama/dramabox";
+  const LS_DRAMA_KEY = "dramabox_apikey";
+
+  const getDramaApiKey = () => {
+    const k =
+      (window.DRAMA_APIKEY && String(window.DRAMA_APIKEY).trim()) ||
+      (localStorage.getItem(LS_DRAMA_KEY) || "").trim() ||
+      "freeApikey";
+    return k;
+  };
+
+  // ====== FETCH JSON (timeout + fallback proxy) ======
+  const fetchJsonTry = async (url, timeoutMs = 15000) => {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs);
 
     try {
       const res = await fetch(url, {
         method: "GET",
+        mode: "cors",
+        credentials: "omit",
+        cache: "no-store",
         signal: ctrl.signal,
-        headers: { Accept: "application/json" },
+        headers: { Accept: "application/json,text/plain,*/*" },
       });
 
       const text = await res.text();
-
-      if (!res.ok) {
-        // biar gampang debug
-        throw new Error(`HTTP ${res.status} :: ${text.slice(0, 120)}`);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status} :: ${text.slice(0, 160)}`);
 
       try {
         return JSON.parse(text);
@@ -86,9 +95,45 @@
     }
   };
 
-  // Normalisasi: API kadang array, kadang {data:[]}, {result:[]}, dll
+  const fetchJsonWithFallback = async (realUrl) => {
+    const tries = [
+      realUrl,
+      `https://corsproxy.io/?${encodeURIComponent(realUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(realUrl)}`,
+      `https://cors.isomorphic-git.org/${realUrl}`,
+    ];
+
+    let lastErr = null;
+    for (const u of tries) {
+      try {
+        return await fetchJsonTry(u);
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error("FETCH_FAILED");
+  };
+
+  const apiGetDramaSafe = async (path) => {
+    // kalau core.js sudah define window.apiGetDrama, pakai itu
+    if (typeof window.apiGetDrama === "function") return await window.apiGetDrama(path);
+
+    // fallback mandiri
+    const pth = String(path || "");
+    const url = pth.startsWith("/") ? DRAMA_BASE + pth : `${DRAMA_BASE}/${pth}`;
+    const join = url.includes("?") ? "&" : "?";
+    const full = `${url}${join}apikey=${encodeURIComponent(getDramaApiKey())}`;
+    return await fetchJsonWithFallback(full);
+  };
+
+  // ====== Normalisasi episode ======
   const normalizeEpisodes = (payload) => {
     if (Array.isArray(payload)) return payload;
+
+    // ✅ format anabot chapter:
+    // { success:true, data:{ result:{ chapterList:[...] } } }
+    const chapterList = payload?.data?.result?.chapterList;
+    if (Array.isArray(chapterList)) return chapterList;
 
     const candidates = [
       payload?.data,
@@ -101,10 +146,14 @@
       payload?.data?.list,
       payload?.data?.rows,
       payload?.data?.items,
+      payload?.data?.result,
+      payload?.data?.result?.list,
+      payload?.data?.result?.items,
     ];
 
     for (const c of candidates) {
       if (Array.isArray(c)) return c;
+      if (Array.isArray(c?.chapterList)) return c.chapterList;
     }
     return [];
   };
@@ -119,8 +168,11 @@
     }
   };
 
-  const epNum = (t, idx) => {
-    const s = String(t || "");
+  const epNum = (ep, idx) => {
+    const ci = ep?.chapterIndex;
+    if (typeof ci === "number" && Number.isFinite(ci)) return ci + 1;
+
+    const s = String(ep?.chapterName || "");
     const m = s.match(/(\d+)/);
     return m ? parseInt(m[1], 10) : idx + 1;
   };
@@ -199,15 +251,16 @@
     if (!el.list) return;
     ensureEpisodeGridStyle();
 
-    // container grid
     const grid = document.createElement("div");
     grid.className = "episode-grid";
 
-    const sorted = episodes.slice().sort((a, b) => (a.chapterIndex ?? 0) - (b.chapterIndex ?? 0));
+    const sorted = episodes
+      .slice()
+      .sort((a, b) => (Number(a?.chapterIndex) || 0) - (Number(b?.chapterIndex) || 0));
 
     sorted.forEach((ep, i) => {
-      const n = epNum(ep.chapterName, i);
-      const vip = Number(ep.isCharge || ep.chargeChapter || ep.isVip || 0) ? 1 : 0;
+      const n = epNum(ep, i);
+      const vip = Number(ep?.isCharge || ep?.chargeChapter || ep?.isVip || 0) ? 1 : 0;
 
       const box = document.createElement("div");
       box.className = "episode-box";
@@ -217,7 +270,7 @@
 
       box.onclick = () => {
         location.href = `/drama/watch?bookId=${encodeURIComponent(bookId)}&chapterId=${encodeURIComponent(
-          ep.chapterId || ""
+          ep?.chapterId || ""
         )}&name=${encodeURIComponent(nameFromUrl || "")}`;
       };
 
@@ -227,7 +280,6 @@
     el.list.innerHTML = "";
     el.list.appendChild(grid);
 
-    // play first
     const firstBtn = $("dramaPlayFirst");
     if (firstBtn) {
       firstBtn.onclick = () => {
@@ -247,8 +299,8 @@
     el.list.innerHTML = `<div class="season-empty">Memuat episode...</div>`;
 
     try {
-      // PAKAI PROXY VERCEL (same-origin)
-      const payload = await fetchJson(`/api/dramabox/allepisode?bookId=${encodeURIComponent(bookId)}`);
+      // ✅ pakai endpoint anabot: /chapter?id=<bookId>&apikey=...
+      const payload = await apiGetDramaSafe(`/chapter?id=${encodeURIComponent(bookId)}`);
       const eps = normalizeEpisodes(payload);
 
       if (!eps.length) {
@@ -256,7 +308,6 @@
         return;
       }
 
-      // cache opsional
       try {
         sessionStorage.setItem(`dramabox_eps_${bookId}`, JSON.stringify(eps));
       } catch {}
@@ -265,7 +316,6 @@
     } catch (e) {
       el.list.innerHTML = `<div class="season-empty">Gagal memuat episode.</div>`;
       toast("Gagal memuat episode");
-      // biar kamu gampang cek errornya di console
       console.error("[loadEpisodes] error:", e);
     }
   }
@@ -276,7 +326,6 @@
     const saved = getSavedBook();
     buildDetail(saved || { bookName: nameFromUrl, chapterCount: "?", tags: [] });
 
-    // search episode: cocokkan angka episode
     if (el.search) {
       el.search.addEventListener("input", () => {
         const q = el.search.value.trim().toLowerCase();
