@@ -2,7 +2,6 @@
   "use strict";
 
   const $ = (id) => document.getElementById(id);
-  const toast = (m) => typeof showToast === "function" && showToast(m);
 
   const el = {
     loading: $("dramaLoading"),
@@ -43,67 +42,35 @@
     return tags.slice(0, 3).join(", ");
   };
 
-  // fallback card kalau createAnimeCard tidak ada
-  const buildCardFallback = (b) => {
-    const c = document.createElement("div");
-    c.className = "anime-card";
-    const poster = b.coverWap || b.cover || "/assets/img/placeholder-poster.png";
-    const title = (b.bookName || "-").trim();
-    const badge = b.chapterCount ? `Eps ${b.chapterCount}` : "";
-    const meta = metaTags(b.tags) || "";
-
-    c.innerHTML = `
-      <div class="anime-thumb">
-        <img src="${poster}" alt="${title}">
-        ${badge ? `<div class="badge-bottom-left">${badge}</div>` : ""}
-      </div>
-      <div class="anime-title">${title}</div>
-      ${meta ? `<div class="anime-meta">${meta}</div>` : ""}
-    `;
-
-    c.onclick = () => {
-      storeBook(b);
-      location.href = toHref(b);
-    };
-
-    return c;
-  };
-
   const renderGrid = (container, list) => {
     if (!container) return;
     container.innerHTML = "";
 
     (list || []).forEach((b) => {
-      const card =
-        typeof window.createAnimeCard === "function"
-          ? window.createAnimeCard(
-              { title: b.bookName || "-", poster: b.coverWap || b.cover || "" },
-              {
-                badgeBottom: b.chapterCount ? `Eps ${b.chapterCount}` : "",
-                meta: metaTags(b.tags) || "",
-                href: toHref(b),
-                onClick: () => storeBook(b),
-              }
-            )
-          : buildCardFallback(b);
-
+      const card = createAnimeCard(
+        { title: b.bookName || "-", poster: b.coverWap || b.cover || "" },
+        {
+          badgeBottom: b.chapterCount ? `Eps ${b.chapterCount}` : "",
+          meta: metaTags(b.tags) || "",
+          href: toHref(b),
+          onClick: () => storeBook(b),
+        }
+      );
       container.appendChild(card);
     });
   };
 
-  async function loadGrid(path, container) {
-    try {
-      const j = await window.apiGetDrama(path);
-      if (!Array.isArray(j)) return [];
-      const list = j.filter((x) => x && x.bookId);
-      renderGrid(container, list);
-      return list;
-    } catch {
-      // toast sudah ditangani di core.js
-      return [];
-    }
+  async function loadGridRequired(path, container) {
+    const j = await apiGetDrama(path);
+    if (!Array.isArray(j)) throw new Error("DRAMA_INVALID_RESPONSE");
+
+    // safety: hanya yang punya bookId
+    const list = j.filter((x) => x && x.bookId);
+    renderGrid(container, list);
+    return list;
   }
 
+  // HERO "Untuk Kamu"
   function initForYouHero(list) {
     const items = (list || [])
       .filter((x) => x && x.cardType === 1 && x.bookId && x.coverWap)
@@ -178,32 +145,30 @@
   }
 
   document.addEventListener("DOMContentLoaded", async () => {
+    // pastiin overlay loading aktif
+    document.body.classList.add("is-loading");
     el.loading && el.loading.classList.add("show");
 
     try {
-      // HERO dari /foryou, kalau gagal fallback pakai /latest
-      let heroData = [];
+      // HERO (optional)
       try {
-        const foryou = await window.apiGetDrama("/api/dramabox/foryou");
-        if (Array.isArray(foryou)) heroData = foryou;
+        const foryou = await apiGetDrama("/api/dramabox/foryou");
+        if (Array.isArray(foryou)) initForYouHero(foryou);
       } catch {}
 
-      if (!heroData.length) {
-        try {
-          const latest = await window.apiGetDrama("/api/dramabox/latest");
-          if (Array.isArray(latest)) heroData = latest;
-        } catch {}
-      }
+      // GRID (wajib sukses semua, kalau ada yang gagal => tetap loading)
+      await loadGridRequired("/api/dramabox/trending", el.trending);
+      await loadGridRequired("/api/dramabox/latest", el.latest);
+      await loadGridRequired("/api/dramabox/populersearch", el.popular);
 
-      if (heroData.length) initForYouHero(heroData);
-
-      await loadGrid("/api/dramabox/trending", el.trending);
-      await loadGrid("/api/dramabox/latest", el.latest);
-      await loadGrid("/api/dramabox/populersearch", el.popular);
-
-      toast("Drama siap!");
-    } finally {
+      // kalau sudah sukses semua => hilangkan overlay loading
+      document.body.classList.remove("is-loading");
       el.loading && el.loading.classList.remove("show");
+    } catch (e) {
+      // gagal? DIAM + TETAP LOADING
+      console.error(e);
+      document.body.classList.add("is-loading");
+      el.loading && el.loading.classList.add("show");
     }
   });
 })();
