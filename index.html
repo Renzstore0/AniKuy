@@ -33,9 +33,10 @@
 <body data-page="home">
   <div class="app-root">
     <header class="app-header">
-      <button class="icon-button back-button" id="backButton" aria-label="Kembali">
+      <!-- tombol kiri jadi hamburger (menu) -->
+      <button class="icon-button back-button" id="backButton" aria-label="Menu">
         <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
-          <path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+          <path fill="currentColor" d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/>
         </svg>
       </button>
 
@@ -113,8 +114,25 @@
     </nav>
   </div>
 
+  <!-- Drawer Overlay -->
+  <div id="drawerOverlay" class="drawer-overlay" hidden></div>
+
+  <!-- Side Drawer -->
+  <aside id="sideDrawer" class="side-drawer" aria-hidden="true">
+    <div class="side-drawer-head">
+      <div class="side-drawer-title">Menu</div>
+      <button id="drawerClose" class="icon-button" type="button" aria-label="Tutup menu">✕</button>
+    </div>
+    <nav class="side-drawer-nav">
+      <a class="side-drawer-link" href="/">Anime</a>
+      <a class="side-drawer-link" href="/drama/index.html">Drama China</a>
+    </nav>
+  </aside>
+
   <div id="toast" class="toast"></div>
+
   <script src="/assets/js/core.js"></script>
   <script src="/assets/js/home.js"></script>
+  <script src="/assets/js/menu.js"></script>
 </body>
 </html>
