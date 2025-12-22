@@ -16,7 +16,7 @@
   };
 
   // ====== STYLE GRID (5 kolom) ======
-  // ✅ VIP badge dihapus + tombol dijamin seragam
+  // ✅ VIP badge dihapus + ukuran tombol seragam
   const ensureEpisodeGridStyle = () => {
     if (document.getElementById("episodeGridStyle")) return;
     const st = document.createElement("style");
@@ -35,7 +35,6 @@
         color:#fff;
         border-radius:12px;
 
-        /* ✅ ukuran seragam */
         height:46px;
         width:100%;
         padding:0;
@@ -56,15 +55,13 @@
       }
       .episode-box:active{ transform: scale(.98); }
 
-      /* opsional: VIP tetap bisa “redup” tapi tanpa tulisan VIP */
-      .episode-box[data-vip="1"]{
-        opacity:.75;
-      }
+      /* opsional: VIP tetap bisa diredup tanpa tulisan VIP */
+      .episode-box[data-vip="1"]{ opacity:.75; }
     `;
     document.head.appendChild(st);
   };
 
-  // ====== FETCH JSON via SAME-ORIGIN PROXY ======
+  // ====== FETCH JSON (same-origin) ======
   const fetchJson = async (url, { timeoutMs = 15000 } = {}) => {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -79,21 +76,22 @@
       const text = await res.text();
 
       if (!res.ok) {
-        throw new Error(`HTTP ${res.status} :: ${text.slice(0, 120)}`);
+        throw new Error(`HTTP ${res.status} :: ${text.slice(0, 160)}`);
       }
 
       try {
         return JSON.parse(text);
       } catch {
-        throw new Error("Response bukan JSON");
+        throw new Error(`Response bukan JSON :: ${text.slice(0, 160)}`);
       }
     } finally {
       clearTimeout(t);
     }
   };
 
-  // Normalisasi: API kadang array, kadang {data:[]}, {result:[]}, dll
+  // ====== Normalisasi Episode ======
   const normalizeEpisodes = (payload) => {
+    if (!payload) return [];
     if (Array.isArray(payload)) return payload;
 
     const candidates = [
@@ -104,9 +102,18 @@
       payload?.items,
       payload?.chapterList,
       payload?.episodeList,
+
+      // nested umum
       payload?.data?.list,
       payload?.data?.rows,
       payload?.data?.items,
+      payload?.data?.chapterList,
+      payload?.data?.episodeList,
+
+      // ✅ support model anabot: { data: { result: { chapterList: [] } } }
+      payload?.data?.result?.chapterList,
+      payload?.data?.result?.list,
+      payload?.data?.result?.items,
     ];
 
     for (const c of candidates) {
@@ -131,7 +138,7 @@
     return m ? parseInt(m[1], 10) : idx + 1;
   };
 
-  // ====== DETAIL (cover/judul/total/sinopsis tetap) ======
+  // ====== DETAIL ======
   const buildDetail = (b) => {
     if (!el.detail) return;
 
@@ -208,7 +215,9 @@
     const grid = document.createElement("div");
     grid.className = "episode-grid";
 
-    const sorted = episodes.slice().sort((a, b) => (a.chapterIndex ?? 0) - (b.chapterIndex ?? 0));
+    const sorted = episodes
+      .slice()
+      .sort((a, b) => (a.chapterIndex ?? 0) - (b.chapterIndex ?? 0));
 
     sorted.forEach((ep, i) => {
       const n = epNum(ep.chapterName, i);
@@ -219,7 +228,7 @@
       box.setAttribute("data-ep", String(n));
       box.setAttribute("data-vip", String(vip));
 
-      // ✅ HILANGKAN tulisan VIP: cuma angka episode
+      // ✅ tidak ada tulisan VIP
       box.textContent = String(n);
 
       box.onclick = () => {
@@ -246,6 +255,25 @@
     }
   };
 
+  // ✅ ambil episode: coba /api (same-origin). kalau gagal -> fallback apiGetDrama()
+  async function getEpisodesPayload() {
+    const path = `/api/dramabox/allepisode?bookId=${encodeURIComponent(bookId)}`;
+
+    try {
+      return await fetchJson(path);
+    } catch (e1) {
+      // fallback ke apiGetDrama dari core.js (anti CORS/proxy)
+      if (typeof window.apiGetDrama === "function") {
+        try {
+          return await window.apiGetDrama(path);
+        } catch (e2) {
+          throw e2;
+        }
+      }
+      throw e1;
+    }
+  }
+
   async function loadEpisodes() {
     if (!bookId) return toast("bookId tidak ditemukan");
     if (!el.list) return;
@@ -253,7 +281,7 @@
     el.list.innerHTML = `<div class="season-empty">Memuat episode...</div>`;
 
     try {
-      const payload = await fetchJson(`/api/dramabox/allepisode?bookId=${encodeURIComponent(bookId)}`);
+      const payload = await getEpisodesPayload();
       const eps = normalizeEpisodes(payload);
 
       if (!eps.length) {
