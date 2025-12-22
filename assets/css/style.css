@@ -199,6 +199,38 @@ a img,button img,[role="button"] img,.icon-button img,.nav-item img,.toolbar-btn
 .spinner{width:18px;height:18px;border-radius:999px;border:2px solid rgba(148,163,184,.4);border-top-color:#22d3ee;animation:spin .6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* ✅ DRAMA: LOADING OVERLAY FULLSCREEN CENTER */
+body[data-page="drama"] #dramaLoading{
+  position:fixed;
+  inset:0;
+  margin:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:12px;
+  background:#020617;
+  z-index:5000;
+}
+body[data-page="drama"] #dramaLoading.show{display:flex}
+body[data-page="drama"] #dramaLoading .spinner{
+  width:44px;
+  height:44px;
+  border-width:3px;
+}
+
+/* ✅ DRAMA: saat loading, sembunyikan semua konten (biar cuma loading) */
+body[data-page="drama"].is-loading .app-header,
+body[data-page="drama"].is-loading .bottom-nav{
+  visibility:hidden;
+}
+body[data-page="drama"].is-loading #mainContent{
+  overflow:hidden;
+}
+body[data-page="drama"].is-loading .page-container > :not(#dramaLoading){
+  display:none !important;
+}
+
 .profile-card{margin-top:10px;padding:12px;border-radius:16px;background:rgba(15,23,42,.95);box-shadow:0 12px 30px rgba(15,23,42,.9)}
 .profile-text{margin-top:6px;font-size:13px;color:#e5e7eb}
 .version-title{display:flex;align-items:center;justify-content:space-between}
