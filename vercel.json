@@ -11,6 +11,7 @@
     { "source": "/settings", "destination": "/settings/index.html" },
 
     { "source": "/drama", "destination": "/drama/index.html" },
+    { "source": "/drama/explore", "destination": "/drama/explore.html" },
     { "source": "/drama/search", "destination": "/drama/search.html" },
     { "source": "/drama/detail", "destination": "/drama/detail.html" },
     { "source": "/drama/watch", "destination": "/drama/watch.html" }
