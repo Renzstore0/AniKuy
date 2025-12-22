@@ -1,13 +1,14 @@
 <!doctype html>
 <html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>AniKuy - Explore Drama</title>
-  <meta name="description" content="Explore drama di AniKuy: Trending & VIP" />
 
-  <link rel="stylesheet" href="/assets/css/style.css" />
-  <link rel="icon" href="https://pomf2.lain.la/f/leu65s82.png" />
+  <meta name="description" content="Explore drama di AniKuy. Trending dan VIP.">
+
+  <link rel="stylesheet" href="/assets/css/style.css">
+  <link rel="icon" href="https://pomf2.lain.la/f/leu65s82.png">
 
   <!-- Vercel Web Analytics -->
   <script>
@@ -15,17 +16,17 @@
   </script>
   <script defer src="/_vercel/insights/script.js"></script>
 
-  <!-- grid 3 kolom (samain drama home) -->
   <style>
-    body[data-page="drama-explore"] .drama-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px 10px;
+    /* biar grid drama rapi 3 kolom kayak home drama */
+    body[data-page="drama-explore"] .drama-grid{
+      display:grid;
+      grid-template-columns:repeat(3, minmax(0, 1fr));
+      gap:12px 10px;
     }
-    body[data-page="drama-explore"] .drama-grid .anime-card {
-      min-width: 0 !important;
-      max-width: none !important;
-      flex: initial !important;
+    body[data-page="drama-explore"] .drama-grid .anime-card{
+      min-width:0 !important;
+      max-width:none !important;
+      flex:initial !important;
     }
   </style>
 </head>
@@ -33,78 +34,267 @@
 <body data-page="drama-explore">
 <div class="app-root">
 
-  <header class="app-header">
-    <button class="icon-button back-button" id="backButton" aria-label="Kembali">
-      <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
-        <path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
-      </svg>
-    </button>
+<header class="app-header">
+  <button class="icon-button back-button" id="backButton" aria-label="Kembali">
+    <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+    </svg>
+  </button>
 
-    <div class="logo-wrap">
-      <img class="logo-img" src="https://pomf2.lain.la/f/22yuvdrk.png" alt="AniKuy Logo" />
+  <div class="logo-wrap">
+    <img class="logo-img" src="https://pomf2.lain.la/f/22yuvdrk.png" alt="AniKuy Logo">
+  </div>
+
+  <!-- placeholder biar header seimbang -->
+  <div class="icon-button" aria-hidden="true" style="visibility:hidden"></div>
+</header>
+
+<main id="mainContent">
+  <div class="page-container">
+    <h2 class="page-title">Explore</h2>
+
+    <!-- Tabs -->
+    <div class="explore-tabs">
+      <button class="explore-tab active" data-tab="trending" type="button">Trending</button>
+      <button class="explore-tab" data-tab="vip" type="button">VIP</button>
     </div>
 
-    <div class="icon-button" aria-hidden="true" style="visibility:hidden"></div>
-  </header>
+    <!-- Panel Trending -->
+    <div class="explore-panel active" data-tab="trending">
+      <p class="section-subtitle">Drama yang lagi naik daun</p>
 
-  <main id="mainContent">
-    <div class="page-container">
-      <h2 class="page-title">Explore Drama</h2>
-
-      <div id="dramaExploreLoading" class="loading-indicator show">
-        <div class="spinner"></div><span>Memuat...</span>
+      <div id="trendingLoading" class="loading-indicator">
+        <div class="spinner"></div><span>Memuat trending...</span>
       </div>
 
-      <!-- TRENDING -->
-      <div class="section-header section-header-spaced">
-        <div><h2 class="section-title">Trending</h2></div>
-      </div>
-      <div id="dramaTrendingRow" class="drama-grid"></div>
-
-      <!-- VIP -->
-      <div class="section-header section-header-spaced">
-        <div><h2 class="section-title">VIP</h2></div>
-      </div>
-      <div id="dramaVipRow" class="drama-grid"></div>
+      <div id="trendingGrid" class="drama-grid"></div>
     </div>
-  </main>
 
-  <!-- NAVBAR -->
-  <nav class="bottom-nav">
-    <a class="nav-item" href="/drama">
-      <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-      </svg>
-      <span class="nav-label">Home</span>
-    </a>
+    <!-- Panel VIP -->
+    <div class="explore-panel" data-tab="vip">
+      <p class="section-subtitle">Rekomendasi VIP</p>
 
-    <a class="nav-item active" href="/drama/explore">
-      <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path fill="currentColor" d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm3.94 6.06-2.12 5.3a1 1 0 0 1-.56.56l-5.3 2.12a.25.25 0 0 1-.32-.32l2.12-5.3a1 1 0 0 1 .56-.56l5.3-2.12a.25.25 0 0 1 .32.32z"/>
-      </svg>
-      <span class="nav-label">Explore</span>
-    </a>
+      <div id="vipLoading" class="loading-indicator">
+        <div class="spinner"></div><span>Memuat VIP...</span>
+      </div>
 
-    <a class="nav-item" href="/my-list">
-      <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.62L12 2 9.19 8.62 2 9.24l5.46 4.73L5.82 21z"/>
-      </svg>
-      <span class="nav-label">My List</span>
-    </a>
+      <div id="vipGrid" class="drama-grid"></div>
+    </div>
 
-    <a class="nav-item" href="/profile">
-      <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5.006 5.006 0 0 0 5 5zm0 2c-4.33 0-8 2.17-8 4.5V21h16v-2.5C20 16.17 16.33 14 12 14z"/>
-      </svg>
-      <span class="nav-label">Profile</span>
-    </a>
-  </nav>
+  </div>
+</main>
+
+<nav class="bottom-nav">
+  <a class="nav-item" href="/drama">
+    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+    </svg>
+    <span class="nav-label">Home</span>
+  </a>
+
+  <a class="nav-item active" href="/drama/explore">
+    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm3.94 6.06-2.12 5.3a1 1 0 0 1-.56.56l-5.3 2.12a.25.25 0 0 1-.32-.32z"/>
+    </svg>
+    <span class="nav-label">Explore</span>
+  </a>
+
+  <a class="nav-item" href="/my-list">
+    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.62L12 2 9.19 8.62 2 9.24l5.46 4.73L5.82 21z"/>
+    </svg>
+    <span class="nav-label">My List</span>
+  </a>
+
+  <a class="nav-item" href="/profile">
+    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5.006 5.006 0 0 0 5 5zm0 2c-4.33 0-8 2.17-8 4.5V21h16v-2.5C20 16.17 16.33 14 12 14z"/>
+    </svg>
+    <span class="nav-label">Profile</span>
+  </a>
+</nav>
 
 </div>
 
 <div id="toast" class="toast"></div>
 
 <script src="/assets/js/core.js"></script>
-<script src="/assets/js/drama-explore.js"></script>
+
+<script>
+(() => {
+  "use strict";
+
+  const $ = (id) => document.getElementById(id);
+  const toast = (m) => typeof showToast === "function" && showToast(m);
+
+  // ====== API KEY + helper (sama kayak yang kamu pakai di drama-detail) ======
+  const DRAMA_BASE = "https://anabot.my.id/api/search/drama/dramabox";
+  const LS_DRAMA_KEY = "dramabox_apikey";
+
+  const getDramaApiKey = () => {
+    const k =
+      (window.DRAMA_APIKEY && String(window.DRAMA_APIKEY).trim()) ||
+      (localStorage.getItem(LS_DRAMA_KEY) || "").trim() ||
+      "freeApikey";
+    return k;
+  };
+
+  const fetchJsonTry = async (url, timeoutMs = 15000) => {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        mode: "cors",
+        credentials: "omit",
+        cache: "no-store",
+        signal: ctrl.signal,
+        headers: { Accept: "application/json,text/plain,*/*" },
+      });
+
+      const text = await res.text();
+      if (!res.ok) throw new Error(`HTTP ${res.status} :: ${text.slice(0, 160)}`);
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new Error("Response bukan JSON");
+      }
+    } finally {
+      clearTimeout(t);
+    }
+  };
+
+  const fetchJsonWithFallback = async (realUrl) => {
+    const tries = [
+      realUrl,
+      `https://corsproxy.io/?${encodeURIComponent(realUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(realUrl)}`,
+      `https://cors.isomorphic-git.org/${realUrl}`,
+    ];
+    let lastErr = null;
+    for (const u of tries) {
+      try { return await fetchJsonTry(u); } catch (e) { lastErr = e; }
+    }
+    throw lastErr || new Error("FETCH_FAILED");
+  };
+
+  const apiGetDramaSafe = async (path) => {
+    if (typeof window.apiGetDrama === "function") return await window.apiGetDrama(path);
+    const pth = String(path || "");
+    const url = pth.startsWith("/") ? DRAMA_BASE + pth : `${DRAMA_BASE}/${pth}`;
+    const join = url.includes("?") ? "&" : "?";
+    const full = `${url}${join}apikey=${encodeURIComponent(getDramaApiKey())}`;
+    return await fetchJsonWithFallback(full);
+  };
+
+  const normalizeList = (payload) => {
+    const list = payload?.data?.result;
+    return Array.isArray(list) ? list : [];
+  };
+
+  const storeBook = (b) => {
+    try {
+      if (!b?.bookId) return;
+      sessionStorage.setItem(`dramabox_book_${b.bookId}`, JSON.stringify(b));
+    } catch {}
+  };
+
+  const renderCards = (wrap, items) => {
+    if (!wrap) return;
+    wrap.innerHTML = "";
+
+    items.forEach((b) => {
+      const cover = b?.coverWap || b?.cover || "";
+      const href = `/drama/detail?bookId=${encodeURIComponent(b?.bookId || "")}&name=${encodeURIComponent(b?.bookName || "")}`;
+
+      // pakai helper card dari core.js kalau ada
+      if (typeof window.createAnimeCard === "function") {
+        wrap.appendChild(
+          window.createAnimeCard(
+            { title: b?.bookName || "-", poster: cover },
+            {
+              meta: Array.isArray(b?.tags) ? b.tags.slice(0, 3).join(", ") : "",
+              badgeBottom: b?.chapterCount ? `Eps ${b.chapterCount}` : "",
+              href,
+              onClick: () => storeBook(b),
+            }
+          )
+        );
+        return;
+      }
+
+      // fallback card sederhana (kalau createAnimeCard nggak ada)
+      const a = document.createElement("a");
+      a.className = "anime-card";
+      a.href = href;
+      a.innerHTML = `
+        <div class="anime-poster"><img alt="${(b?.bookName || "").replace(/"/g,"&quot;")}"></div>
+        <div class="anime-title">${b?.bookName || "-"}</div>
+      `;
+      const img = a.querySelector("img");
+      img.src = cover || "/assets/img/placeholder-poster.png";
+      img.onerror = () => { img.onerror = null; img.src = "/assets/img/placeholder-poster.png"; };
+      a.addEventListener("click", () => storeBook(b));
+      wrap.appendChild(a);
+    });
+  };
+
+  const tabInit = () => {
+    const tabs = document.querySelectorAll(".explore-tab");
+    const panels = document.querySelectorAll(".explore-panel");
+
+    tabs.forEach((t) => {
+      t.addEventListener("click", () => {
+        const key = t.getAttribute("data-tab");
+        tabs.forEach((x) => x.classList.toggle("active", x === t));
+        panels.forEach((p) => p.classList.toggle("active", p.getAttribute("data-tab") === key));
+      });
+    });
+  };
+
+  const loadTrending = async () => {
+    const loading = $("trendingLoading");
+    const grid = $("trendingGrid");
+    try {
+      loading && (loading.style.display = "");
+      const payload = await apiGetDramaSafe(`/classification`);
+      const items = normalizeList(payload);
+      renderCards(grid, items);
+    } catch (e) {
+      toast("Gagal memuat trending");
+      console.error("[loadTrending]", e);
+    } finally {
+      loading && (loading.style.display = "none");
+    }
+  };
+
+  const loadVip = async () => {
+    const loading = $("vipLoading");
+    const grid = $("vipGrid");
+    try {
+      loading && (loading.style.display = "");
+      const payload = await apiGetDramaSafe(`/rank`);
+      const items = normalizeList(payload);
+      renderCards(grid, items);
+    } catch (e) {
+      toast("Gagal memuat VIP");
+      console.error("[loadVip]", e);
+    } finally {
+      loading && (loading.style.display = "none");
+    }
+  };
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const back = $("backButton");
+    back && back.addEventListener("click", () => history.back());
+
+    tabInit();
+    loadTrending();
+    loadVip();
+  });
+})();
+</script>
+
 </body>
 </html>
