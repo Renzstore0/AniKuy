@@ -15,61 +15,81 @@
     back: $("backButton"),
   };
 
-  // fallback API (kalau /api/... di server kamu belum nge-proxy)
+  // fallback API (kalau /api/... di server kamu belum nge-proxy / kena CORS)
   const FALLBACK_API_BASE = "https://dramabox.sansekai.my.id";
 
-  /* =======================
-     FETCH HELPER
-  ======================= */
-  const fetchJson = async (url, { timeoutMs = 15000 } = {}) => {
+  const safeText = (s) => String(s ?? "").replace(/[<>&"]/g, (c) => ({
+    "<": "&lt;",
+    ">": "&gt;",
+    "&": "&amp;",
+    '"': "&quot;",
+  }[c]));
+
+  const fetchJson = async (url, { timeoutMs = 20000 } = {}) => {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs);
+
     try {
       const res = await fetch(url, {
         method: "GET",
+        mode: "cors",
+        cache: "no-store",
+        credentials: "omit",
         signal: ctrl.signal,
-        headers: { Accept: "application/json" },
+        headers: { "Accept": "application/json, text/plain, */*" },
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
+
+      const text = await res.text();
+      if (!res.ok) {
+        const preview = text ? text.slice(0, 140).replace(/\s+/g, " ") : "";
+        throw new Error(`HTTP ${res.status}${preview ? ` • ${preview}` : ""}`);
+      }
+
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new Error("Response bukan JSON");
+      }
     } finally {
       clearTimeout(t);
     }
   };
 
-  // Coba same-origin dulu (/api/...), kalau gagal baru fallback ke domain API langsung
-  const apiGetDrama = async (path) => {
-    if (/^https?:\/\//i.test(path)) return fetchJson(path);
-    try {
-      return await fetchJson(path);
-    } catch {
-      return fetchJson(new URL(path, FALLBACK_API_BASE).toString());
+  // bikin beberapa kandidat URL (same-origin + beberapa variasi fallback)
+  const buildCandidates = (path) => {
+    const isAbsolute = /^https?:\/\//i.test(path);
+    if (isAbsolute) return [path];
+
+    const norm = path.startsWith("/") ? path : `/${path}`;
+
+    // strip "/api" buat server fallback yang tidak pakai prefix /api
+    const strippedApi = norm.replace(/^\/api(?=\/)/i, "");
+    const strippedApi2 = norm.replace(/^\/api\/dramabox(?=\/)/i, "/dramabox");
+
+    const uniq = (arr) => [...new Set(arr.filter(Boolean))];
+
+    return uniq([
+      norm, // 1) same-origin
+      new URL(norm, FALLBACK_API_BASE).toString(), // 2) fallback dengan path asli
+      new URL(strippedApi, FALLBACK_API_BASE).toString(), // 3) fallback buang /api
+      new URL(strippedApi2, FALLBACK_API_BASE).toString(), // 4) fallback buang /api/ dramabox
+    ]);
+  };
+
+  const apiGetDrama = async (path, opt) => {
+    const candidates = buildCandidates(path);
+    let lastErr;
+
+    for (const url of candidates) {
+      try {
+        return await fetchJson(url, opt);
+      } catch (e) {
+        lastErr = e;
+      }
     }
+    throw lastErr || new Error("Gagal request");
   };
 
-  /* =======================
-     SAFE PARSE / NORMALIZE
-  ======================= */
-  const normalizeEpisodes = (res) => {
-    if (Array.isArray(res)) return res;
-    return (
-      res?.data?.list ||
-      res?.data?.episodes ||
-      res?.data ||
-      res?.list ||
-      res?.episodes ||
-      []
-    );
-  };
-
-  const normalizeBook = (res) => {
-    if (!res) return null;
-    return res?.data?.book || res?.data || res?.book || res;
-  };
-
-  /* =======================
-     CACHE
-  ======================= */
   const getSavedBook = () => {
     try {
       if (!bookId) return null;
@@ -80,9 +100,22 @@
     }
   };
 
-  /* =======================
-     UI: DETAIL (COVER/JUDUL/TOTAL/SINOPSIS)
-  ======================= */
+  const getCachedEpisodes = () => {
+    try {
+      if (!bookId) return null;
+      const raw = sessionStorage.getItem(`dramabox_eps_${bookId}`);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const epNum = (t, idx) => {
+    const s = String(t || "");
+    const m = s.match(/(\d+)/);
+    return m ? parseInt(m[1], 10) : idx + 1;
+  };
+
   const buildDetail = (b) => {
     if (!el.detail) return;
 
@@ -92,16 +125,13 @@
     const tags = Array.isArray(b?.tags) ? b.tags : [];
 
     el.detail.innerHTML = `
-      <div class="anime-detail-card" style="${poster ? `--detail-bg:url('${poster}')` : ""}">
-        <div class="detail-poster"><img alt="${title}"></div>
-
+      <div class="anime-detail-card" style="${poster ? `--detail-bg:url('${safeText(poster)}')` : ""}">
+        <div class="detail-poster"><img alt="${safeText(title)}"></div>
         <div>
           <div class="detail-main-title"></div>
-
           <div class="detail-meta">
-            <div><span class="label">Total Episode:</span> ${b?.chapterCount ?? b?.totalEpisode ?? "?"}</div>
+            <div><span class="label">Total Episode:</span> ${b?.chapterCount ?? "?"}</div>
           </div>
-
           <div class="detail-genres" id="dramaTags"></div>
         </div>
       </div>
@@ -144,7 +174,7 @@
     const synText = intro ? String(intro).trim() : "Tidak ada sinopsis.";
     syn.textContent = synText;
 
-    // tombol baca selengkapnya
+    // tombol baca selengkapnya (sinopsis tetap ada, tidak dihapus)
     if (synText !== "Tidak ada sinopsis.") {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -158,87 +188,15 @@
     }
   };
 
-  /* =======================
-     UTIL EPISODE
-  ======================= */
-  const epNum = (t, idx) => {
-    const s = String(t || "");
-    const m = s.match(/(\d+)/);
-    return m ? parseInt(m[1], 10) : idx + 1;
-  };
-
-  const getVideoUrl = (ep) => {
-    const cdn = ep?.cdnList?.find((c) => c.isDefault) || ep?.cdnList?.[0];
-    if (!cdn) return "";
-    const v =
-      cdn.videoPathList?.find((x) => x.isDefault) ||
-      cdn.videoPathList?.find((x) => x.quality === 720) ||
-      cdn.videoPathList?.[0];
-    return v?.videoPath || "";
-  };
-
-  /* =======================
-     LOAD BOOK DETAIL (OPSIONAL)
-     - Kalau endpoint kamu belum ada, aman: tetap pakai cache / URL.
-  ======================= */
-  async function loadBookDetail() {
-    const saved = getSavedBook();
-    buildDetail(saved || { bookName: nameFromUrl, chapterCount: "?", tags: [] });
-
-    if (!bookId) return;
-
-    // opsional: coba ambil detail dari API (kalau ada)
-    // kamu bisa ganti path ini sesuai endpoint detail yang kamu punya
-    try {
-      const res = await apiGetDrama(
-        `/api/dramabox/detail?bookId=${encodeURIComponent(bookId)}`
-      );
-      const book = normalizeBook(res);
-      if (book) {
-        try {
-          sessionStorage.setItem(`dramabox_book_${bookId}`, JSON.stringify(book));
-        } catch {}
-        buildDetail(book);
-      }
-    } catch {
-      // abaikan kalau endpoint detail tidak ada
-    }
-  }
-
-  /* =======================
-     LOAD EPISODES (FIXED)
-  ======================= */
-  async function loadEpisodes() {
-    if (!bookId) return toast("bookId tidak ditemukan");
+  const renderEpisodes = (eps) => {
     if (!el.list) return;
 
-    el.list.innerHTML = `<div class="season-empty">Memuat episode...</div>`;
-
-    let res;
-    try {
-      res = await apiGetDrama(
-        `/api/dramabox/allepisode?bookId=${encodeURIComponent(bookId)}`
-      );
-    } catch {
-      el.list.innerHTML = `<div class="season-empty">Gagal memuat episode.</div>`;
-      toast("Gagal memuat episode");
-      return;
-    }
-
-    const eps = normalizeEpisodes(res);
     if (!Array.isArray(eps) || !eps.length) {
       el.list.innerHTML = `<div class="season-empty">Episode tidak ditemukan.</div>`;
       return;
     }
 
-    // cache (opsional)
-    try {
-      sessionStorage.setItem(`dramabox_eps_${bookId}`, JSON.stringify(eps));
-    } catch {}
-
-    const sorted = eps
-      .slice()
-      .sort((a, b) => (a.chapterIndex ?? 0) - (b.chapterIndex ?? 0));
+    const sorted = eps.slice().sort((a, b) => (a.chapterIndex ?? 0) - (b.chapterIndex ?? 0));
 
     el.list.innerHTML = "";
     sorted.forEach((ep, i) => {
@@ -250,14 +208,9 @@
 
       item.innerHTML = `<span>Episode ${n}${lock}</span>`;
       item.onclick = () => {
-        const videoUrl = getVideoUrl(ep);
-        if (!videoUrl) return toast("Video tidak tersedia");
-
-        location.href =
-          `/drama/watch?video=${encodeURIComponent(videoUrl)}` +
-          `&bookId=${encodeURIComponent(bookId)}` +
-          `&chapterId=${encodeURIComponent(ep.chapterId || "")}` +
-          `&name=${encodeURIComponent(nameFromUrl || "")}`;
+        location.href = `/drama/watch?bookId=${encodeURIComponent(bookId)}&chapterId=${encodeURIComponent(
+          ep.chapterId || ""
+        )}&name=${encodeURIComponent(nameFromUrl || "")}`;
       };
 
       el.list.appendChild(item);
@@ -268,37 +221,65 @@
     if (firstBtn) {
       firstBtn.onclick = () => {
         const first = sorted[0];
-        const videoUrl = getVideoUrl(first);
-        if (!first?.chapterId || !videoUrl) return toast("Video tidak tersedia");
-
-        location.href =
-          `/drama/watch?video=${encodeURIComponent(videoUrl)}` +
-          `&bookId=${encodeURIComponent(bookId)}` +
-          `&chapterId=${encodeURIComponent(first.chapterId)}` +
-          `&name=${encodeURIComponent(nameFromUrl || "")}`;
+        if (!first?.chapterId) return;
+        location.href = `/drama/watch?bookId=${encodeURIComponent(bookId)}&chapterId=${encodeURIComponent(
+          first.chapterId
+        )}&name=${encodeURIComponent(nameFromUrl || "")}`;
       };
     }
+  };
+
+  async function loadEpisodes() {
+    if (!bookId) return toast("bookId tidak ditemukan");
+    if (!el.list) return;
+
+    el.list.innerHTML = `<div class="season-empty">Memuat episode...</div>`;
+
+    // 1) coba API
+    try {
+      const eps = await apiGetDrama(`/api/dramabox/allepisode?bookId=${encodeURIComponent(bookId)}`);
+      // cache (buat jaga-jaga kalau nanti API down)
+      try {
+        sessionStorage.setItem(`dramabox_eps_${bookId}`, JSON.stringify(eps));
+      } catch {}
+      renderEpisodes(eps);
+      return;
+    } catch (e) {
+      // lanjut ke cache
+      console.warn("[allepisode] gagal:", e);
+    }
+
+    // 2) fallback cache (biar list tetap muncul)
+    const cached = getCachedEpisodes();
+    if (cached && Array.isArray(cached) && cached.length) {
+      renderEpisodes(cached);
+      toast("Pakai cache episode (API lagi error)");
+      return;
+    }
+
+    // 3) gagal total
+    el.list.innerHTML = `<div class="season-empty">Gagal memuat episode.</div>`;
+    toast("Gagal memuat episode");
   }
 
-  /* =======================
-     INIT
-  ======================= */
   document.addEventListener("DOMContentLoaded", () => {
+    // back fallback
     if (el.back) el.back.addEventListener("click", () => history.back());
+
+    // detail tetap tampil (ambil dari sessionStorage / url)
+    const saved = getSavedBook();
+    buildDetail(saved || { bookName: nameFromUrl, chapterCount: "?", tags: [] });
 
     // episode search
     if (el.search) {
       el.search.addEventListener("input", () => {
         const q = el.search.value.trim().toLowerCase();
         el.list?.querySelectorAll(".episode-item")?.forEach((it) => {
-          it.style.display = (it.textContent || "").toLowerCase().includes(q)
-            ? ""
-            : "none";
+          it.style.display = (it.textContent || "").toLowerCase().includes(q) ? "" : "none";
         });
       });
     }
 
-    loadBookDetail();
     loadEpisodes();
   });
 })();
