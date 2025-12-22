@@ -26,10 +26,11 @@
       const res = await fetch(url, {
         method: "GET",
         signal: ctrl.signal,
-        headers: { "Accept": "application/json" },
+        headers: { Accept: "application/json" },
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
       const text = await res.text();
       try {
         return JSON.parse(text);
@@ -51,7 +52,7 @@
     // 2) same-origin
     try {
       return await fetchJson(path);
-    } catch (e) {
+    } catch {
       // 3) fallback domain
       const url = new URL(path, FALLBACK_API_BASE).toString();
       return fetchJson(url);
@@ -66,6 +67,43 @@
     } catch {
       return null;
     }
+  };
+
+  const getCachedEpisodes = () => {
+    try {
+      if (!bookId) return null;
+      const raw = sessionStorage.getItem(`dramabox_eps_${bookId}`);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  // ========= UPDATE: normalizer supaya response apapun bisa jadi array =========
+  const normalizeEpisodeList = (payload) => {
+    if (!payload) return [];
+
+    // sudah array
+    if (Array.isArray(payload)) return payload;
+
+    // coba beberapa kemungkinan bungkus
+    const candidates = [
+      payload?.data,
+      payload?.data?.list,
+      payload?.data?.episodes,
+      payload?.data?.result,
+      payload?.data?.data,
+      payload?.list,
+      payload?.episodes,
+      payload?.result,
+      payload?.items,
+    ];
+
+    for (const c of candidates) {
+      if (Array.isArray(c)) return c;
+    }
+
+    return [];
   };
 
   const epNum = (t, idx) => {
@@ -146,22 +184,43 @@
     }
   };
 
+  // ========= UPDATE: loadEpisodes pakai normalizer + fallback cache =========
   async function loadEpisodes() {
     if (!bookId) return toast("bookId tidak ditemukan");
     if (!el.list) return;
 
     el.list.innerHTML = `<div class="season-empty">Memuat episode...</div>`;
 
-    let eps;
+    let payload;
     try {
-      eps = await apiGetDrama(`/api/dramabox/allepisode?bookId=${encodeURIComponent(bookId)}`);
+      payload = await apiGetDrama(
+        `/api/dramabox/allepisode?bookId=${encodeURIComponent(bookId)}`
+      );
     } catch (e) {
+      // fallback ke cache kalau ada
+      const cached = getCachedEpisodes();
+      if (cached && cached.length) {
+        renderEpisodes(cached, { fromCache: true });
+        toast("Menampilkan episode dari cache");
+        return;
+      }
+
       el.list.innerHTML = `<div class="season-empty">Gagal memuat episode.</div>`;
       toast("Gagal memuat episode");
       return;
     }
 
+    const eps = normalizeEpisodeList(payload);
+
     if (!Array.isArray(eps) || !eps.length) {
+      // kalau payload tidak sesuai, coba cache juga
+      const cached = getCachedEpisodes();
+      if (cached && cached.length) {
+        renderEpisodes(cached, { fromCache: true });
+        toast("Menampilkan episode dari cache");
+        return;
+      }
+
       el.list.innerHTML = `<div class="season-empty">Episode tidak ditemukan.</div>`;
       return;
     }
@@ -171,20 +230,27 @@
       sessionStorage.setItem(`dramabox_eps_${bookId}`, JSON.stringify(eps));
     } catch {}
 
-    const sorted = eps.slice().sort((a, b) => (a.chapterIndex ?? 0) - (b.chapterIndex ?? 0));
+    renderEpisodes(eps);
+  }
+
+  function renderEpisodes(eps, { fromCache = false } = {}) {
+    const sorted = eps
+      .slice()
+      .sort((a, b) => (a.chapterIndex ?? a.episodeNo ?? 0) - (b.chapterIndex ?? b.episodeNo ?? 0));
 
     el.list.innerHTML = "";
+
     sorted.forEach((ep, i) => {
       const item = document.createElement("div");
       item.className = "episode-item";
 
-      const n = epNum(ep.chapterName, i);
+      const n = epNum(ep.chapterName ?? ep.title ?? ep.name, i);
       const lock = ep.isCharge ? " • VIP" : "";
 
       item.innerHTML = `<span>Episode ${n}${lock}</span>`;
       item.onclick = () => {
         location.href = `/drama/watch?bookId=${encodeURIComponent(bookId)}&chapterId=${encodeURIComponent(
-          ep.chapterId || ""
+          ep.chapterId || ep.id || ""
         )}&name=${encodeURIComponent(nameFromUrl || "")}`;
       };
 
@@ -196,11 +262,17 @@
     if (firstBtn) {
       firstBtn.onclick = () => {
         const first = sorted[0];
-        if (!first?.chapterId) return;
+        const chapterId = first?.chapterId || first?.id;
+        if (!chapterId) return;
         location.href = `/drama/watch?bookId=${encodeURIComponent(bookId)}&chapterId=${encodeURIComponent(
-          first.chapterId
+          chapterId
         )}&name=${encodeURIComponent(nameFromUrl || "")}`;
       };
+    }
+
+    if (fromCache) {
+      // kecilin aja, biar user tau (optional)
+      // toast("cache");
     }
   }
 
@@ -218,7 +290,8 @@
       el.search.addEventListener("input", () => {
         const q = el.search.value.trim().toLowerCase();
         el.list?.querySelectorAll(".episode-item")?.forEach((it) => {
-          it.style.display = (it.textContent || "").toLowerCase().includes(q) ? "" : "none";
+          it.style.display =
+            (it.textContent || "").toLowerCase().includes(q) ? "" : "none";
         });
       });
     }
