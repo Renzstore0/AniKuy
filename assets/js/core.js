@@ -74,9 +74,7 @@
         mode: "cors",
         credentials: "omit",
         cache: "no-store",
-        headers: {
-          Accept: "application/json,text/plain,*/*",
-        },
+        headers: { Accept: "application/json,text/plain,*/*" },
         signal: ctrl.signal,
       });
 
@@ -86,8 +84,6 @@
       try {
         return JSON.parse(text);
       } catch {
-        // kalau ada proxy yang wrap konten, coba handle minimal
-        // tapi default: anggap ini bukan JSON valid
         throw new Error("INVALID_JSON");
       }
     } finally {
@@ -139,23 +135,14 @@
     }
   };
 
-  // kunci biar nggak ketimpa script lain (menu.js dll)
-  if (!window.apiGetDrama) {
+  // kunci biar nggak ketimpa script lain
+  try {
     Object.defineProperty(window, "apiGetDrama", {
       value: apiGetDramaStable,
       writable: false,
       configurable: false,
     });
-  } else {
-    // kalau sudah ada, timpa sekali lalu kunci
-    try {
-      Object.defineProperty(window, "apiGetDrama", {
-        value: apiGetDramaStable,
-        writable: false,
-        configurable: false,
-      });
-    } catch {}
-  }
+  } catch {}
 
   /* ========= FAVORITES ========= */
   let favs = (() => {
@@ -225,8 +212,7 @@
     return c;
   };
 
-  /* ========= SIDEDRAWER (Hamburger Menu) ========= */
-
+  /* ========= SIDEDRAWER ========= */
   const injectDrawerCss = () => {
     if (document.getElementById("anikuy-drawer-css")) return;
     const style = document.createElement("style");
@@ -234,12 +220,10 @@
     style.textContent = `
       .drawer-overlay{position:fixed;inset:0;background:rgba(2,6,23,.55);opacity:0;pointer-events:none;transition:opacity .16s ease;z-index:9998}
       .drawer-overlay.show{opacity:1;pointer-events:auto}
-
       .side-drawer{position:fixed;top:0;left:0;height:100dvh;width:min(320px,86vw);background:rgba(15,23,42,.98);
         border-right:1px solid rgba(30,64,175,.35);box-shadow:18px 0 45px rgba(0,0,0,.55);
         transform:translateX(-102%);transition:transform .16s ease;z-index:9999;padding:14px 14px 18px}
       .side-drawer.show{transform:translateX(0)}
-
       html.drawer-open,body.drawer-open{overflow:hidden}
     `;
     document.head.appendChild(style);
@@ -252,14 +236,12 @@
     const path = (location.pathname || "/").replace(/\/+$/, "") || "/";
     const isDrama = path.startsWith("/drama");
 
-    // mode inject (button .drawer-item)
     drawer.querySelectorAll(".drawer-item[data-href]").forEach((btn) => {
       const href = btn.getAttribute("data-href") || "/";
       const active = href.startsWith("/drama") ? isDrama : !isDrama;
       btn.classList.toggle("active", !!active);
     });
 
-    // mode static (a.side-drawer-link)
     drawer.querySelectorAll("a.side-drawer-link[href]").forEach((a) => {
       const href = (a.getAttribute("href") || "/").replace(/\/+$/, "") || "/";
       const active = href.startsWith("/drama") ? isDrama : !isDrama;
@@ -297,24 +279,19 @@
     $("drawerClose")?.addEventListener("click", closeDrawer);
     drawer.addEventListener("click", (e) => e.stopPropagation());
 
-    // kalau link di drawer diklik, tutup dulu
     drawer.querySelectorAll('a[href^="/"]').forEach((a) => {
-      a.addEventListener("click", () => {
-        closeDrawer();
-      });
+      a.addEventListener("click", () => closeDrawer());
     });
 
     highlightActiveDrawer();
   }
 
   const ensureDrawer = () => {
-    // kalau markup sudah ada (index.html / drama/index.html), cukup bind event-nya
     if ($("sideDrawer") && $("drawerOverlay")) {
       bindExistingDrawerOnce();
       return;
     }
 
-    // kalau belum ada, inject model drawer (fallback)
     injectDrawerCss();
 
     const overlay = document.createElement("div");
@@ -392,7 +369,7 @@
   window.openSideDrawer = openDrawer;
   window.closeSideDrawer = closeDrawer;
 
-  /* ========= LEFT BUTTON (HAMBURGER ONLY HOME ANIME & HOME DRAMA) ========= */
+  /* ========= LEFT BUTTON ========= */
   const ICON_BACK = `
     <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
       <path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
@@ -441,6 +418,12 @@
 
     const page = document.body?.dataset?.page || "";
     const isDramaPage = page === "drama" || (location.pathname || "").startsWith("/drama");
+
+    // ✅ FIX: tombol Home di bottom-nav ngikut konteks (drama -> /drama, anime -> /)
+    const homeNav = document.querySelector('.bottom-nav a.nav-item[data-tab="home"]');
+    if (homeNav) {
+      homeNav.setAttribute("href", isDramaPage ? "/drama" : "/");
+    }
 
     $(".logo-wrap")?.addEventListener("click", () => (location.href = "/"));
 
