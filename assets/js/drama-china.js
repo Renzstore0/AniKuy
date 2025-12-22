@@ -1,4 +1,4 @@
-const API_BASE = "https://dramabox.sansekai.my.id/api/dramabox";
+const API_BASE = "/api/dramabox";
 
 const el = (id) => document.getElementById(id);
 
@@ -26,10 +26,17 @@ function makeCard(item) {
   return card;
 }
 
-async function fetchJSON(url) {
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+async function fetchJSON(path) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(path, { cache: "no-store", signal: controller.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 function initBack() {
@@ -128,6 +135,9 @@ async function init() {
     ]);
 
     initHero(trending || []);
+
+    forYouGrid.innerHTML = "";
+    latestRow.innerHTML = "";
 
     (forYou || []).forEach((it) => forYouGrid.appendChild(makeCard(it)));
     (latest || []).forEach((it) => latestRow.appendChild(makeCard(it)));
