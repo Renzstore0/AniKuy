@@ -63,6 +63,57 @@
     });
   };
 
+  /* ========= FETCH HELPERS (anti CORS / timeout) ========= */
+  const fetchJsonTry = async (url, timeoutMs = 12000) => {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+
+    try {
+      const r = await fetch(url, {
+        method: "GET",
+        mode: "cors",
+        credentials: "omit",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json,text/plain,*/*",
+        },
+        signal: ctrl.signal,
+      });
+
+      if (!r.ok) throw new Error(`HTTP_${r.status}`);
+
+      const text = await r.text();
+      try {
+        return JSON.parse(text);
+      } catch {
+        // kalau ada proxy yang wrap konten, coba handle minimal
+        // tapi default: anggap ini bukan JSON valid
+        throw new Error("INVALID_JSON");
+      }
+    } finally {
+      clearTimeout(t);
+    }
+  };
+
+  const fetchJsonWithFallback = async (realUrl) => {
+    const tries = [
+      realUrl,
+      `https://corsproxy.io/?${encodeURIComponent(realUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(realUrl)}`,
+      `https://cors.isomorphic-git.org/${realUrl}`,
+    ];
+
+    let lastErr = null;
+    for (const u of tries) {
+      try {
+        return await fetchJsonTry(u);
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error("FETCH_FAILED");
+  };
+
   /* ========= API ========= */
   window.apiGet = async (path) => {
     try {
@@ -76,18 +127,35 @@
     }
   };
 
-  // ✅ DRAMA API (Dramabox)
-  window.apiGetDrama = async (path) => {
+  // ✅ DRAMA API (Dramabox) + fallback proxy anti CORS
+  const apiGetDramaStable = async (path) => {
     try {
-      const r = await fetch(DRAMA_BASE + path);
-      if (!r.ok) throw r.status;
-      return await r.json();
+      const url = DRAMA_BASE + path;
+      return await fetchJsonWithFallback(url);
     } catch (e) {
       console.error(e);
       showToast("Gagal memuat drama");
       throw e;
     }
   };
+
+  // kunci biar nggak ketimpa script lain (menu.js dll)
+  if (!window.apiGetDrama) {
+    Object.defineProperty(window, "apiGetDrama", {
+      value: apiGetDramaStable,
+      writable: false,
+      configurable: false,
+    });
+  } else {
+    // kalau sudah ada, timpa sekali lalu kunci
+    try {
+      Object.defineProperty(window, "apiGetDrama", {
+        value: apiGetDramaStable,
+        writable: false,
+        configurable: false,
+      });
+    } catch {}
+  }
 
   /* ========= FAVORITES ========= */
   let favs = (() => {
@@ -126,7 +194,6 @@
   /* ========= CARD ========= */
   const means = (o) => o.slug || o.animeId || o.id || o.anime_id || "";
 
-  // ✅ bisa override href + callback onClick (buat anime/drama)
   window.createAnimeCard = (item, o = {}) => {
     const c = document.createElement("div");
     c.className = "anime-card";
@@ -160,7 +227,6 @@
 
   /* ========= SIDEDRAWER (Hamburger Menu) ========= */
 
-  // CSS drawer (biar gak perlu file tambahan). Kalau kamu sudah punya di style.css, ini aman.
   const injectDrawerCss = () => {
     if (document.getElementById("anikuy-drawer-css")) return;
     const style = document.createElement("style");
@@ -174,26 +240,6 @@
         transform:translateX(-102%);transition:transform .16s ease;z-index:9999;padding:14px 14px 18px}
       .side-drawer.show{transform:translateX(0)}
 
-      .drawer-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
-      .drawer-brand{display:flex;align-items:center;gap:10px}
-      .drawer-logo{width:34px;height:34px;border-radius:12px;object-fit:contain;background:rgba(2,6,23,.35);padding:6px}
-      .drawer-title{font-size:16px;font-weight:800;letter-spacing:.06em;color:#e5f0ff;line-height:1}
-      .drawer-subtitle{font-size:12px;color:#94a3b8;margin-top:2px}
-
-      .drawer-close{width:32px;height:32px;border-radius:999px;border:none;background:rgba(2,6,23,.35);color:#e5e7eb;
-        display:flex;align-items:center;justify-content:center;cursor:pointer}
-      .drawer-close:active{transform:scale(.96)}
-
-      .drawer-items{display:flex;flex-direction:column;gap:10px;margin-top:8px}
-      .drawer-item{width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;
-        border:1px solid rgba(148,163,184,.18);background:rgba(2,6,23,.25);color:#e5e7eb;
-        font-weight:700;letter-spacing:.04em;cursor:pointer;text-align:left}
-      .drawer-item:hover{background:rgba(2,6,23,.38)}
-      .drawer-item:active{transform:scale(.99)}
-      .drawer-item.active{border-color:transparent;background:linear-gradient(135deg,#1d4ed8,#22d3ee);color:#e5f0ff}
-      .drawer-dot{width:8px;height:8px;border-radius:999px;background:rgba(148,163,184,.7)}
-      .drawer-item.active .drawer-dot{background:#fff}
-
       html.drawer-open,body.drawer-open{overflow:hidden}
     `;
     document.head.appendChild(style);
@@ -202,109 +248,26 @@
   const highlightActiveDrawer = () => {
     const drawer = $("sideDrawer");
     if (!drawer) return;
+
     const path = (location.pathname || "/").replace(/\/+$/, "") || "/";
     const isDrama = path.startsWith("/drama");
+
+    // mode inject (button .drawer-item)
     drawer.querySelectorAll(".drawer-item[data-href]").forEach((btn) => {
       const href = btn.getAttribute("data-href") || "/";
       const active = href.startsWith("/drama") ? isDrama : !isDrama;
       btn.classList.toggle("active", !!active);
     });
-  };
 
-  const ensureDrawer = () => {
-    if ($("sideDrawer") && $("drawerOverlay")) {
-      highlightActiveDrawer();
-      return;
-    }
-
-    injectDrawerCss();
-
-    const overlay = document.createElement("div");
-    overlay.id = "drawerOverlay";
-    overlay.className = "drawer-overlay";
-    overlay.hidden = true;
-
-    const drawer = document.createElement("aside");
-    drawer.id = "sideDrawer";
-    drawer.className = "side-drawer";
-    drawer.setAttribute("aria-hidden", "true");
-
-    drawer.innerHTML = `
-      <div class="drawer-head">
-        <div class="drawer-brand">
-          <img class="drawer-logo" src="https://pomf2.lain.la/f/22yuvdrk.png" alt="AniKuy">
-          <div>
-            <div class="drawer-title">AniKuy</div>
-            <div class="drawer-subtitle">Pilih kategori</div>
-          </div>
-        </div>
-
-        <button class="drawer-close" id="drawerClose" type="button" aria-label="Tutup">
-          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true" style="width:18px;height:18px">
-            <path fill="currentColor" d="M18.3 5.71 12 12l6.3 6.29-1.41 1.42L10.59 13.4 4.29 19.71 2.88 18.29 9.17 12 2.88 5.71 4.29 4.29 10.59 10.6l6.3-6.31z"/>
-          </svg>
-        </button>
-      </div>
-
-      <div class="drawer-items">
-        <button class="drawer-item" type="button" data-href="/">
-          <span class="drawer-dot"></span>
-          <span>Anime</span>
-        </button>
-
-        <button class="drawer-item" type="button" data-href="/drama">
-          <span class="drawer-dot"></span>
-          <span>Drama China</span>
-        </button>
-      </div>
-    `;
-
-    document.body.appendChild(overlay);
-    document.body.appendChild(drawer);
-
-    const closeBtn = $("drawerClose");
-
-    overlay.addEventListener("click", () => closeDrawer());
-    closeBtn?.addEventListener("click", () => closeDrawer());
-    drawer.addEventListener("click", (e) => e.stopPropagation());
-
-    drawer.querySelectorAll(".drawer-item[data-href]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const href = btn.getAttribute("data-href") || "/";
-        closeDrawer();
-        location.href = href;
-      });
+    // mode static (a.side-drawer-link)
+    drawer.querySelectorAll("a.side-drawer-link[href]").forEach((a) => {
+      const href = (a.getAttribute("href") || "/").replace(/\/+$/, "") || "/";
+      const active = href.startsWith("/drama") ? isDrama : !isDrama;
+      a.classList.toggle("active", !!active);
     });
-
-    if (!document.documentElement.dataset.drawerEscBound) {
-      document.documentElement.dataset.drawerEscBound = "1";
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") closeDrawer();
-      });
-    }
-
-    highlightActiveDrawer();
   };
 
-  const openDrawer = () => {
-    ensureDrawer();
-    const d = $("sideDrawer");
-    const o = $("drawerOverlay");
-    if (!d || !o) return;
-
-    highlightActiveDrawer();
-
-    d.classList.add("show");
-    d.setAttribute("aria-hidden", "false");
-
-    o.hidden = false;
-    o.classList.add("show");
-
-    document.documentElement.classList.add("drawer-open");
-    document.body.classList.add("drawer-open");
-  };
-
-  const closeDrawer = () => {
+  function closeDrawer() {
     const d = $("sideDrawer");
     const o = $("drawerOverlay");
     if (!d || !o) return;
@@ -320,7 +283,111 @@
     setTimeout(() => {
       o.hidden = true;
     }, 170);
+  }
+
+  function bindExistingDrawerOnce() {
+    const drawer = $("sideDrawer");
+    const overlay = $("drawerOverlay");
+    if (!drawer || !overlay) return;
+
+    if (drawer.dataset.bound === "1") return;
+    drawer.dataset.bound = "1";
+
+    overlay.addEventListener("click", closeDrawer);
+    $("drawerClose")?.addEventListener("click", closeDrawer);
+    drawer.addEventListener("click", (e) => e.stopPropagation());
+
+    // kalau link di drawer diklik, tutup dulu
+    drawer.querySelectorAll('a[href^="/"]').forEach((a) => {
+      a.addEventListener("click", () => {
+        closeDrawer();
+      });
+    });
+
+    highlightActiveDrawer();
+  }
+
+  const ensureDrawer = () => {
+    // kalau markup sudah ada (index.html / drama/index.html), cukup bind event-nya
+    if ($("sideDrawer") && $("drawerOverlay")) {
+      bindExistingDrawerOnce();
+      return;
+    }
+
+    // kalau belum ada, inject model drawer (fallback)
+    injectDrawerCss();
+
+    const overlay = document.createElement("div");
+    overlay.id = "drawerOverlay";
+    overlay.className = "drawer-overlay";
+    overlay.hidden = true;
+
+    const drawer = document.createElement("aside");
+    drawer.id = "sideDrawer";
+    drawer.className = "side-drawer";
+    drawer.setAttribute("aria-hidden", "true");
+
+    drawer.innerHTML = `
+      <div class="drawer-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <img class="drawer-logo" src="https://pomf2.lain.la/f/22yuvdrk.png" alt="AniKuy"
+               style="width:34px;height:34px;border-radius:12px;object-fit:contain;background:rgba(2,6,23,.35);padding:6px">
+          <div>
+            <div style="font-size:16px;font-weight:800;letter-spacing:.06em;color:#e5f0ff;line-height:1">AniKuy</div>
+            <div style="font-size:12px;color:#94a3b8;margin-top:2px">Pilih kategori</div>
+          </div>
+        </div>
+
+        <button class="drawer-close" id="drawerClose" type="button" aria-label="Tutup"
+                style="width:32px;height:32px;border-radius:999px;border:none;background:rgba(2,6,23,.35);color:#e5e7eb;display:flex;align-items:center;justify-content:center;cursor:pointer">
+          ✕
+        </button>
+      </div>
+
+      <div class="drawer-items" style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
+        <button class="drawer-item" type="button" data-href="/" style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;border:1px solid rgba(148,163,184,.18);background:rgba(2,6,23,.25);color:#e5e7eb;font-weight:700;letter-spacing:.04em;cursor:pointer;text-align:left">
+          <span style="width:8px;height:8px;border-radius:999px;background:rgba(148,163,184,.7)"></span>
+          <span>Anime</span>
+        </button>
+
+        <button class="drawer-item" type="button" data-href="/drama" style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;border:1px solid rgba(148,163,184,.18);background:rgba(2,6,23,.25);color:#e5e7eb;font-weight:700;letter-spacing:.04em;cursor:pointer;text-align:left">
+          <span style="width:8px;height:8px;border-radius:999px;background:rgba(148,163,184,.7)"></span>
+          <span>Drama China</span>
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    document.body.appendChild(drawer);
+
+    bindExistingDrawerOnce();
+
+    drawer.querySelectorAll(".drawer-item[data-href]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const href = btn.getAttribute("data-href") || "/";
+        closeDrawer();
+        location.href = href;
+      });
+    });
   };
+
+  function openDrawer() {
+    ensureDrawer();
+    const d = $("sideDrawer");
+    const o = $("drawerOverlay");
+    if (!d || !o) return;
+
+    highlightActiveDrawer();
+
+    d.classList.add("show");
+    d.setAttribute("aria-hidden", "false");
+
+    o.hidden = false;
+    o.classList.add("show");
+
+    document.documentElement.classList.add("drawer-open");
+    document.body.classList.add("drawer-open");
+  }
 
   window.openSideDrawer = openDrawer;
   window.closeSideDrawer = closeDrawer;
@@ -356,7 +423,6 @@
       return;
     }
 
-    // selain home anime & home drama => tombol back
     back.setAttribute("aria-label", "Kembali");
     back.innerHTML = ICON_BACK;
 
@@ -378,17 +444,14 @@
 
     $(".logo-wrap")?.addEventListener("click", () => (location.href = "/"));
 
-    // search button: beda route untuk drama
     $("searchButton")?.addEventListener("click", () => {
       location.href = isDramaPage ? "/drama/search" : "/search";
     });
 
     $("settingsButton")?.addEventListener("click", () => (location.href = "/settings"));
 
-    // ✅ hamburger hanya di home anime & home drama
     setLeftButtonMode(page);
 
-    // hide bottom-nav saat scroll
     const main = $("mainContent"),
       nav = document.querySelector(".bottom-nav");
 
