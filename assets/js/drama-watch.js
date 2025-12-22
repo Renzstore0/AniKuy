@@ -1,4 +1,4 @@
-const API_BASE = "https://dramabox.sansekai.my.id/api/dramabox";
+const API_BASE = "/api/dramabox";
 
 const qs = new URLSearchParams(location.search);
 const bookId = qs.get("bookId");
@@ -14,10 +14,17 @@ function pickBestVideoPath(chapter) {
   return def?.videoPath || "";
 }
 
-async function fetchJSON(url) {
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+async function fetchJSON(path) {
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const res = await fetch(path, { cache: "no-store", signal: controller.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 function initBack() {
@@ -51,6 +58,7 @@ async function init() {
       player.play().catch(()=>{});
     };
 
+    listEl.innerHTML = "";
     data.forEach((ch) => {
       const item = document.createElement("div");
       item.className = "episode-item";
