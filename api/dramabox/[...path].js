@@ -2,25 +2,26 @@
 export default async function handler(req, res) {
   const API_BASE = "https://dramabox.sansekai.my.id";
 
-  // path yang diminta: /api/dramabox/<...path>
-  const pathParts = Array.isArray(req.query.path) ? req.query.path : [req.query.path].filter(Boolean);
+  const pathParts = Array.isArray(req.query.path)
+    ? req.query.path
+    : [req.query.path].filter(Boolean);
 
-  // query params (selain "path")
-  const { path, ...restQuery } = req.query;
-  const qs = new URLSearchParams();
-  for (const [k, v] of Object.entries(restQuery)) {
-    if (Array.isArray(v)) v.forEach((x) => qs.append(k, x));
-    else if (v !== undefined) qs.append(k, v);
+  // bikin URL pakai WHATWG URL
+  const target = new URL(API_BASE.replace(/\/+$/, "") + "/");
+  target.pathname = pathParts
+    .map((s) => String(s).replace(/^\/+|\/+$/g, ""))
+    .filter(Boolean)
+    .join("/");
+
+  // query params (kecuali "path")
+  for (const [k, v] of Object.entries(req.query || {})) {
+    if (k === "path") continue;
+    if (Array.isArray(v)) v.forEach((x) => target.searchParams.append(k, x));
+    else if (v !== undefined) target.searchParams.append(k, v);
   }
 
-  const targetUrl =
-    API_BASE.replace(/\/+$/, "") +
-    "/" +
-    pathParts.map((s) => String(s).replace(/^\/+|\/+$/g, "")).join("/") +
-    (qs.toString() ? `?${qs.toString()}` : "");
-
   try {
-    const upstream = await fetch(targetUrl, {
+    const upstream = await fetch(target.toString(), {
       method: "GET",
       headers: {
         Accept: "application/json",
@@ -28,14 +29,18 @@ export default async function handler(req, res) {
       },
     });
 
-    const bodyText = await upstream.text();
+    const text = await upstream.text();
 
-    // balikin status + body apa adanya
     res.status(upstream.status);
-    res.setHeader("Content-Type", upstream.headers.get("content-type") || "application/json; charset=utf-8");
+    res.setHeader(
+      "Content-Type",
+      upstream.headers.get("content-type") || "application/json; charset=utf-8"
+    );
     res.setHeader("Cache-Control", "no-store");
-    return res.send(bodyText);
+    return res.send(text);
   } catch (err) {
-    return res.status(500).json({ error: true, message: "Proxy gagal", detail: String(err?.message || err) });
+    return res
+      .status(500)
+      .json({ error: true, message: "Proxy gagal", detail: String(err?.message || err) });
   }
 }
