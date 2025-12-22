@@ -33,11 +33,19 @@
 <body data-page="home">
   <div class="app-root">
     <header class="app-header">
-      <button class="icon-button back-button" id="backButton" aria-label="Kembali">
-        <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
-          <path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
-        </svg>
-      </button>
+      <div class="header-left">
+        <button class="icon-button" id="menuButton" aria-label="Menu">
+          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/>
+          </svg>
+        </button>
+
+        <button class="icon-button back-button" id="backButton" aria-label="Kembali">
+          <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+          </svg>
+        </button>
+      </div>
 
       <div class="logo-wrap">
         <img class="logo-img" src="https://pomf2.lain.la/f/22yuvdrk.png" alt="AniKuy Logo" />
@@ -93,6 +101,27 @@
       </div>
     </main>
 
+    <!-- Drawer Menu -->
+    <div id="sideDrawer" class="drawer" aria-hidden="true">
+      <div class="drawer-overlay" id="drawerOverlay"></div>
+
+      <aside class="drawer-panel" role="dialog" aria-modal="true" aria-label="Menu">
+        <div class="drawer-header">
+          <div class="drawer-title">Menu</div>
+          <button class="icon-button" id="drawerCloseBtn" aria-label="Tutup menu">
+            <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M18.3 5.71 12 12l6.3 6.29-1.41 1.42L10.59 13.4 4.29 19.71 2.88 18.29 9.17 12 2.88 5.71 4.29 4.29l6.3 6.31 6.3-6.31z"/>
+            </svg>
+          </button>
+        </div>
+
+        <nav class="drawer-nav">
+          <a class="drawer-item" href="/">Anime</a>
+          <a class="drawer-item" href="/drama-china/">Drama China</a>
+        </nav>
+      </aside>
+    </div>
+
     <nav class="bottom-nav">
       <a class="nav-item active" data-tab="home" href="/">
         <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" /></svg>
@@ -115,6 +144,7 @@
 
   <div id="toast" class="toast"></div>
   <script src="/assets/js/core.js"></script>
+  <script src="/assets/js/drawer.js"></script>
   <script src="/assets/js/home.js"></script>
 </body>
 </html>
