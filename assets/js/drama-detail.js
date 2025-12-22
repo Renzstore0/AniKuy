@@ -15,36 +15,26 @@
     back: $("backButton"),
   };
 
-  // fallback API (kalau /api/... di server kamu belum nge-proxy / kena CORS)
+  // fallback API (kalau /api/... di server kamu belum nge-proxy)
   const FALLBACK_API_BASE = "https://dramabox.sansekai.my.id";
 
-  const safeText = (s) => String(s ?? "").replace(/[<>&"]/g, (c) => ({
-    "<": "&lt;",
-    ">": "&gt;",
-    "&": "&amp;",
-    '"': "&quot;",
-  }[c]));
-
-  const fetchJson = async (url, { timeoutMs = 20000 } = {}) => {
+  const fetchJson = async (url, { timeoutMs = 15000 } = {}) => {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs);
 
     try {
       const res = await fetch(url, {
         method: "GET",
-        mode: "cors",
-        cache: "no-store",
-        credentials: "omit",
         signal: ctrl.signal,
-        headers: { "Accept": "application/json, text/plain, */*" },
+        headers: { Accept: "application/json" },
+        // credentials: "include", // aktifkan kalau proxy kamu butuh cookie
       });
 
-      const text = await res.text();
-      if (!res.ok) {
-        const preview = text ? text.slice(0, 140).replace(/\s+/g, " ") : "";
-        throw new Error(`HTTP ${res.status}${preview ? ` • ${preview}` : ""}`);
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
+      const text = await res.text();
+
+      // beberapa server balas "text/plain" tapi isinya JSON
       try {
         return JSON.parse(text);
       } catch {
@@ -55,39 +45,21 @@
     }
   };
 
-  // bikin beberapa kandidat URL (same-origin + beberapa variasi fallback)
-  const buildCandidates = (path) => {
+  // Coba same-origin dulu (/api/...), kalau gagal baru fallback ke domain API langsung
+  const apiGetDrama = async (path) => {
     const isAbsolute = /^https?:\/\//i.test(path);
-    if (isAbsolute) return [path];
 
-    const norm = path.startsWith("/") ? path : `/${path}`;
+    // 1) absolute langsung
+    if (isAbsolute) return fetchJson(path);
 
-    // strip "/api" buat server fallback yang tidak pakai prefix /api
-    const strippedApi = norm.replace(/^\/api(?=\/)/i, "");
-    const strippedApi2 = norm.replace(/^\/api\/dramabox(?=\/)/i, "/dramabox");
-
-    const uniq = (arr) => [...new Set(arr.filter(Boolean))];
-
-    return uniq([
-      norm, // 1) same-origin
-      new URL(norm, FALLBACK_API_BASE).toString(), // 2) fallback dengan path asli
-      new URL(strippedApi, FALLBACK_API_BASE).toString(), // 3) fallback buang /api
-      new URL(strippedApi2, FALLBACK_API_BASE).toString(), // 4) fallback buang /api/ dramabox
-    ]);
-  };
-
-  const apiGetDrama = async (path, opt) => {
-    const candidates = buildCandidates(path);
-    let lastErr;
-
-    for (const url of candidates) {
-      try {
-        return await fetchJson(url, opt);
-      } catch (e) {
-        lastErr = e;
-      }
+    // 2) same-origin
+    try {
+      return await fetchJson(path);
+    } catch (e) {
+      // 3) fallback domain
+      const url = new URL(path, FALLBACK_API_BASE).toString();
+      return fetchJson(url);
     }
-    throw lastErr || new Error("Gagal request");
   };
 
   const getSavedBook = () => {
@@ -116,6 +88,43 @@
     return m ? parseInt(m[1], 10) : idx + 1;
   };
 
+  // unwrap response yang suka dibungkus: {data:[...]}, {result:[...]}, {list:[...]} dst
+  const unwrap = (x) => {
+    if (!x) return x;
+
+    // kalau string JSON nyempil
+    if (typeof x === "string") {
+      try {
+        return JSON.parse(x);
+      } catch {
+        return x;
+      }
+    }
+
+    if (Array.isArray(x)) return x;
+
+    if (typeof x === "object") {
+      const keys = ["data", "result", "results", "list", "rows", "items", "episodes", "chapterList"];
+      for (const k of keys) {
+        if (k in x) return unwrap(x[k]);
+      }
+    }
+
+    return x;
+  };
+
+  const normalizeEpisodes = (resp) => {
+    const u = unwrap(resp);
+    if (Array.isArray(u)) return u;
+
+    // kadang bentuknya: { data: { list: [...] } }
+    if (u && typeof u === "object") {
+      const maybe = unwrap(u);
+      if (Array.isArray(maybe)) return maybe;
+    }
+    return [];
+  };
+
   const buildDetail = (b) => {
     if (!el.detail) return;
 
@@ -125,8 +134,8 @@
     const tags = Array.isArray(b?.tags) ? b.tags : [];
 
     el.detail.innerHTML = `
-      <div class="anime-detail-card" style="${poster ? `--detail-bg:url('${safeText(poster)}')` : ""}">
-        <div class="detail-poster"><img alt="${safeText(title)}"></div>
+      <div class="anime-detail-card" style="${poster ? `--detail-bg:url('${poster}')` : ""}">
+        <div class="detail-poster"><img alt="${title}"></div>
         <div>
           <div class="detail-main-title"></div>
           <div class="detail-meta">
@@ -174,7 +183,7 @@
     const synText = intro ? String(intro).trim() : "Tidak ada sinopsis.";
     syn.textContent = synText;
 
-    // tombol baca selengkapnya (sinopsis tetap ada, tidak dihapus)
+    // tombol baca selengkapnya
     if (synText !== "Tidak ada sinopsis.") {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -204,7 +213,8 @@
       item.className = "episode-item";
 
       const n = epNum(ep.chapterName, i);
-      const lock = ep.isCharge ? " • VIP" : "";
+      const isVip = !!(ep.isCharge || ep.chargeChapter || ep.isVip);
+      const lock = isVip ? " • VIP" : "";
 
       item.innerHTML = `<span>Episode ${n}${lock}</span>`;
       item.onclick = () => {
@@ -235,38 +245,58 @@
 
     el.list.innerHTML = `<div class="season-empty">Memuat episode...</div>`;
 
-    // 1) coba API
-    try {
-      const eps = await apiGetDrama(`/api/dramabox/allepisode?bookId=${encodeURIComponent(bookId)}`);
-      // cache (buat jaga-jaga kalau nanti API down)
+    // beberapa kemungkinan path (beda server beda route)
+    const candidates = [
+      `/api/dramabox/allepisode?bookId=${encodeURIComponent(bookId)}`,
+      `/api/dramabox/allEpisode?bookId=${encodeURIComponent(bookId)}`,
+      `/api/dramabox/episodes?bookId=${encodeURIComponent(bookId)}`,
+      `/api/dramabox/episode?bookId=${encodeURIComponent(bookId)}`,
+      `/api/dramabox/chapterList?bookId=${encodeURIComponent(bookId)}`,
+    ];
+
+    let lastErr = null;
+    let eps = null;
+
+    for (const url of candidates) {
       try {
-        sessionStorage.setItem(`dramabox_eps_${bookId}`, JSON.stringify(eps));
-      } catch {}
-      renderEpisodes(eps);
-      return;
-    } catch (e) {
-      // lanjut ke cache
-      console.warn("[allepisode] gagal:", e);
+        const resp = await apiGetDrama(url);
+        const arr = normalizeEpisodes(resp);
+        if (Array.isArray(arr) && arr.length) {
+          eps = arr;
+          break;
+        }
+      } catch (e) {
+        lastErr = e;
+      }
     }
 
-    // 2) fallback cache (biar list tetap muncul)
-    const cached = getCachedEpisodes();
-    if (cached && Array.isArray(cached) && cached.length) {
-      renderEpisodes(cached);
-      toast("Pakai cache episode (API lagi error)");
+    // kalau gagal semua: coba cache
+    if (!eps || !eps.length) {
+      const cached = getCachedEpisodes();
+      if (Array.isArray(cached) && cached.length) {
+        toast("Gagal load dari server, pakai cache");
+        renderEpisodes(cached);
+        return;
+      }
+
+      el.list.innerHTML = `<div class="season-empty">Gagal memuat episode.</div>`;
+      toast("Gagal memuat episode");
+      if (lastErr) console.warn("loadEpisodes error:", lastErr);
       return;
     }
 
-    // 3) gagal total
-    el.list.innerHTML = `<div class="season-empty">Gagal memuat episode.</div>`;
-    toast("Gagal memuat episode");
+    // cache (opsional)
+    try {
+      sessionStorage.setItem(`dramabox_eps_${bookId}`, JSON.stringify(eps));
+    } catch {}
+
+    renderEpisodes(eps);
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    // back fallback
+    // back fallback (kalau core.js belum handle)
     if (el.back) el.back.addEventListener("click", () => history.back());
 
-    // detail tetap tampil (ambil dari sessionStorage / url)
     const saved = getSavedBook();
     buildDetail(saved || { bookName: nameFromUrl, chapterCount: "?", tags: [] });
 
