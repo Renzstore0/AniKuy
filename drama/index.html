@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AniKuy - Drama China</title>
+  <meta name="description" content="Drama China di AniKuy" />
+  <link rel="stylesheet" href="/assets/css/style.css" />
+  <link rel="icon" href="https://pomf2.lain.la/f/leu65s82.png" />
+</head>
+
+<body data-page="drama">
+  <div class="app-root">
+    <header class="app-header">
+      <button class="icon-button back-button" id="backButton" aria-label="Menu">
+        <!-- icon akan diubah otomatis jadi hamburger oleh core.js -->
+        <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+        </svg>
+      </button>
+
+      <div class="logo-wrap">
+        <img class="logo-img" src="https://pomf2.lain.la/f/22yuvdrk.png" alt="AniKuy Logo" />
+      </div>
+
+      <button class="icon-button" id="searchButton" aria-label="Cari Drama">
+        <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L19 20.49 20.49 19z"/>
+        </svg>
+      </button>
+    </header>
+
+    <main id="mainContent">
+      <div class="page-container">
+        <h2 class="page-title">Drama China</h2>
+
+        <div id="dramaLoading" class="loading-indicator show">
+          <div class="spinner"></div><span>Memuat drama...</span>
+        </div>
+
+        <div class="section-header section-header-spaced">
+          <div><h2 class="section-title">Untuk Kamu</h2></div>
+        </div>
+        <div id="dramaForYouRow" class="anime-row"></div>
+
+        <div class="section-header section-header-spaced">
+          <div><h2 class="section-title">Trending</h2></div>
+        </div>
+        <div id="dramaTrendingRow" class="anime-row"></div>
+
+        <div class="section-header section-header-spaced">
+          <div><h2 class="section-title">Terbaru</h2></div>
+        </div>
+        <div id="dramaLatestRow" class="anime-row"></div>
+
+        <div class="section-header section-header-spaced">
+          <div><h2 class="section-title">Populer Search</h2></div>
+        </div>
+        <div id="dramaPopularRow" class="anime-row"></div>
+      </div>
+    </main>
+
+    <nav class="bottom-nav">
+      <a class="nav-item" href="/"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span class="nav-label">Home</span></a>
+      <a class="nav-item" href="/explore"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 1 0 10 10z"/></svg><span class="nav-label">Explore</span></a>
+      <a class="nav-item" href="/my-list"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 17.27 18.18 21l-1.64-7.03z"/></svg><span class="nav-label">My List</span></a>
+      <a class="nav-item" href="/profile"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12a5 5 0 1 0-5-5z"/></svg><span class="nav-label">Profile</span></a>
+    </nav>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="/assets/js/core.js"></script>
+  <script src="/assets/js/drama.js"></script>
+</body>
+</html>
