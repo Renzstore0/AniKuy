@@ -3,9 +3,12 @@
 
   /* ========= CONST ========= */
   const BASE = "https://www.sankavollerei.com",
-    DRAMA_BASE = "https://dramabox.sansekai.my.id",
+    // ✅ ganti base dramabox ke gateway anabot
+    DRAMA_BASE = "https://anabot.my.id/api/search/drama/dramabox",
     LS_FAV = "anikuy_favorites",
     LS_THEME = "anikuy_theme",
+    // ✅ simpan apikey drama
+    LS_DRAMA_KEY = "dramabox_apikey",
     DARK = "dark",
     LIGHT = "light";
 
@@ -126,10 +129,41 @@
     }
   };
 
-  // ✅ DRAMA API (Dramabox) + fallback proxy anti CORS
+  /* ========= DRAMA APIKEY + PATH MAPPER ========= */
+  // ✅ set apikey dari console / halaman settings
+  window.setDramaApiKey = (k) => {
+    try {
+      localStorage.setItem(LS_DRAMA_KEY, String(k || "").trim());
+      showToast("API key drama disimpan");
+    } catch {}
+  };
+
+  const getDramaApiKey = () => {
+    // prioritas: window.DRAMA_APIKEY -> localStorage -> default
+    const k =
+      (window.DRAMA_APIKEY && String(window.DRAMA_APIKEY).trim()) ||
+      (localStorage.getItem(LS_DRAMA_KEY) || "").trim() ||
+      "freeApikey";
+    return k;
+  };
+
+  const mapDramaPath = (path) => {
+    const p = String(path || "");
+    // support pemanggilan lama: "/api/dramabox/foryou" -> "/foryou"
+    if (p.startsWith("/api/dramabox/")) return p.replace("/api/dramabox", "");
+    return p.startsWith("/") ? p : `/${p}`;
+  };
+
+  const withApiKey = (url) => {
+    const key = getDramaApiKey();
+    const join = url.includes("?") ? "&" : "?";
+    return `${url}${join}apikey=${encodeURIComponent(key)}`;
+  };
+
+  // ✅ DRAMA API (Anabot) + fallback proxy anti CORS
   const apiGetDramaStable = async (path) => {
     try {
-      const url = DRAMA_BASE + path;
+      const url = withApiKey(DRAMA_BASE + mapDramaPath(path));
       return await fetchJsonWithFallback(url);
     } catch (e) {
       console.error(e);
