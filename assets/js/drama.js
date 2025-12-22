@@ -18,10 +18,19 @@
     heroWatchBtn: $("todayWatchBtn"),
     heroDots: $("todayDots"),
 
-    // grids
-    trending: $("dramaTrendingRow"),
+    // only latest
     latest: $("dramaLatestRow"),
-    popular: $("dramaPopularRow"),
+  };
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  const normalizeList = (j) => {
+    if (Array.isArray(j)) return j;
+    if (Array.isArray(j?.data)) return j.data;
+    if (Array.isArray(j?.list)) return j.list;
+    if (Array.isArray(j?.result)) return j.result;
+    if (Array.isArray(j?.items)) return j.items;
+    return null;
   };
 
   const storeBook = (b) => {
@@ -60,17 +69,17 @@
     });
   };
 
-  async function loadGridRequired(path, container) {
-    const j = await apiGetDrama(path);
-    if (!Array.isArray(j)) throw new Error("DRAMA_INVALID_RESPONSE");
+  async function loadLatestOnce() {
+    const j = await apiGetDrama("/api/dramabox/latest");
+    const listRaw = normalizeList(j);
+    if (!Array.isArray(listRaw)) throw new Error("DRAMA_INVALID_RESPONSE");
 
-    // safety: hanya yang punya bookId
-    const list = j.filter((x) => x && x.bookId);
-    renderGrid(container, list);
+    const list = listRaw.filter((x) => x && x.bookId);
+    renderGrid(el.latest, list);
     return list;
   }
 
-  // HERO "Untuk Kamu"
+  // HERO "Untuk Kamu" (optional)
   function initForYouHero(list) {
     const items = (list || [])
       .filter((x) => x && x.cardType === 1 && x.bookId && x.coverWap)
@@ -110,10 +119,6 @@
       if (el.heroPoster) el.heroPoster.src = cur.coverWap || "";
       if (el.heroPosterNext) el.heroPosterNext.src = next.coverWap || "";
 
-      if (el.heroPosterPrev) el.heroPosterPrev.alt = `Poster ${(prev.bookName || "Drama").trim()}`;
-      if (el.heroPoster) el.heroPoster.alt = `Poster ${(cur.bookName || "Drama").trim()}`;
-      if (el.heroPosterNext) el.heroPosterNext.alt = `Poster ${(next.bookName || "Drama").trim()}`;
-
       setDots();
     };
 
@@ -144,31 +149,46 @@
     render();
   }
 
-  document.addEventListener("DOMContentLoaded", async () => {
-    // pastiin overlay loading aktif
+  const showLoading = () => {
     document.body.classList.add("is-loading");
     el.loading && el.loading.classList.add("show");
+  };
 
-    try {
-      // HERO (optional)
+  const hideLoading = () => {
+    document.body.classList.remove("is-loading");
+    el.loading && el.loading.classList.remove("show");
+  };
+
+  async function tryLoadForYouLoop() {
+    while (true) {
       try {
-        const foryou = await apiGetDrama("/api/dramabox/foryou");
-        if (Array.isArray(foryou)) initForYouHero(foryou);
+        const j = await apiGetDrama("/api/dramabox/foryou");
+        const list = normalizeList(j);
+        if (Array.isArray(list)) {
+          initForYouHero(list);
+          return;
+        }
       } catch {}
+      await sleep(6000);
+    }
+  }
 
-      // GRID (wajib sukses semua, kalau ada yang gagal => tetap loading)
-      await loadGridRequired("/api/dramabox/trending", el.trending);
-      await loadGridRequired("/api/dramabox/latest", el.latest);
-      await loadGridRequired("/api/dramabox/populersearch", el.popular);
+  document.addEventListener("DOMContentLoaded", async () => {
+    showLoading();
 
-      // kalau sudah sukses semua => hilangkan overlay loading
-      document.body.classList.remove("is-loading");
-      el.loading && el.loading.classList.remove("show");
-    } catch (e) {
-      // gagal? DIAM + TETAP LOADING
-      console.error(e);
-      document.body.classList.add("is-loading");
-      el.loading && el.loading.classList.add("show");
+    // foryou di background (nggak ngeblok latest)
+    tryLoadForYouLoop();
+
+    // latest: retry sampai sukses, baru loading hilang
+    while (true) {
+      try {
+        await loadLatestOnce();
+        hideLoading();
+        break;
+      } catch (e) {
+        console.error("[DRAMA] latest fail", e);
+        await sleep(2500);
+      }
     }
   });
 })();
