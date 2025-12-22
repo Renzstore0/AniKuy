@@ -319,27 +319,36 @@ body.theme-light .episode-search-input::placeholder{color:#9ca3af}
 /* rotate iframe saat fullscreen (tombol fullscreen dari dalam iframe) */
 #episodePlayer:fullscreen,#episodePlayer:-webkit-full-screen{position:fixed!important;top:50%!important;left:50%!important;width:100vh!important;height:100vw!important;transform:translate(-50%,-50%) rotate(90deg)!important;transform-origin:center!important;border:0!important;background:#000!important}
 
-/* ===== Drawer Menu (Hamburger) - FIX sesuai menu.js ===== */
+/* ===== Drawer Menu (Hamburger) - VERTICAL LIST ===== */
 .drawer-overlay{position:fixed;inset:0;background:rgba(2,6,23,.6);backdrop-filter:blur(2px);opacity:0;pointer-events:none;transition:opacity .16s ease;z-index:9998}
 .drawer-overlay.show{opacity:1;pointer-events:auto}
 
-.side-drawer{position:fixed;top:0;left:0;bottom:0;width:min(320px,86vw);height:100dvh;background:rgba(15,23,42,.98);border-right:1px solid rgba(30,64,175,.35);box-shadow:18px 0 45px rgba(0,0,0,.55);transform:translateX(-102%);transition:transform .16s ease;z-index:9999;padding:14px 14px 18px;overflow:auto}
+.side-drawer{position:fixed;top:0;left:0;bottom:0;width:min(340px,88vw);height:100dvh;background:rgba(15,23,42,.98);border-right:1px solid rgba(148,163,184,.18);box-shadow:18px 0 45px rgba(0,0,0,.55);transform:translateX(-102%);transition:transform .16s ease;z-index:9999;padding:14px 14px 18px;overflow:auto}
 .side-drawer.show{transform:translateX(0)}
 
 .side-drawer-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
-.side-drawer-title{font-size:16px;font-weight:800;letter-spacing:.06em;color:#e5f0ff}
-.side-drawer-sub{margin-top:2px;font-size:12px;color:#9ca3af}
+.side-drawer-title{font-size:22px;font-weight:900;letter-spacing:.04em;color:#e5f0ff;line-height:1}
+.side-drawer-sub{margin-top:6px;font-size:12px;color:#9ca3af;font-weight:600}
 
-.side-drawer-links{display:flex;gap:10px;flex-wrap:wrap}
-.side-drawer-link{display:inline-flex;align-items:center;justify-content:center;padding:10px 12px;border-radius:12px;background:rgba(2,6,23,.35);color:#e5e7eb;text-decoration:none;font-weight:800;letter-spacing:.04em}
-.side-drawer-link:active{transform:scale(.98)}
-.side-drawer-link:hover{background:rgba(2,6,23,.55)}
+.side-drawer-section{margin-top:14px;padding-top:14px;border-top:1px solid rgba(148,163,184,.16)}
+.side-drawer-section-title{font-size:12px;color:#9ca3af;font-weight:800;letter-spacing:.1em;margin-bottom:10px;text-transform:uppercase}
 
-.side-drawer[data-active="anime"] .side-drawer-link.active{background:linear-gradient(135deg,#1d4ed8,#22d3ee);color:#e5f0ff}
-.side-drawer[data-active="drama"] .side-drawer-link.active{background:linear-gradient(135deg,#a855f7,#22d3ee);color:#e5f0ff}
+.side-drawer-nav{display:flex;flex-direction:column;gap:10px}
+.side-drawer-link{width:100%;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:transparent;border:1px solid rgba(148,163,184,.14);color:#e5e7eb;text-decoration:none;font-weight:800;letter-spacing:.02em}
+.side-drawer-link:hover{background:rgba(2,6,23,.35)}
+.side-drawer-link:active{transform:scale(.99)}
 
-/* tombol hamburger beda warna sesuai page */
-.icon-button.menu-btn[data-menu="anime"]{background:linear-gradient(135deg,#1d4ed8,#22d3ee)!important}
-.icon-button.menu-btn[data-menu="drama"]{background:linear-gradient(135deg,#a855f7,#22d3ee)!important}
+.side-drawer-ico{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;opacity:.92}
+.side-drawer-text{display:flex;flex-direction:column;gap:2px}
+.side-drawer-text-main{font-size:15px;line-height:1.1}
+.side-drawer-text-sub{font-size:12px;color:#9ca3af;font-weight:700}
 
+/* aktif (sesuai halaman): cukup kasih class .active di link nya */
+.side-drawer-link.active{border-color:transparent;background:linear-gradient(135deg,#1d4ed8,#22d3ee);color:#e5f0ff}
+.side-drawer-link.active .side-drawer-text-sub{color:rgba(229,240,255,.92)}
+
+/* opsional: beda warna aktif kalau halaman drama */
+body[data-page="drama"] .side-drawer-link.active{background:linear-gradient(135deg,#a855f7,#22d3ee)}
+
+/* tombol hamburger: DEFAULT (nggak pakai warna tambahan) */
 html.drawer-open,body.drawer-open{overflow:hidden}
