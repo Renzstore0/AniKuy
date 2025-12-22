@@ -12,6 +12,12 @@
   const $ = (q) => document.getElementById(q);
   const $$ = (q) => document.querySelectorAll(q);
 
+  const isDramaContext = () => {
+    const p = location.pathname || "";
+    const page = document.body?.dataset?.page || "";
+    return page === "drama" || p.startsWith("/drama");
+  };
+
   /* ========= TOAST ========= */
   window.showToast = (msg) => {
     const t = $("toast");
@@ -130,12 +136,12 @@
       return await fetchJsonWithFallback(url);
     } catch (e) {
       console.error(e);
-      showToast("Gagal memuat drama");
+      // ✅ di halaman drama: jangan tampilkan toast gagal
+      if (!isDramaContext()) showToast("Gagal memuat drama");
       throw e;
     }
   };
 
-  // kunci biar nggak ketimpa script lain
   try {
     Object.defineProperty(window, "apiGetDrama", {
       value: apiGetDramaStable,
@@ -212,23 +218,7 @@
     return c;
   };
 
-  /* ========= SIDEDRAWER ========= */
-  const injectDrawerCss = () => {
-    if (document.getElementById("anikuy-drawer-css")) return;
-    const style = document.createElement("style");
-    style.id = "anikuy-drawer-css";
-    style.textContent = `
-      .drawer-overlay{position:fixed;inset:0;background:rgba(2,6,23,.55);opacity:0;pointer-events:none;transition:opacity .16s ease;z-index:9998}
-      .drawer-overlay.show{opacity:1;pointer-events:auto}
-      .side-drawer{position:fixed;top:0;left:0;height:100dvh;width:min(320px,86vw);background:rgba(15,23,42,.98);
-        border-right:1px solid rgba(30,64,175,.35);box-shadow:18px 0 45px rgba(0,0,0,.55);
-        transform:translateX(-102%);transition:transform .16s ease;z-index:9999;padding:14px 14px 18px}
-      .side-drawer.show{transform:translateX(0)}
-      html.drawer-open,body.drawer-open{overflow:hidden}
-    `;
-    document.head.appendChild(style);
-  };
-
+  /* ========= SIDEDRAWER (yang kamu punya tetap aman) ========= */
   const highlightActiveDrawer = () => {
     const drawer = $("sideDrawer");
     if (!drawer) return;
@@ -256,7 +246,6 @@
 
     d.classList.remove("show");
     d.setAttribute("aria-hidden", "true");
-
     o.classList.remove("show");
 
     document.documentElement.classList.remove("drawer-open");
@@ -291,61 +280,6 @@
       bindExistingDrawerOnce();
       return;
     }
-
-    injectDrawerCss();
-
-    const overlay = document.createElement("div");
-    overlay.id = "drawerOverlay";
-    overlay.className = "drawer-overlay";
-    overlay.hidden = true;
-
-    const drawer = document.createElement("aside");
-    drawer.id = "sideDrawer";
-    drawer.className = "side-drawer";
-    drawer.setAttribute("aria-hidden", "true");
-
-    drawer.innerHTML = `
-      <div class="drawer-head" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px">
-        <div style="display:flex;align-items:center;gap:10px">
-          <img class="drawer-logo" src="https://pomf2.lain.la/f/22yuvdrk.png" alt="AniKuy"
-               style="width:34px;height:34px;border-radius:12px;object-fit:contain;background:rgba(2,6,23,.35);padding:6px">
-          <div>
-            <div style="font-size:16px;font-weight:800;letter-spacing:.06em;color:#e5f0ff;line-height:1">AniKuy</div>
-            <div style="font-size:12px;color:#94a3b8;margin-top:2px">Pilih kategori</div>
-          </div>
-        </div>
-
-        <button class="drawer-close" id="drawerClose" type="button" aria-label="Tutup"
-                style="width:32px;height:32px;border-radius:999px;border:none;background:rgba(2,6,23,.35);color:#e5e7eb;display:flex;align-items:center;justify-content:center;cursor:pointer">
-          ✕
-        </button>
-      </div>
-
-      <div class="drawer-items" style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
-        <button class="drawer-item" type="button" data-href="/" style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;border:1px solid rgba(148,163,184,.18);background:rgba(2,6,23,.25);color:#e5e7eb;font-weight:700;letter-spacing:.04em;cursor:pointer;text-align:left">
-          <span style="width:8px;height:8px;border-radius:999px;background:rgba(148,163,184,.7)"></span>
-          <span>Anime</span>
-        </button>
-
-        <button class="drawer-item" type="button" data-href="/drama" style="width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:14px;border:1px solid rgba(148,163,184,.18);background:rgba(2,6,23,.25);color:#e5e7eb;font-weight:700;letter-spacing:.04em;cursor:pointer;text-align:left">
-          <span style="width:8px;height:8px;border-radius:999px;background:rgba(148,163,184,.7)"></span>
-          <span>Drama China</span>
-        </button>
-      </div>
-    `;
-
-    document.body.appendChild(overlay);
-    document.body.appendChild(drawer);
-
-    bindExistingDrawerOnce();
-
-    drawer.querySelectorAll(".drawer-item[data-href]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const href = btn.getAttribute("data-href") || "/";
-        closeDrawer();
-        location.href = href;
-      });
-    });
   };
 
   function openDrawer() {
@@ -417,18 +351,16 @@
     bindTheme(initTheme());
 
     const page = document.body?.dataset?.page || "";
-    const isDramaPage = page === "drama" || (location.pathname || "").startsWith("/drama");
+    const dramaNow = isDramaContext();
 
-    // ✅ FIX: tombol Home di bottom-nav ngikut konteks (drama -> /drama, anime -> /)
+    // tombol Home di bottom-nav ngikut konteks
     const homeNav = document.querySelector('.bottom-nav a.nav-item[data-tab="home"]');
-    if (homeNav) {
-      homeNav.setAttribute("href", isDramaPage ? "/drama" : "/");
-    }
+    if (homeNav) homeNav.setAttribute("href", dramaNow ? "/drama" : "/");
 
     $(".logo-wrap")?.addEventListener("click", () => (location.href = "/"));
 
     $("searchButton")?.addEventListener("click", () => {
-      location.href = isDramaPage ? "/drama/search" : "/search";
+      location.href = dramaNow ? "/drama/search" : "/search";
     });
 
     $("settingsButton")?.addEventListener("click", () => (location.href = "/settings"));
