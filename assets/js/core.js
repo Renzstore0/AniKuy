@@ -252,7 +252,7 @@
           <span>Anime</span>
         </button>
 
-        <button class="drawer-item" type="button" data-href="/drama/index.html">
+        <button class="drawer-item" type="button" data-href="/drama">
           <span class="drawer-dot"></span>
           <span>Drama China</span>
         </button>
