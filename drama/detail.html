@@ -28,7 +28,6 @@
   </div>
 
   <button class="icon-button" id="searchButton" aria-label="Cari Drama">
-    <!-- disamain dengan detail anime -->
     <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
       <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L19 20.49 20.49 19 15.5 14zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
     </svg>
@@ -45,15 +44,11 @@
       </div>
     </div>
 
-    <div id="dramaEpisodeSearchWrap" class="episode-search-wrap">
-      <input id="dramaEpisodeSearchInput" class="episode-search-input" type="text" placeholder="Cari episode... (misal: 5 atau 12)">
-    </div>
-
+    <!-- ✅ search episode dihapus -->
     <div id="dramaEpisodeList" class="episode-list episode-scroll"></div>
   </div>
 </main>
 
-<!-- bottom nav: ikon disamakan + explore jadi compass (bukan lingkaran) -->
 <nav class="bottom-nav">
   <a class="nav-item" href="/">
     <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -71,7 +66,6 @@
 
   <a class="nav-item" href="/my-list">
     <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <!-- star yang bener -->
       <path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.62L12 2 9.19 8.62 2 9.24l5.46 4.73L5.82 21z"/>
     </svg>
     <span class="nav-label">My List</span>
