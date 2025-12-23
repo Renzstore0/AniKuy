@@ -1,24 +1,18 @@
 <!doctype html>
 <html lang="id">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>AniKuy - Explore Drama</title>
-  <meta name="description" content="Explore drama di AniKuy: Trending & VIP.">
-
-  <link rel="stylesheet" href="/assets/css/style.css">
-  <link rel="icon" href="https://pomf2.lain.la/f/leu65s82.png">
-
-  <!-- Vercel Web Analytics -->
-  <script>
-    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-  </script>
-  <script defer src="/_vercel/insights/script.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AniKuy - Drama Explore</title>
+  <meta name="description" content="Explore drama di AniKuy" />
+  <link rel="stylesheet" href="/assets/css/style.css" />
+  <link rel="icon" href="https://pomf2.lain.la/f/leu65s82.png" />
 
   <style>
+    /* grid 3 kolom khusus explore drama */
     body[data-page="drama-explore"] .drama-grid{
       display:grid;
-      grid-template-columns:repeat(3, minmax(0, 1fr));
+      grid-template-columns:repeat(3,minmax(0,1fr));
       gap:12px 10px;
     }
     body[data-page="drama-explore"] .drama-grid .anime-card{
@@ -26,90 +20,115 @@
       max-width:none !important;
       flex:initial !important;
     }
+
+    /* panel switch (biar isi trending/vip ga ketuker) */
+    body[data-page="drama-explore"] .explore-panel{ display:none; }
+    body[data-page="drama-explore"] .explore-panel.active{ display:block; }
   </style>
 </head>
 
 <body data-page="drama-explore">
-<div class="app-root">
+  <div class="app-root">
+    <header class="app-header">
+      <button class="icon-button back-button" id="backButton" aria-label="Menu">
+        <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/>
+        </svg>
+      </button>
 
-<header class="app-header">
-  <button class="icon-button back-button" id="backButton" aria-label="Kembali">
-    <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
-    </svg>
-  </button>
+      <div class="logo-wrap">
+        <img class="logo-img" src="https://pomf2.lain.la/f/22yuvdrk.png" alt="AniKuy Logo" />
+      </div>
 
-  <div class="logo-wrap">
-    <img class="logo-img" src="https://pomf2.lain.la/f/22yuvdrk.png" alt="AniKuy Logo">
+      <button class="icon-button" id="searchButton" aria-label="Cari Drama">
+        <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79L19 20.49 20.49 19 15.5 14zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+        </svg>
+      </button>
+    </header>
+
+    <main id="mainContent">
+      <div class="page-container">
+
+        <!-- Loading fullscreen (pakai CSS kamu saat body.is-loading) -->
+        <div id="exploreLoading" class="loading-indicator show">
+          <div class="spinner"></div><span>Memuat drama...</span>
+        </div>
+
+        <!-- Content disembunyiin sampai data kelar -->
+        <div id="exploreContent" style="display:none;">
+          <h1 class="page-title">Explore</h1>
+
+          <div class="segment-tabs">
+            <button id="tabTrending" class="segment-tab active" type="button">Trending</button>
+            <button id="tabVip" class="segment-tab" type="button">VIP</button>
+          </div>
+
+          <!-- Panel Trending -->
+          <section id="panelTrending" class="explore-panel active">
+            <div id="trendingGrid" class="drama-grid"></div>
+          </section>
+
+          <!-- Panel VIP -->
+          <section id="panelVip" class="explore-panel">
+            <div id="vipGrid" class="drama-grid"></div>
+          </section>
+        </div>
+
+      </div>
+    </main>
+
+    <!-- Navbar -->
+    <nav class="bottom-nav">
+      <a class="nav-item" href="/drama">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        <span class="nav-label">Home</span>
+      </a>
+
+      <a class="nav-item active" href="/drama/explore">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm3.94 6.06-2.12 5.3a1 1 0 0 1-.56.56l-5.3 2.12a.25.25 0 0 1-.32-.32l2.12-5.3a1 1 0 0 1 .56-.56l5.3-2.12a.25.25 0 0 1 .32.32z"/>
+        </svg>
+        <span class="nav-label">Explore</span>
+      </a>
+
+      <a class="nav-item" href="/my-list">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.62L12 2 9.19 8.62 2 9.24l5.46 4.73L5.82 21z"/>
+        </svg>
+        <span class="nav-label">My List</span>
+      </a>
+
+      <a class="nav-item" href="/profile">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5.006 5.006 0 0 0 5 5zm0 2c-4.33 0-8 2.17-8 4.5V21h16v-2.5C20 16.17 16.33 14 12 14z"/>
+        </svg>
+        <span class="nav-label">Profile</span>
+      </a>
+    </nav>
   </div>
 
-  <div class="icon-button" aria-hidden="true" style="visibility:hidden"></div>
-</header>
+  <!-- Drawer Overlay -->
+  <div id="drawerOverlay" class="drawer-overlay" hidden></div>
 
-<main id="mainContent">
-  <div class="page-container">
-
-    <!-- Loading fullscreen -->
-    <div id="dramaExploreLoading" class="loading-indicator show">
-      <div class="spinner"></div><span>Memuat explore...</span>
+  <!-- Side Drawer -->
+  <aside id="sideDrawer" class="side-drawer" aria-hidden="true">
+    <div class="side-drawer-head">
+      <div class="side-drawer-title">Menu</div>
+      <button id="drawerClose" class="icon-button" type="button" aria-label="Tutup menu">✕</button>
     </div>
+    <nav class="side-drawer-nav">
+      <a class="side-drawer-link" href="/">Anime</a>
+      <a class="side-drawer-link active" href="/drama">Short Drama</a>
+    </nav>
+  </aside>
 
-    <!-- Konten tampil setelah Trending & VIP beres -->
-    <div id="dramaExploreWrap" style="display:none;">
-      <h2 class="page-title">Explore</h2>
+  <div id="toast" class="toast"></div>
 
-      <div class="explore-tabs">
-        <button class="explore-tab active" data-tab="trending" type="button">Trending</button>
-        <button class="explore-tab" data-tab="vip" type="button">VIP</button>
-      </div>
-
-      <div class="explore-panel active" data-tab="trending">
-        <div id="trendingGrid" class="drama-grid"></div>
-      </div>
-
-      <div class="explore-panel" data-tab="vip">
-        <div id="vipGrid" class="drama-grid"></div>
-      </div>
-    </div>
-
-  </div>
-</main>
-
-<nav class="bottom-nav">
-  <a class="nav-item" href="/drama">
-    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-    </svg>
-    <span class="nav-label">Home</span>
-  </a>
-
-  <a class="nav-item active" href="/drama/explore">
-    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="currentColor" d="M12 2a10 10 0 1 0 10 10A10.011 10.011 0 0 0 12 2zm3.94 6.06-2.12 5.3a1 1 0 0 1-.56.56l-5.3 2.12a.25.25 0 0 1-.32-.32l2.12-5.3a1 1 0 0 1 .56-.56l5.3-2.12a.25.25 0 0 1 .32.32z"/>
-    </svg>
-    <span class="nav-label">Explore</span>
-  </a>
-
-  <a class="nav-item" href="/my-list">
-    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="currentColor" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.62L12 2 9.19 8.62 2 9.24l5.46 4.73L5.82 21z"/>
-    </svg>
-    <span class="nav-label">My List</span>
-  </a>
-
-  <a class="nav-item" href="/profile">
-    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5.006 5.006 0 0 0 5 5zm0 2c-4.33 0-8 2.17-8 4.5V21h16v-2.5C20 16.17 16.33 14 12 14z"/>
-    </svg>
-    <span class="nav-label">Profile</span>
-  </a>
-</nav>
-
-</div>
-
-<div id="toast" class="toast"></div>
-
-<script src="/assets/js/core.js"></script>
-<script src="/assets/js/drama-explore.js"></script>
+  <script src="/assets/js/core.js"></script>
+  <script src="/assets/js/menu.js"></script>
+  <script src="/assets/js/drama-explore.js"></script>
 </body>
 </html>
