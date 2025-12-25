@@ -4,19 +4,15 @@
   const $ = (id) => document.getElementById(id);
   const toast = (m) => typeof showToast === "function" && showToast(m);
 
-  const p = new URLSearchParams(location.search);
-  const bookId = p.get("bookId");
-  const chapterId = p.get("chapterId");
-  const name = p.get("name") || "";
-
   const el = {
     title: $("dramaWatchTitle"),
     player: $("dramaPlayer"),
+    loading: $("dramaLoading"),
     qualityBtn: $("dramaQualityBtn"),
     qualityMenu: $("dramaQualityMenu"),
     qualityLabel: $("dramaQualityLabel"),
     shareBtn: $("dramaShareBtn"),
-    chip: $("dramaEpisodeChipList"),
+    backBtn: $("backButton"),
   };
 
   const closePanels = () => el.qualityMenu?.classList.remove("show");
@@ -26,47 +22,137 @@
     if (!e.target.closest(".player-toolbar") && !e.target.closest(".dropdown-panel")) closePanels();
   });
 
-  const getSavedEpisodes = () => {
-    try {
-      if (!bookId) return null;
-      const raw = sessionStorage.getItem(`dramabox_eps_${bookId}`);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
+  const showLoading = (on, text = "Memuat episode...") => {
+    if (!el.loading) return;
+    const t = el.loading.querySelector(".txt");
+    if (t) t.textContent = text;
+    el.loading.classList.toggle("show", !!on);
+  };
+
+  const getParams = () => {
+    const p = new URLSearchParams(location.search);
+    return {
+      bookId: p.get("bookId") || "",
+      chapterId: p.get("chapterId") || "",
+      chapterIndex: p.get("chapterIndex") ? Number(p.get("chapterIndex")) : null,
+      name: p.get("name") || "",
+    };
+  };
+
+  // =========================
+  // HOOKS (kamu isi sendiri)
+  // =========================
+  // window.getDramaEpisodes = async (bookId) => [{chapterId, chapterIndex, ...}, ...]
+  // window.getDramaStream   = async ({bookId, chapterIndex, chapterId}) => { videoUrl, qualities:[{quality, videoPath, isDefault}] }
+  const fetchEpisodes = async (bookId) => {
+    if (typeof window.getDramaEpisodes === "function") return await window.getDramaEpisodes(bookId);
+
+    // fallback kalau kamu masih pakai apiGetDrama (same origin)
+    if (typeof window.apiGetDrama === "function") {
+      const eps = await window.apiGetDrama(`/api/dramabox/allepisode?bookId=${encodeURIComponent(bookId)}`);
+      return Array.isArray(eps) ? eps : [];
     }
+
+    throw new Error("NO_EPISODE_PROVIDER");
   };
 
-  const epNum = (t, idx) => {
-    const s = String(t || "");
-    const m = s.match(/(\d+)/);
-    return m ? parseInt(m[1], 10) : idx + 1;
+  const fetchStream = async ({ bookId, chapterIndex, chapterId }) => {
+    if (typeof window.getDramaStream === "function") {
+      return await window.getDramaStream({ bookId, chapterIndex, chapterId });
+    }
+
+    // fallback contoh (kalau kamu punya endpoint sendiri)
+    if (typeof window.apiGetDrama === "function" && chapterIndex != null) {
+      return await window.apiGetDrama(
+        `/api/dramabox/stream?bookId=${encodeURIComponent(bookId)}&chapterIndex=${encodeURIComponent(chapterIndex)}`
+      );
+    }
+
+    throw new Error("NO_STREAM_PROVIDER");
   };
 
-  const pickCdn = (ep) => {
-    const cdn = (ep?.cdnList || []).find((c) => c?.isDefault === 1) || (ep?.cdnList || [])[0];
-    return cdn || null;
+  // =========================
+  // NORMALIZER
+  // =========================
+  const normalizeEpisodes = (payload) => {
+    if (Array.isArray(payload)) return payload;
+
+    const candidates = [
+      payload?.data?.result?.chapterList,
+      payload?.data?.chapterList,
+      payload?.chapterList,
+      payload?.data,
+      payload?.result,
+      payload?.list,
+      payload?.items,
+    ];
+
+    for (const c of candidates) {
+      if (Array.isArray(c)) return c;
+      if (Array.isArray(c?.chapterList)) return c.chapterList;
+    }
+    return [];
   };
 
-  const buildQualityList = (ep) => {
-    const cdn = pickCdn(ep);
+  // stream payload extractor (fleksibel)
+  const extractStreamData = (payload) => {
+    // paling sering: payload.data.result.data atau payload.data
+    const d =
+      payload?.data?.result?.data ||
+      payload?.data?.data ||
+      payload?.data ||
+      payload?.result ||
+      payload;
+
+    return d || {};
+  };
+
+  const buildQualityListFromStream = (streamPayload) => {
+    const d = extractStreamData(streamPayload);
+
+    // format A: { qualities:[{quality, videoPath, isDefault}] }
+    if (Array.isArray(d?.qualities)) {
+      return d.qualities
+        .filter((x) => x?.videoPath)
+        .map((x) => ({
+          q: x.quality ? `${x.quality}p` : "Auto",
+          qNum: Number(x.quality) || 0,
+          url: x.videoPath,
+          isDefault: x.isDefault === 1,
+        }))
+        .sort((a, b) => (b.qNum - a.qNum) || (b.isDefault - a.isDefault));
+    }
+
+    // format B (punyamu lama): episode.cdnList[].videoPathList[]
+    // (nggak ada di stream; cuma jaga-jaga)
+    const cdn = (d?.cdnList || []).find((c) => c?.isDefault === 1) || (d?.cdnList || [])[0];
     const list = cdn?.videoPathList || [];
-    return list
-      .filter((x) => x?.videoPath)
-      .map((x) => ({
-        q: x.quality ? `${x.quality}p` : "Auto",
-        qNum: x.quality || 0,
-        url: x.videoPath,
-        isDefault: x.isDefault === 1,
-      }))
-      .sort((a, b) => (b.qNum - a.qNum) || (b.isDefault - a.isDefault));
+    if (Array.isArray(list) && list.length) {
+      return list
+        .filter((x) => x?.videoPath)
+        .map((x) => ({
+          q: x.quality ? `${x.quality}p` : "Auto",
+          qNum: Number(x.quality) || 0,
+          url: x.videoPath,
+          isDefault: x.isDefault === 1,
+        }))
+        .sort((a, b) => (b.qNum - a.qNum) || (b.isDefault - a.isDefault));
+    }
+
+    // fallback url tunggal
+    if (d?.videoUrl) {
+      return [{ q: "Auto", qNum: 0, url: d.videoUrl, isDefault: true }];
+    }
+
+    return [];
   };
 
-  const setPlayer = (url) => {
+  const setPlayer = async (url) => {
     if (!el.player) return;
+    el.player.pause?.();
     el.player.src = url || "";
     el.player.load();
-    // autoplay kalau browser ngizinin
-    el.player.play?.().catch(() => {});
+    try { await el.player.play?.(); } catch {}
   };
 
   const renderQuality = (qualities, activeUrl) => {
@@ -82,9 +168,11 @@
       const b = document.createElement("button");
       b.className = "dropdown-item" + (it.url === activeUrl ? " active" : "");
       b.textContent = it.q;
-      b.onclick = () => {
+      b.onclick = async () => {
         el.qualityLabel && (el.qualityLabel.textContent = it.q);
-        setPlayer(it.url);
+        showLoading(true, "Ganti kualitas...");
+        await setPlayer(it.url);
+        showLoading(false);
         renderQuality(qualities, it.url);
         closePanels();
       };
@@ -92,67 +180,117 @@
     });
   };
 
-  const renderChips = (eps) => {
-    if (!el.chip || !Array.isArray(eps)) return;
-    el.chip.innerHTML = "";
+  // =========================
+  // PLAYER STATE
+  // =========================
+  let episodes = [];
+  let currentIdx = -1;
+  let switching = false;
 
-    const sorted = eps.slice().sort((a, b) => (a.chapterIndex ?? 0) - (b.chapterIndex ?? 0));
+  const sortEpisodes = (eps) =>
+    eps.slice().sort((a, b) => (Number(a?.chapterIndex) || 0) - (Number(b?.chapterIndex) || 0));
 
-    sorted.forEach((ep, idx) => {
-      const b = document.createElement("button");
-      const n = epNum(ep.chapterName, idx);
+  const findIndexFromParams = (eps, { chapterId, chapterIndex }) => {
+    const sorted = sortEpisodes(eps);
 
-      b.type = "button";
-      b.className = "episode-chip" + (String(ep.chapterId) === String(chapterId) ? " active" : "");
-      b.textContent = String(n);
-
-      b.onclick = () => {
-        if (!ep?.chapterId) return;
-        location.href = `/drama/watch?bookId=${encodeURIComponent(bookId)}&chapterId=${encodeURIComponent(
-          ep.chapterId
-        )}&name=${encodeURIComponent(name)}`;
-      };
-
-      el.chip.appendChild(b);
-    });
-
-    el.chip.querySelector(".episode-chip.active")?.scrollIntoView?.({
-      behavior: "smooth",
-      inline: "center",
-      block: "nearest",
-    });
-  };
-
-  async function load() {
-    if (!bookId || !chapterId) return toast("Parameter bookId/chapterId tidak lengkap");
-
-    // judul
-    el.title && (el.title.textContent = name ? `Nonton • ${name}` : "Nonton Drama");
-
-    // ambil episode list (coba dari sessionStorage dulu)
-    let eps = getSavedEpisodes();
-    if (!Array.isArray(eps) || !eps.length) {
-      try {
-        eps = await apiGetDrama(`/api/dramabox/allepisode?bookId=${encodeURIComponent(bookId)}`);
-      } catch {
-        return;
-      }
+    if (Number.isFinite(chapterIndex)) {
+      const byIndex = sorted.findIndex((x) => Number(x?.chapterIndex) === Number(chapterIndex));
+      if (byIndex >= 0) return byIndex;
     }
 
-    if (!Array.isArray(eps) || !eps.length) return toast("Episode tidak ditemukan");
+    if (chapterId) {
+      const byId = sorted.findIndex((x) => String(x?.chapterId) === String(chapterId));
+      if (byId >= 0) return byId;
+    }
 
-    renderChips(eps);
+    return 0; // default EP pertama
+  };
 
-    const ep = eps.find((x) => String(x.chapterId) === String(chapterId));
-    if (!ep) return toast("Chapter tidak ditemukan");
+  const pushUrl = ({ bookId, chapterId, chapterIndex, name }) => {
+    const u = new URL(location.href);
+    u.searchParams.set("bookId", bookId);
+    if (chapterId) u.searchParams.set("chapterId", chapterId);
+    if (Number.isFinite(chapterIndex)) u.searchParams.set("chapterIndex", String(chapterIndex));
+    if (name) u.searchParams.set("name", name);
+    history.pushState({ bookId, chapterId, chapterIndex, name }, "", u.toString());
+  };
 
-    const qualities = buildQualityList(ep);
-    if (!qualities.length) return toast("Link video tidak tersedia");
+  const updateTitle = (name, epNumber) => {
+    if (!el.title) return;
+    const base = name ? `Nonton • ${name}` : "Nonton Drama";
+    el.title.textContent = epNumber ? `${base} • EP ${epNumber}` : base;
+  };
 
-    const active = qualities.find((x) => x.isDefault) || qualities[0];
-    el.qualityLabel && (el.qualityLabel.textContent = active.q);
-    setPlayer(active.url);
-    renderQuality(qualities, active.url);
+  const playAt = async (idx, { push = true } = {}) => {
+    if (switching) return;
+    switching = true;
+
+    try {
+      const params = getParams();
+      const sorted = sortEpisodes(episodes);
+
+      if (!sorted[idx]) {
+        toast("Episode tidak ditemukan");
+        return;
+      }
+
+      currentIdx = idx;
+      const ep = sorted[idx];
+
+      const chapterIndex = Number(ep?.chapterIndex);
+      const chapterId = ep?.chapterId ? String(ep.chapterId) : params.chapterId;
+
+      // update URL tanpa reload
+      if (push) {
+        pushUrl({ bookId: params.bookId, chapterId, chapterIndex, name: params.name });
+      }
+
+      const epNo = Number.isFinite(chapterIndex) ? chapterIndex + 1 : idx + 1;
+      updateTitle(params.name, epNo);
+
+      showLoading(true, "Memuat video...");
+
+      const streamPayload = await fetchStream({
+        bookId: params.bookId,
+        chapterIndex: Number.isFinite(chapterIndex) ? chapterIndex : params.chapterIndex,
+        chapterId,
+      });
+
+      const qualities = buildQualityListFromStream(streamPayload);
+      if (!qualities.length) {
+        toast("Link video tidak tersedia");
+        return;
+      }
+
+      const active = qualities.find((x) => x.isDefault) || qualities[0];
+      el.qualityLabel && (el.qualityLabel.textContent = active.q);
+
+      await setPlayer(active.url);
+      renderQuality(qualities, active.url);
+    } catch (e) {
+      console.error("[playAt] error:", e);
+      toast("Gagal memuat video");
+    } finally {
+      showLoading(false);
+      switching = false;
+    }
+  };
+
+  const playNext = async () => {
+    const sorted = sortEpisodes(episodes);
+    const next = currentIdx + 1;
+    if (next >= sorted.length) return toast("Udah episode terakhir");
+    await playAt(next, { push: true });
+  };
+
+  // =========================
+  // INIT
+  // =========================
+  async function init() {
+    const params = getParams();
+    if (!params.bookId) return toast("bookId tidak ditemukan");
+
+    if (el.backBtn) el.backBtn.onclick = () => history.back();
 
     el.qualityBtn && (el.qualityBtn.onclick = () => togglePanel());
 
@@ -164,7 +302,43 @@
               .writeText(location.href)
               .then(() => toast("Link disalin"))
               .catch(() => toast("Gagal menyalin link")));
+
+    if (!el.player) return;
+
+    // auto next (tanpa reload)
+    el.player.addEventListener("ended", () => {
+      // biar nggak “kedip” kalau user klik manual
+      playNext().catch(() => {});
+    });
+
+    showLoading(true, "Memuat episode...");
+
+    try {
+      const raw = await fetchEpisodes(params.bookId);
+      episodes = normalizeEpisodes(raw);
+      if (!episodes.length) return toast("Episode tidak ditemukan");
+
+      // cache biar cepat
+      try {
+        sessionStorage.setItem(`dramabox_eps_${params.bookId}`, JSON.stringify(episodes));
+      } catch {}
+
+      const idx = findIndexFromParams(episodes, params);
+      await playAt(idx, { push: false });
+    } catch (e) {
+      console.error("[init] error:", e);
+      toast("Gagal memuat episode");
+    } finally {
+      showLoading(false);
+    }
+
+    // back/forward browser (tanpa reload)
+    window.addEventListener("popstate", async () => {
+      const p = getParams();
+      const idx = findIndexFromParams(episodes, p);
+      await playAt(idx, { push: false });
+    });
   }
 
-  document.addEventListener("DOMContentLoaded", load);
+  document.addEventListener("DOMContentLoaded", init);
 })();
