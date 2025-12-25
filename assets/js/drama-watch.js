@@ -1,105 +1,396 @@
-<!doctype html>
-<html lang="id">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AniKuy - Nonton Drama</title>
-  <link rel="stylesheet" href="/assets/css/style.css" />
+(() => {
+  "use strict";
 
-  <style>
-    /* overlay loading + transisi halus */
-    .player-stage{ position:relative; }
-    .player-loading{
-      position:absolute; inset:0;
-      display:none;
-      align-items:center; justify-content:center;
-      background: rgba(0,0,0,.45);
-      backdrop-filter: blur(2px);
-      border-radius: 16px;
-      z-index: 5;
+  const $ = (id) => document.getElementById(id);
+  const toast = (m) => typeof showToast === "function" && showToast(m);
+
+  // =========================
+  // PARAMS
+  // =========================
+  const p = new URLSearchParams(location.search);
+  const bookId = p.get("bookId");
+  const name = p.get("name") || "";
+  // boleh salah satu: chapterIndex atau chapterId
+  const chapterIndexParam = p.get("chapterIndex");
+  const chapterIdParam = p.get("chapterId");
+
+  // =========================
+  // ELEMENTS
+  // =========================
+  const el = {
+    title: $("dramaWatchTitle"),
+    player: $("dramaPlayer"),
+    loading: $("dramaLoading"),
+    qualityBtn: $("dramaQualityBtn"),
+    qualityMenu: $("dramaQualityMenu"),
+    qualityLabel: $("dramaQualityLabel"),
+    shareBtn: $("dramaShareBtn"),
+    back: $("backButton"),
+  };
+
+  // =========================
+  // CONFIG (ANABOT ONLY)
+  // =========================
+  const DRAMA_BASE = "https://anabot.my.id/api/search/drama/dramabox";
+  const LS_DRAMA_KEY = "dramabox_apikey";
+
+  const getDramaApiKey = () => {
+    const k =
+      (window.DRAMA_APIKEY && String(window.DRAMA_APIKEY).trim()) ||
+      (localStorage.getItem(LS_DRAMA_KEY) || "").trim() ||
+      "freeApikey";
+    return k;
+  };
+
+  const buildUrl = (path, params = {}) => {
+    const u = new URL(`${DRAMA_BASE}/${String(path).replace(/^\//, "")}`);
+    Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, String(v)));
+    u.searchParams.set("apikey", getDramaApiKey());
+    return u.toString();
+  };
+
+  // =========================
+  // FETCH (dengan fallback proxy biar gak mentok CORS)
+  // =========================
+  const fetchJsonTry = async (url, timeoutMs = 20000) => {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        mode: "cors",
+        credentials: "omit",
+        cache: "no-store",
+        signal: ctrl.signal,
+        headers: { Accept: "application/json,text/plain,*/*" },
+      });
+
+      const text = await res.text();
+      if (!res.ok) throw new Error(`HTTP ${res.status} :: ${text.slice(0, 160)}`);
+
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new Error("Response bukan JSON");
+      }
+    } finally {
+      clearTimeout(t);
     }
-    .player-loading.show{ display:flex; }
-    .player-loading .txt{
-      font-weight:700;
-      padding:10px 14px;
-      border-radius:12px;
-      background: rgba(255,255,255,.10);
-      border: 1px solid rgba(255,255,255,.18);
+  };
+
+  const fetchJsonWithFallback = async (realUrl) => {
+    const tries = [
+      realUrl,
+      `https://corsproxy.io/?${encodeURIComponent(realUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(realUrl)}`,
+      `https://cors.isomorphic-git.org/${realUrl}`,
+    ];
+
+    let lastErr = null;
+    for (const u of tries) {
+      try {
+        return await fetchJsonTry(u);
+      } catch (e) {
+        lastErr = e;
+      }
     }
-  </style>
-</head>
+    throw lastErr || new Error("FETCH_FAILED");
+  };
 
-<!-- penting: biar selector CSS kamu yang body[data-page="drama"] kepake -->
-<body data-page="drama">
-  <div class="app-root">
-    <header class="app-header">
-      <button class="icon-button back-button" id="backButton" aria-label="Kembali">
-        <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
-          <path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
-        </svg>
-      </button>
-      <div class="logo-wrap">
-        <img class="logo-img" src="https://pomf2.lain.la/f/22yuvdrk.png" alt="AniKuy Logo" />
-      </div>
-      <div class="icon-button" aria-hidden="true" style="visibility:hidden"></div>
-    </header>
+  // =========================
+  // UI HELPERS
+  // =========================
+  const showLoading = (on) => {
+    if (!el.loading) return;
+    el.loading.classList.toggle("show", !!on);
+  };
 
-    <main id="mainContent">
-      <div class="page-container">
-        <h2 id="dramaWatchTitle" class="page-title">Nonton Drama</h2>
+  const closePanels = () => el.qualityMenu?.classList.remove("show");
+  const togglePanel = () => el.qualityMenu?.classList.toggle("show");
 
-        <div class="player-stage">
-          <div id="dramaLoading" class="player-loading" aria-live="polite">
-            <div class="txt">Memuat episode...</div>
-          </div>
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".player-toolbar") && !e.target.closest(".dropdown-panel")) closePanels();
+  });
 
-          <div class="player-wrapper">
-            <video id="dramaPlayer" controls playsinline preload="metadata"></video>
-          </div>
-        </div>
+  // =========================
+  // DATA NORMALIZE
+  // =========================
+  const normalizeChapterList = (payload) => {
+    // yang paling umum:
+    // { success:true, data:{ result:{ chapterList:[...] } } }
+    const direct = payload?.data?.result?.chapterList;
+    if (Array.isArray(direct)) return direct;
 
-        <div class="player-toolbar">
-          <button id="dramaQualityBtn" class="toolbar-btn" type="button">
-            <span class="toolbar-icon-wrap">
-              <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path fill="currentColor" d="M12 4a8 8 0 1 0 8 8 8.01 8.01 0 0 0-8-8zm3.46 9.88-1.42 1.42L12 13.41l-2.05 1.89-1.41-1.42L10.59 12 8.54 9.88l1.41-1.42L12 10.59l2.04-2.13 1.42 1.42L13.41 12z"/>
-              </svg>
-            </span>
-            <span class="toolbar-text">
-              <span class="toolbar-text-main">Kualitas</span>
-              <span class="toolbar-text-sub" id="dramaQualityLabel">-</span>
-            </span>
-          </button>
+    // beberapa variasi:
+    const candidates = [
+      payload?.data?.chapterList,
+      payload?.chapterList,
+      payload?.data?.result?.data?.chapterList,
+      payload?.data?.data?.chapterList,
+      payload?.data,
+      payload?.result,
+      payload?.list,
+      payload?.items,
+      payload?.rows,
+    ];
 
-          <button id="dramaShareBtn" class="toolbar-btn" type="button">
-            <span class="toolbar-icon-wrap">
-              <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path fill="currentColor" d="M18 16a3 3 0 0 0-2.24 1.03L9.91 13.7a3.09 3.09 0 0 0 0-1.4l5.85-3.33A3 3 0 1 0 15 7a2.94 2.94 0 0 0 .07.64L9.22 11a3 3 0 1 0 0 4l5.85 3.36A3 3 0 1 0 18 16z"/>
-              </svg>
-            </span>
-            <span class="toolbar-text">
-              <span class="toolbar-text-main">Bagikan</span>
-              <span class="toolbar-text-sub">Link</span>
-            </span>
-          </button>
-        </div>
+    for (const c of candidates) {
+      if (Array.isArray(c)) return c;
+      if (Array.isArray(c?.chapterList)) return c.chapterList;
+    }
+    return [];
+  };
 
-        <div class="dropdown-container">
-          <div id="dramaQualityMenu" class="dropdown-panel"></div>
-        </div>
-      </div>
-    </main>
+  const normalizeStreamData = (payload) => {
+    // contoh response kamu:
+    // payload.data.result.data.{ videoUrl, qualities, chapterIndex }
+    return (
+      payload?.data?.result?.data ||
+      payload?.data?.result ||
+      payload?.result ||
+      payload?.data ||
+      payload ||
+      null
+    );
+  };
 
-    <nav class="bottom-nav">
-      <a class="nav-item" href="/"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span class="nav-label">Home</span></a>
-      <a class="nav-item" href="/explore"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 1 0 10 10z"/></svg><span class="nav-label">Explore</span></a>
-      <a class="nav-item" href="/my-list"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 17.27 18.18 21l-1.64-7.03z"/></svg><span class="nav-label">My List</span></a>
-      <a class="nav-item" href="/profile"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12a5 5 0 1 0-5-5z"/></svg><span class="nav-label">Profile</span></a>
-    </nav>
-  </div>
+  // =========================
+  // PLAYER / QUALITY
+  // =========================
+  const setPlayer = async (url) => {
+    if (!el.player) return;
+    el.player.pause();
+    el.player.src = url || "";
+    el.player.load();
+    // autoplay kalau browser ngizinin
+    try {
+      await el.player.play();
+    } catch {}
+  };
 
-  <div id="toast" class="toast"></div>
-  <script src="/assets/js/core.js"></script>
-  <script src="/assets/js/drama-watch.js"></script>
-</body>
-</html>
+  const buildQualityList = (streamData) => {
+    const qualities = Array.isArray(streamData?.qualities) ? streamData.qualities : [];
+    const baseUrl = streamData?.videoUrl;
+
+    const list = qualities
+      .filter((x) => x?.videoPath)
+      .map((x) => ({
+        q: x.quality ? `${x.quality}p` : "Auto",
+        qNum: Number(x.quality) || 0,
+        url: x.videoPath,
+        isDefault: x.isDefault === 1,
+      }))
+      .sort((a, b) => (b.qNum - a.qNum) || (b.isDefault - a.isDefault));
+
+    if (list.length) return list;
+
+    if (baseUrl) {
+      return [{ q: "Auto", qNum: 0, url: baseUrl, isDefault: true }];
+    }
+
+    return [];
+  };
+
+  const renderQuality = (qualities, activeUrl) => {
+    if (!el.qualityMenu) return;
+
+    el.qualityMenu.innerHTML = `<div class="dropdown-title">Pilih Kualitas</div>`;
+    if (!qualities.length) {
+      el.qualityMenu.innerHTML += `<div class="dropdown-empty">Tidak tersedia</div>`;
+      return;
+    }
+
+    qualities.forEach((it) => {
+      const b = document.createElement("button");
+      b.className = "dropdown-item" + (it.url === activeUrl ? " active" : "");
+      b.textContent = it.q;
+      b.onclick = async () => {
+        el.qualityLabel && (el.qualityLabel.textContent = it.q);
+        showLoading(true);
+        await setPlayer(it.url);
+        showLoading(false);
+        renderQuality(qualities, it.url);
+        closePanels();
+      };
+      el.qualityMenu.appendChild(b);
+    });
+  };
+
+  // =========================
+  // STATE
+  // =========================
+  let chapters = [];
+  let currentIndex = 0;
+  let isLoadingEp = false;
+
+  const updateTitle = () => {
+    const epNo = currentIndex + 1;
+    const base = name ? name : "Nonton Drama";
+    const t = `EP ${epNo}${chapters.length ? ` / ${chapters.length}` : ""} • ${base}`;
+    document.title = `AniKuy - ${t}`;
+    if (el.title) el.title.textContent = t;
+  };
+
+  const updateUrlState = (idx, push = true) => {
+    // kita simpan chapterIndex biar jelas
+    const u = new URL(location.href);
+    u.searchParams.set("bookId", String(bookId || ""));
+    u.searchParams.set("chapterIndex", String(idx));
+    if (name) u.searchParams.set("name", name);
+
+    // optional: simpan chapterId juga (kalau ada)
+    const ep = chapters[idx];
+    if (ep?.chapterId) u.searchParams.set("chapterId", String(ep.chapterId));
+
+    const st = { bookId, chapterIndex: idx, name };
+    if (push) history.pushState(st, "", u.toString());
+    else history.replaceState(st, "", u.toString());
+  };
+
+  // =========================
+  // LOADERS
+  // =========================
+  const loadChapters = async () => {
+    const url = buildUrl("chapter", { id: bookId });
+    const payload = await fetchJsonWithFallback(url);
+    chapters = normalizeChapterList(payload);
+
+    // urutin kalau ada chapterIndex
+    chapters = chapters.slice().sort((a, b) => (Number(a?.chapterIndex) || 0) - (Number(b?.chapterIndex) || 0));
+  };
+
+  const resolveInitialIndex = () => {
+    if (chapterIndexParam != null && chapterIndexParam !== "") {
+      const n = Number(chapterIndexParam);
+      if (Number.isFinite(n) && n >= 0) return n;
+    }
+
+    if (chapterIdParam && chapters.length) {
+      const i = chapters.findIndex((x) => String(x?.chapterId) === String(chapterIdParam));
+      if (i >= 0) return Number(chapters[i]?.chapterIndex) || i;
+    }
+
+    // default EP 0
+    return 0;
+  };
+
+  const fetchStream = async (idx) => {
+    const url = buildUrl("stream", { bookId, chapterIndex: idx });
+    const payload = await fetchJsonWithFallback(url);
+    const data = normalizeStreamData(payload);
+    return data;
+  };
+
+  const playEpisode = async (idx, { pushState = true } = {}) => {
+    if (!el.player) return;
+    if (!bookId) return toast("bookId tidak ada");
+
+    if (isLoadingEp) return;
+    isLoadingEp = true;
+
+    try {
+      idx = Number(idx) || 0;
+      if (idx < 0) idx = 0;
+      if (chapters.length && idx > chapters.length - 1) idx = chapters.length - 1;
+
+      currentIndex = idx;
+      updateTitle();
+      updateUrlState(idx, pushState);
+
+      closePanels();
+      showLoading(true);
+
+      const streamData = await fetchStream(idx);
+      const qualities = buildQualityList(streamData);
+
+      if (!qualities.length) {
+        toast("Link video tidak tersedia");
+        showLoading(false);
+        return;
+      }
+
+      const active = qualities.find((x) => x.isDefault) || qualities[0];
+      el.qualityLabel && (el.qualityLabel.textContent = active.q);
+
+      await setPlayer(active.url);
+      renderQuality(qualities, active.url);
+
+      showLoading(false);
+    } catch (e) {
+      console.error("[playEpisode] error:", e);
+      showLoading(false);
+      toast("Gagal memuat episode");
+    } finally {
+      isLoadingEp = false;
+    }
+  };
+
+  const playNext = async () => {
+    if (chapters.length && currentIndex >= chapters.length - 1) {
+      toast("Episode terakhir");
+      return;
+    }
+    await playEpisode(currentIndex + 1, { pushState: true });
+  };
+
+  // =========================
+  // INIT
+  // =========================
+  async function init() {
+    if (el.back) el.back.addEventListener("click", () => history.back());
+
+    if (!bookId) {
+      toast("Parameter bookId tidak ada");
+      return;
+    }
+
+    // tombol kualitas
+    if (el.qualityBtn) el.qualityBtn.onclick = () => togglePanel();
+
+    // share
+    if (el.shareBtn) {
+      el.shareBtn.onclick = () =>
+        navigator.share
+          ? navigator.share({ title: document.title, url: location.href })
+          : navigator.clipboard
+              .writeText(location.href)
+              .then(() => toast("Link disalin"))
+              .catch(() => toast("Gagal menyalin link"));
+    }
+
+    // auto next saat selesai
+    if (el.player) {
+      el.player.addEventListener("ended", () => {
+        // langsung lanjut tanpa reload
+        playNext();
+      });
+
+      // kalau error player
+      el.player.addEventListener("error", () => {
+        toast("Video error");
+      });
+    }
+
+    try {
+      showLoading(true);
+      await loadChapters();
+      const idx = resolveInitialIndex();
+      updateUrlState(idx, false);
+      await playEpisode(idx, { pushState: false });
+    } catch (e) {
+      console.error("[init] error:", e);
+      showLoading(false);
+      toast("Gagal memuat episode");
+    }
+
+    // handle back/forward browser (tanpa reload)
+    window.addEventListener("popstate", () => {
+      const sp = new URLSearchParams(location.search);
+      const idx = Number(sp.get("chapterIndex") || 0);
+      playEpisode(idx, { pushState: false });
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
+})();
