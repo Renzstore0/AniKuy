@@ -1,344 +1,105 @@
-(() => {
-  "use strict";
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>AniKuy - Nonton Drama</title>
+  <link rel="stylesheet" href="/assets/css/style.css" />
 
-  const $ = (id) => document.getElementById(id);
-  const toast = (m) => typeof showToast === "function" && showToast(m);
-
-  const el = {
-    title: $("dramaWatchTitle"),
-    player: $("dramaPlayer"),
-    loading: $("dramaLoading"),
-    qualityBtn: $("dramaQualityBtn"),
-    qualityMenu: $("dramaQualityMenu"),
-    qualityLabel: $("dramaQualityLabel"),
-    shareBtn: $("dramaShareBtn"),
-    backBtn: $("backButton"),
-  };
-
-  const closePanels = () => el.qualityMenu?.classList.remove("show");
-  const togglePanel = () => el.qualityMenu?.classList.toggle("show");
-
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest(".player-toolbar") && !e.target.closest(".dropdown-panel")) closePanels();
-  });
-
-  const showLoading = (on, text = "Memuat episode...") => {
-    if (!el.loading) return;
-    const t = el.loading.querySelector(".txt");
-    if (t) t.textContent = text;
-    el.loading.classList.toggle("show", !!on);
-  };
-
-  const getParams = () => {
-    const p = new URLSearchParams(location.search);
-    return {
-      bookId: p.get("bookId") || "",
-      chapterId: p.get("chapterId") || "",
-      chapterIndex: p.get("chapterIndex") ? Number(p.get("chapterIndex")) : null,
-      name: p.get("name") || "",
-    };
-  };
-
-  // =========================
-  // HOOKS (kamu isi sendiri)
-  // =========================
-  // window.getDramaEpisodes = async (bookId) => [{chapterId, chapterIndex, ...}, ...]
-  // window.getDramaStream   = async ({bookId, chapterIndex, chapterId}) => { videoUrl, qualities:[{quality, videoPath, isDefault}] }
-  const fetchEpisodes = async (bookId) => {
-    if (typeof window.getDramaEpisodes === "function") return await window.getDramaEpisodes(bookId);
-
-    // fallback kalau kamu masih pakai apiGetDrama (same origin)
-    if (typeof window.apiGetDrama === "function") {
-      const eps = await window.apiGetDrama(`/api/dramabox/allepisode?bookId=${encodeURIComponent(bookId)}`);
-      return Array.isArray(eps) ? eps : [];
+  <style>
+    /* overlay loading + transisi halus */
+    .player-stage{ position:relative; }
+    .player-loading{
+      position:absolute; inset:0;
+      display:none;
+      align-items:center; justify-content:center;
+      background: rgba(0,0,0,.45);
+      backdrop-filter: blur(2px);
+      border-radius: 16px;
+      z-index: 5;
     }
-
-    throw new Error("NO_EPISODE_PROVIDER");
-  };
-
-  const fetchStream = async ({ bookId, chapterIndex, chapterId }) => {
-    if (typeof window.getDramaStream === "function") {
-      return await window.getDramaStream({ bookId, chapterIndex, chapterId });
+    .player-loading.show{ display:flex; }
+    .player-loading .txt{
+      font-weight:700;
+      padding:10px 14px;
+      border-radius:12px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.18);
     }
+  </style>
+</head>
 
-    // fallback contoh (kalau kamu punya endpoint sendiri)
-    if (typeof window.apiGetDrama === "function" && chapterIndex != null) {
-      return await window.apiGetDrama(
-        `/api/dramabox/stream?bookId=${encodeURIComponent(bookId)}&chapterIndex=${encodeURIComponent(chapterIndex)}`
-      );
-    }
+<!-- penting: biar selector CSS kamu yang body[data-page="drama"] kepake -->
+<body data-page="drama">
+  <div class="app-root">
+    <header class="app-header">
+      <button class="icon-button back-button" id="backButton" aria-label="Kembali">
+        <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/>
+        </svg>
+      </button>
+      <div class="logo-wrap">
+        <img class="logo-img" src="https://pomf2.lain.la/f/22yuvdrk.png" alt="AniKuy Logo" />
+      </div>
+      <div class="icon-button" aria-hidden="true" style="visibility:hidden"></div>
+    </header>
 
-    throw new Error("NO_STREAM_PROVIDER");
-  };
+    <main id="mainContent">
+      <div class="page-container">
+        <h2 id="dramaWatchTitle" class="page-title">Nonton Drama</h2>
 
-  // =========================
-  // NORMALIZER
-  // =========================
-  const normalizeEpisodes = (payload) => {
-    if (Array.isArray(payload)) return payload;
+        <div class="player-stage">
+          <div id="dramaLoading" class="player-loading" aria-live="polite">
+            <div class="txt">Memuat episode...</div>
+          </div>
 
-    const candidates = [
-      payload?.data?.result?.chapterList,
-      payload?.data?.chapterList,
-      payload?.chapterList,
-      payload?.data,
-      payload?.result,
-      payload?.list,
-      payload?.items,
-    ];
+          <div class="player-wrapper">
+            <video id="dramaPlayer" controls playsinline preload="metadata"></video>
+          </div>
+        </div>
 
-    for (const c of candidates) {
-      if (Array.isArray(c)) return c;
-      if (Array.isArray(c?.chapterList)) return c.chapterList;
-    }
-    return [];
-  };
+        <div class="player-toolbar">
+          <button id="dramaQualityBtn" class="toolbar-btn" type="button">
+            <span class="toolbar-icon-wrap">
+              <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M12 4a8 8 0 1 0 8 8 8.01 8.01 0 0 0-8-8zm3.46 9.88-1.42 1.42L12 13.41l-2.05 1.89-1.41-1.42L10.59 12 8.54 9.88l1.41-1.42L12 10.59l2.04-2.13 1.42 1.42L13.41 12z"/>
+              </svg>
+            </span>
+            <span class="toolbar-text">
+              <span class="toolbar-text-main">Kualitas</span>
+              <span class="toolbar-text-sub" id="dramaQualityLabel">-</span>
+            </span>
+          </button>
 
-  // stream payload extractor (fleksibel)
-  const extractStreamData = (payload) => {
-    // paling sering: payload.data.result.data atau payload.data
-    const d =
-      payload?.data?.result?.data ||
-      payload?.data?.data ||
-      payload?.data ||
-      payload?.result ||
-      payload;
+          <button id="dramaShareBtn" class="toolbar-btn" type="button">
+            <span class="toolbar-icon-wrap">
+              <svg class="toolbar-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M18 16a3 3 0 0 0-2.24 1.03L9.91 13.7a3.09 3.09 0 0 0 0-1.4l5.85-3.33A3 3 0 1 0 15 7a2.94 2.94 0 0 0 .07.64L9.22 11a3 3 0 1 0 0 4l5.85 3.36A3 3 0 1 0 18 16z"/>
+              </svg>
+            </span>
+            <span class="toolbar-text">
+              <span class="toolbar-text-main">Bagikan</span>
+              <span class="toolbar-text-sub">Link</span>
+            </span>
+          </button>
+        </div>
 
-    return d || {};
-  };
+        <div class="dropdown-container">
+          <div id="dramaQualityMenu" class="dropdown-panel"></div>
+        </div>
+      </div>
+    </main>
 
-  const buildQualityListFromStream = (streamPayload) => {
-    const d = extractStreamData(streamPayload);
+    <nav class="bottom-nav">
+      <a class="nav-item" href="/"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span class="nav-label">Home</span></a>
+      <a class="nav-item" href="/explore"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a10 10 0 1 0 10 10z"/></svg><span class="nav-label">Explore</span></a>
+      <a class="nav-item" href="/my-list"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 17.27 18.18 21l-1.64-7.03z"/></svg><span class="nav-label">My List</span></a>
+      <a class="nav-item" href="/profile"><svg class="nav-icon" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12a5 5 0 1 0-5-5z"/></svg><span class="nav-label">Profile</span></a>
+    </nav>
+  </div>
 
-    // format A: { qualities:[{quality, videoPath, isDefault}] }
-    if (Array.isArray(d?.qualities)) {
-      return d.qualities
-        .filter((x) => x?.videoPath)
-        .map((x) => ({
-          q: x.quality ? `${x.quality}p` : "Auto",
-          qNum: Number(x.quality) || 0,
-          url: x.videoPath,
-          isDefault: x.isDefault === 1,
-        }))
-        .sort((a, b) => (b.qNum - a.qNum) || (b.isDefault - a.isDefault));
-    }
-
-    // format B (punyamu lama): episode.cdnList[].videoPathList[]
-    // (nggak ada di stream; cuma jaga-jaga)
-    const cdn = (d?.cdnList || []).find((c) => c?.isDefault === 1) || (d?.cdnList || [])[0];
-    const list = cdn?.videoPathList || [];
-    if (Array.isArray(list) && list.length) {
-      return list
-        .filter((x) => x?.videoPath)
-        .map((x) => ({
-          q: x.quality ? `${x.quality}p` : "Auto",
-          qNum: Number(x.quality) || 0,
-          url: x.videoPath,
-          isDefault: x.isDefault === 1,
-        }))
-        .sort((a, b) => (b.qNum - a.qNum) || (b.isDefault - a.isDefault));
-    }
-
-    // fallback url tunggal
-    if (d?.videoUrl) {
-      return [{ q: "Auto", qNum: 0, url: d.videoUrl, isDefault: true }];
-    }
-
-    return [];
-  };
-
-  const setPlayer = async (url) => {
-    if (!el.player) return;
-    el.player.pause?.();
-    el.player.src = url || "";
-    el.player.load();
-    try { await el.player.play?.(); } catch {}
-  };
-
-  const renderQuality = (qualities, activeUrl) => {
-    if (!el.qualityMenu) return;
-
-    el.qualityMenu.innerHTML = `<div class="dropdown-title">Pilih Kualitas</div>`;
-    if (!qualities.length) {
-      el.qualityMenu.innerHTML += `<div class="dropdown-empty">Tidak tersedia</div>`;
-      return;
-    }
-
-    qualities.forEach((it) => {
-      const b = document.createElement("button");
-      b.className = "dropdown-item" + (it.url === activeUrl ? " active" : "");
-      b.textContent = it.q;
-      b.onclick = async () => {
-        el.qualityLabel && (el.qualityLabel.textContent = it.q);
-        showLoading(true, "Ganti kualitas...");
-        await setPlayer(it.url);
-        showLoading(false);
-        renderQuality(qualities, it.url);
-        closePanels();
-      };
-      el.qualityMenu.appendChild(b);
-    });
-  };
-
-  // =========================
-  // PLAYER STATE
-  // =========================
-  let episodes = [];
-  let currentIdx = -1;
-  let switching = false;
-
-  const sortEpisodes = (eps) =>
-    eps.slice().sort((a, b) => (Number(a?.chapterIndex) || 0) - (Number(b?.chapterIndex) || 0));
-
-  const findIndexFromParams = (eps, { chapterId, chapterIndex }) => {
-    const sorted = sortEpisodes(eps);
-
-    if (Number.isFinite(chapterIndex)) {
-      const byIndex = sorted.findIndex((x) => Number(x?.chapterIndex) === Number(chapterIndex));
-      if (byIndex >= 0) return byIndex;
-    }
-
-    if (chapterId) {
-      const byId = sorted.findIndex((x) => String(x?.chapterId) === String(chapterId));
-      if (byId >= 0) return byId;
-    }
-
-    return 0; // default EP pertama
-  };
-
-  const pushUrl = ({ bookId, chapterId, chapterIndex, name }) => {
-    const u = new URL(location.href);
-    u.searchParams.set("bookId", bookId);
-    if (chapterId) u.searchParams.set("chapterId", chapterId);
-    if (Number.isFinite(chapterIndex)) u.searchParams.set("chapterIndex", String(chapterIndex));
-    if (name) u.searchParams.set("name", name);
-    history.pushState({ bookId, chapterId, chapterIndex, name }, "", u.toString());
-  };
-
-  const updateTitle = (name, epNumber) => {
-    if (!el.title) return;
-    const base = name ? `Nonton • ${name}` : "Nonton Drama";
-    el.title.textContent = epNumber ? `${base} • EP ${epNumber}` : base;
-  };
-
-  const playAt = async (idx, { push = true } = {}) => {
-    if (switching) return;
-    switching = true;
-
-    try {
-      const params = getParams();
-      const sorted = sortEpisodes(episodes);
-
-      if (!sorted[idx]) {
-        toast("Episode tidak ditemukan");
-        return;
-      }
-
-      currentIdx = idx;
-      const ep = sorted[idx];
-
-      const chapterIndex = Number(ep?.chapterIndex);
-      const chapterId = ep?.chapterId ? String(ep.chapterId) : params.chapterId;
-
-      // update URL tanpa reload
-      if (push) {
-        pushUrl({ bookId: params.bookId, chapterId, chapterIndex, name: params.name });
-      }
-
-      const epNo = Number.isFinite(chapterIndex) ? chapterIndex + 1 : idx + 1;
-      updateTitle(params.name, epNo);
-
-      showLoading(true, "Memuat video...");
-
-      const streamPayload = await fetchStream({
-        bookId: params.bookId,
-        chapterIndex: Number.isFinite(chapterIndex) ? chapterIndex : params.chapterIndex,
-        chapterId,
-      });
-
-      const qualities = buildQualityListFromStream(streamPayload);
-      if (!qualities.length) {
-        toast("Link video tidak tersedia");
-        return;
-      }
-
-      const active = qualities.find((x) => x.isDefault) || qualities[0];
-      el.qualityLabel && (el.qualityLabel.textContent = active.q);
-
-      await setPlayer(active.url);
-      renderQuality(qualities, active.url);
-    } catch (e) {
-      console.error("[playAt] error:", e);
-      toast("Gagal memuat video");
-    } finally {
-      showLoading(false);
-      switching = false;
-    }
-  };
-
-  const playNext = async () => {
-    const sorted = sortEpisodes(episodes);
-    const next = currentIdx + 1;
-    if (next >= sorted.length) return toast("Udah episode terakhir");
-    await playAt(next, { push: true });
-  };
-
-  // =========================
-  // INIT
-  // =========================
-  async function init() {
-    const params = getParams();
-    if (!params.bookId) return toast("bookId tidak ditemukan");
-
-    if (el.backBtn) el.backBtn.onclick = () => history.back();
-
-    el.qualityBtn && (el.qualityBtn.onclick = () => togglePanel());
-
-    el.shareBtn &&
-      (el.shareBtn.onclick = () =>
-        navigator.share
-          ? navigator.share({ title: document.title, url: location.href })
-          : navigator.clipboard
-              .writeText(location.href)
-              .then(() => toast("Link disalin"))
-              .catch(() => toast("Gagal menyalin link")));
-
-    if (!el.player) return;
-
-    // auto next (tanpa reload)
-    el.player.addEventListener("ended", () => {
-      // biar nggak “kedip” kalau user klik manual
-      playNext().catch(() => {});
-    });
-
-    showLoading(true, "Memuat episode...");
-
-    try {
-      const raw = await fetchEpisodes(params.bookId);
-      episodes = normalizeEpisodes(raw);
-      if (!episodes.length) return toast("Episode tidak ditemukan");
-
-      // cache biar cepat
-      try {
-        sessionStorage.setItem(`dramabox_eps_${params.bookId}`, JSON.stringify(episodes));
-      } catch {}
-
-      const idx = findIndexFromParams(episodes, params);
-      await playAt(idx, { push: false });
-    } catch (e) {
-      console.error("[init] error:", e);
-      toast("Gagal memuat episode");
-    } finally {
-      showLoading(false);
-    }
-
-    // back/forward browser (tanpa reload)
-    window.addEventListener("popstate", async () => {
-      const p = getParams();
-      const idx = findIndexFromParams(episodes, p);
-      await playAt(idx, { push: false });
-    });
-  }
-
-  document.addEventListener("DOMContentLoaded", init);
-})();
+  <div id="toast" class="toast"></div>
+  <script src="/assets/js/core.js"></script>
+  <script src="/assets/js/drama-watch.js"></script>
+</body>
+</html>
