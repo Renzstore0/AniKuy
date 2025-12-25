@@ -1,3 +1,4 @@
+// assets/js/drama-watch.js
 (() => {
   "use strict";
 
@@ -50,7 +51,7 @@
   };
 
   // =========================
-  // FETCH (dengan fallback proxy biar gak mentok CORS)
+  // FETCH (fallback proxy biar gak mentok CORS)
   // =========================
   const fetchJsonTry = async (url, timeoutMs = 20000) => {
     const ctrl = new AbortController();
@@ -117,12 +118,9 @@
   // DATA NORMALIZE
   // =========================
   const normalizeChapterList = (payload) => {
-    // yang paling umum:
-    // { success:true, data:{ result:{ chapterList:[...] } } }
     const direct = payload?.data?.result?.chapterList;
     if (Array.isArray(direct)) return direct;
 
-    // beberapa variasi:
     const candidates = [
       payload?.data?.chapterList,
       payload?.chapterList,
@@ -143,8 +141,6 @@
   };
 
   const normalizeStreamData = (payload) => {
-    // contoh response kamu:
-    // payload.data.result.data.{ videoUrl, qualities, chapterIndex }
     return (
       payload?.data?.result?.data ||
       payload?.data?.result ||
@@ -156,19 +152,82 @@
   };
 
   // =========================
-  // PLAYER / QUALITY
+  // PLAYER READY WAIT (biar loading ga ilang sebelum bener-bener siap)
   // =========================
-  const setPlayer = async (url) => {
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  const waitPlayerReady = (token, timeoutMs = 35000) =>
+    new Promise((resolve, reject) => {
+      if (!el.player) return reject(new Error("NO_PLAYER"));
+
+      let done = false;
+      const v = el.player;
+
+      const cleanup = () => {
+        v.removeEventListener("playing", onOk);
+        v.removeEventListener("canplay", onOk);
+        v.removeEventListener("loadeddata", onOk);
+        v.removeEventListener("error", onErr);
+        v.removeEventListener("stalled", onErrSoft);
+        v.removeEventListener("abort", onErrSoft);
+        clearTimeout(t);
+      };
+
+      const finishOk = () => {
+        if (done) return;
+        done = true;
+        cleanup();
+        resolve(true);
+      };
+
+      const finishErr = (err) => {
+        if (done) return;
+        done = true;
+        cleanup();
+        reject(err || new Error("VIDEO_ERROR"));
+      };
+
+      const onOk = () => {
+        // kalau request udah diganti, jangan resolve
+        if (token !== loadToken) return;
+        finishOk();
+      };
+
+      const onErr = () => finishErr(new Error("VIDEO_ERROR"));
+      const onErrSoft = () => {
+        // soft error: biar retry yang nangani
+        // (biar gak langsung dianggap sukses)
+      };
+
+      v.addEventListener("playing", onOk, { once: true });
+      v.addEventListener("canplay", onOk, { once: true });
+      v.addEventListener("loadeddata", onOk, { once: true });
+      v.addEventListener("error", onErr, { once: true });
+      v.addEventListener("stalled", onErrSoft, { once: true });
+      v.addEventListener("abort", onErrSoft, { once: true });
+
+      const t = setTimeout(() => finishErr(new Error("VIDEO_TIMEOUT")), timeoutMs);
+    });
+
+  const setPlayer = async (url, token) => {
     if (!el.player) return;
-    el.player.pause();
-    el.player.src = url || "";
-    el.player.load();
-    // autoplay kalau browser ngizinin
+
+    const v = el.player;
+    v.pause();
+    v.src = url || "";
+    v.load();
+
+    // coba play supaya buffering jalan (kalau diblok autoplay, tetap lanjut nunggu canplay/loadeddata)
     try {
-      await el.player.play();
-    } catch {}
+      await v.play();
+    } catch (_) {}
+
+    await waitPlayerReady(token);
   };
 
+  // =========================
+  // QUALITY
+  // =========================
   const buildQualityList = (streamData) => {
     const qualities = Array.isArray(streamData?.qualities) ? streamData.qualities : [];
     const baseUrl = streamData?.videoUrl;
@@ -184,11 +243,7 @@
       .sort((a, b) => (b.qNum - a.qNum) || (b.isDefault - a.isDefault));
 
     if (list.length) return list;
-
-    if (baseUrl) {
-      return [{ q: "Auto", qNum: 0, url: baseUrl, isDefault: true }];
-    }
-
+    if (baseUrl) return [{ q: "Auto", qNum: 0, url: baseUrl, isDefault: true }];
     return [];
   };
 
@@ -205,14 +260,13 @@
       const b = document.createElement("button");
       b.className = "dropdown-item" + (it.url === activeUrl ? " active" : "");
       b.textContent = it.q;
-      b.onclick = async () => {
-        el.qualityLabel && (el.qualityLabel.textContent = it.q);
-        showLoading(true);
-        await setPlayer(it.url);
-        showLoading(false);
-        renderQuality(qualities, it.url);
+
+      b.onclick = () => {
+        // ganti kualitas tanpa reload, tapi loading nempel sampai ready
+        loadVideoUrlWithRetry(it.url, it.q, { preferQualityNum: it.qNum });
         closePanels();
       };
+
       el.qualityMenu.appendChild(b);
     });
   };
@@ -222,7 +276,9 @@
   // =========================
   let chapters = [];
   let currentIndex = 0;
-  let isLoadingEp = false;
+
+  // token buat cancel request sebelumnya (biar retry ga numpuk)
+  let loadToken = 0;
 
   const updateTitle = () => {
     const epNo = currentIndex + 1;
@@ -233,13 +289,11 @@
   };
 
   const updateUrlState = (idx, push = true) => {
-    // kita simpan chapterIndex biar jelas
     const u = new URL(location.href);
     u.searchParams.set("bookId", String(bookId || ""));
     u.searchParams.set("chapterIndex", String(idx));
     if (name) u.searchParams.set("name", name);
 
-    // optional: simpan chapterId juga (kalau ada)
     const ep = chapters[idx];
     if (ep?.chapterId) u.searchParams.set("chapterId", String(ep.chapterId));
 
@@ -256,8 +310,9 @@
     const payload = await fetchJsonWithFallback(url);
     chapters = normalizeChapterList(payload);
 
-    // urutin kalau ada chapterIndex
-    chapters = chapters.slice().sort((a, b) => (Number(a?.chapterIndex) || 0) - (Number(b?.chapterIndex) || 0));
+    chapters = chapters
+      .slice()
+      .sort((a, b) => (Number(a?.chapterIndex) || 0) - (Number(b?.chapterIndex) || 0));
   };
 
   const resolveInitialIndex = () => {
@@ -271,58 +326,132 @@
       if (i >= 0) return Number(chapters[i]?.chapterIndex) || i;
     }
 
-    // default EP 0
     return 0;
   };
 
   const fetchStream = async (idx) => {
     const url = buildUrl("stream", { bookId, chapterIndex: idx });
     const payload = await fetchJsonWithFallback(url);
-    const data = normalizeStreamData(payload);
-    return data;
+    return normalizeStreamData(payload);
   };
 
-  const playEpisode = async (idx, { pushState = true } = {}) => {
+  // =========================
+  // RETRY ENGINE (loading terus sampai bener-bener sukses / request diganti)
+  // =========================
+  let lastQualities = [];
+  let lastActiveUrl = "";
+
+  const pickQualityByNum = (qualities, qNum) => {
+    if (!qualities?.length) return null;
+    const exact = qualities.find((x) => Number(x.qNum) === Number(qNum));
+    return exact || null;
+  };
+
+  const playEpisode = async (idx, { pushState = true, preferQualityNum = null } = {}) => {
     if (!el.player) return;
     if (!bookId) return toast("bookId tidak ada");
 
-    if (isLoadingEp) return;
-    isLoadingEp = true;
+    // cancel request sebelumnya
+    const token = ++loadToken;
 
-    try {
-      idx = Number(idx) || 0;
-      if (idx < 0) idx = 0;
-      if (chapters.length && idx > chapters.length - 1) idx = chapters.length - 1;
+    idx = Number(idx) || 0;
+    if (idx < 0) idx = 0;
+    if (chapters.length && idx > chapters.length - 1) idx = chapters.length - 1;
 
-      currentIndex = idx;
-      updateTitle();
-      updateUrlState(idx, pushState);
+    currentIndex = idx;
+    updateTitle();
+    updateUrlState(idx, pushState);
 
-      closePanels();
-      showLoading(true);
+    closePanels();
+    showLoading(true);
 
-      const streamData = await fetchStream(idx);
-      const qualities = buildQualityList(streamData);
+    let attempt = 0;
+    let delay = 800; // start cepat
 
-      if (!qualities.length) {
-        toast("Link video tidak tersedia");
+    while (token === loadToken) {
+      attempt++;
+
+      try {
+        const streamData = await fetchStream(idx);
+        const qualities = buildQualityList(streamData);
+
+        if (!qualities.length) throw new Error("NO_VIDEO_URL");
+
+        // pilih kualitas: kalau user minta qNum tertentu -> ambil itu, kalau gak -> default/pertama
+        const byPref = preferQualityNum != null ? pickQualityByNum(qualities, preferQualityNum) : null;
+        const active = byPref || qualities.find((x) => x.isDefault) || qualities[0];
+
+        el.qualityLabel && (el.qualityLabel.textContent = active.q);
+
+        // simpan biar quality menu tetap konsisten
+        lastQualities = qualities;
+        lastActiveUrl = active.url;
+
+        await setPlayer(active.url, token);
+
+        // sukses beneran (canplay/loadeddata/playing)
+        renderQuality(qualities, active.url);
         showLoading(false);
         return;
+      } catch (e) {
+        console.warn("[playEpisode retry] attempt:", attempt, e);
+
+        // tetep loading, dan retry terus
+        if (attempt === 1) toast("Memuat episode...");
+        // backoff biar ga spam server
+        await sleep(delay);
+        delay = Math.min(Math.floor(delay * 1.6), 12000);
       }
+    }
+  };
 
-      const active = qualities.find((x) => x.isDefault) || qualities[0];
-      el.qualityLabel && (el.qualityLabel.textContent = active.q);
+  const loadVideoUrlWithRetry = async (url, label, { preferQualityNum = null } = {}) => {
+    if (!el.player) return;
 
-      await setPlayer(active.url);
-      renderQuality(qualities, active.url);
+    // cancel request sebelumnya
+    const token = ++loadToken;
 
-      showLoading(false);
-    } catch (e) {
-      console.error("[playEpisode] error:", e);
-      showLoading(false);
-      toast("Gagal memuat episode");
-    } finally {
-      isLoadingEp = false;
+    closePanels();
+    showLoading(true);
+    if (el.qualityLabel && label) el.qualityLabel.textContent = label;
+
+    let attempt = 0;
+    let delay = 800;
+
+    while (token === loadToken) {
+      attempt++;
+
+      try {
+        // coba pakai URL yang dipilih dulu
+        await setPlayer(url, token);
+
+        // sukses
+        lastActiveUrl = url;
+        if (lastQualities?.length) renderQuality(lastQualities, url);
+        showLoading(false);
+        return;
+      } catch (e) {
+        console.warn("[quality retry] attempt:", attempt, e);
+
+        // kalau url sign expired / error, refetch stream biar dapat url baru
+        try {
+          const streamData = await fetchStream(currentIndex);
+          const qualities = buildQualityList(streamData);
+          lastQualities = qualities;
+
+          const byPref = preferQualityNum != null ? pickQualityByNum(qualities, preferQualityNum) : null;
+          const active = byPref || qualities.find((x) => x.isDefault) || qualities[0];
+
+          url = active?.url || url;
+          if (el.qualityLabel && active?.q) el.qualityLabel.textContent = active.q;
+        } catch (_) {
+          // abaikan, nanti retry loop lanjut
+        }
+
+        if (attempt === 1) toast("Memuat ulang...");
+        await sleep(delay);
+        delay = Math.min(Math.floor(delay * 1.6), 12000);
+      }
     }
   };
 
@@ -345,10 +474,8 @@
       return;
     }
 
-    // tombol kualitas
     if (el.qualityBtn) el.qualityBtn.onclick = () => togglePanel();
 
-    // share
     if (el.shareBtn) {
       el.shareBtn.onclick = () =>
         navigator.share
@@ -361,14 +488,12 @@
 
     // auto next saat selesai
     if (el.player) {
-      el.player.addEventListener("ended", () => {
-        // langsung lanjut tanpa reload
-        playNext();
-      });
+      el.player.addEventListener("ended", () => playNext());
 
-      // kalau error player
+      // kalau error video, biar reload stream & retry otomatis (loader tetap nyala)
       el.player.addEventListener("error", () => {
-        toast("Video error");
+        // panggil ulang episode yang sama (akan retry sampai sukses)
+        playEpisode(currentIndex, { pushState: false });
       });
     }
 
@@ -380,6 +505,8 @@
       await playEpisode(idx, { pushState: false });
     } catch (e) {
       console.error("[init] error:", e);
+      // jangan matiin loading permanen kalau masih bisa retry,
+      // tapi kalau chapter list gagal total, ya kasih notif
       showLoading(false);
       toast("Gagal memuat episode");
     }
