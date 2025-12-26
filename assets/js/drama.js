@@ -1,3 +1,4 @@
+/* ========= assets/js/drama.js ========= */
 (() => {
   "use strict";
 
@@ -24,21 +25,8 @@
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  const normalizeList = (j) => {
-    if (Array.isArray(j)) return j;
-
-    // ✅ format anabot: { success:true, data:{ result:[...] } }
-    if (Array.isArray(j?.data?.result)) return j.data.result;
-    if (Array.isArray(j?.data?.list)) return j.data.list;
-    if (Array.isArray(j?.data)) return j.data;
-
-    // fallback format lain
-    if (Array.isArray(j?.list)) return j.list;
-    if (Array.isArray(j?.result)) return j.result;
-    if (Array.isArray(j?.items)) return j.items;
-
-    return null;
-  };
+  // Ryhar only: list ada di j.result
+  const normalizeList = (j) => (Array.isArray(j?.result) ? j.result : []);
 
   const storeBook = (b) => {
     try {
@@ -53,10 +41,7 @@
     return `/drama/detail?bookId=${id}&name=${name}`;
   };
 
-  const metaTags = (tags) => {
-    if (!Array.isArray(tags)) return "";
-    return tags.slice(0, 3).join(", ");
-  };
+  const metaTags = (tags) => (Array.isArray(tags) ? tags.slice(0, 3).join(", ") : "");
 
   const renderGrid = (container, list) => {
     if (!container) return;
@@ -77,23 +62,17 @@
   };
 
   async function loadLatestOnce() {
-    // bisa "/api/dramabox/latest" (akan dimap ke "/latest")
-    const j = await apiGetDrama("/api/dramabox/latest");
-    const listRaw = normalizeList(j);
-    if (!Array.isArray(listRaw)) throw new Error("DRAMA_INVALID_RESPONSE");
-
-    const list = listRaw.filter((x) => x && x.bookId);
+    // still works (apikey auto)
+    const j = await window.apiGetDrama("/latest");
+    const list = normalizeList(j).filter((x) => x && x.bookId);
+    if (!list.length) throw new Error("DRAMA_EMPTY");
     renderGrid(el.latest, list);
     return list;
   }
 
-  // HERO "Untuk Kamu" (optional)
   function initForYouHero(list) {
     const items = (list || [])
-      // ✅ anabot result biasanya tidak punya cardType, jadi fleksibel
-      .filter(
-        (x) => x && x.bookId && (x.coverWap || x.cover) && (x.cardType === 1 || x.cardType == null)
-      )
+      .filter((x) => x && x.bookId && (x.coverWap || x.cover))
       .slice(0, 12);
 
     if (!el.heroSection || items.length === 0) return;
@@ -118,7 +97,7 @@
       });
     };
 
-    const posterOf = (x) => (x?.coverWap || x?.cover || "");
+    const posterOf = (x) => x?.coverWap || x?.cover || "";
 
     const render = () => {
       const n = items.length;
@@ -127,7 +106,6 @@
       const next = items[mod(idx + 1, n)];
 
       if (el.heroName) el.heroName.textContent = (cur.bookName || "").trim();
-
       if (el.heroPosterPrev) el.heroPosterPrev.src = posterOf(prev);
       if (el.heroPoster) el.heroPoster.src = posterOf(cur);
       if (el.heroPosterNext) el.heroPosterNext.src = posterOf(next);
@@ -177,9 +155,9 @@
   async function tryLoadForYouLoop() {
     while (true) {
       try {
-        const j = await apiGetDrama("/api/dramabox/foryou");
+        const j = await window.apiGetDrama("/foryou");
         const list = normalizeList(j);
-        if (Array.isArray(list)) {
+        if (Array.isArray(list) && list.length) {
           initForYouHero(list);
           return;
         }
@@ -191,10 +169,8 @@
   document.addEventListener("DOMContentLoaded", async () => {
     showLoading();
 
-    // foryou di background (nggak ngeblok latest)
     tryLoadForYouLoop();
 
-    // latest: retry sampai sukses, baru loading hilang
     while (true) {
       try {
         await loadLatestOnce();
