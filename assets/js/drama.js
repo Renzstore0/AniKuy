@@ -1,10 +1,6 @@
 (() => {
   "use strict";
 
-  // ✅ Update REST API + APIKEY
-  const API_BASE = "https://api.ryhar.my.id";
-  const API_KEY = "RyAPIs";
-
   const $ = (id) => document.getElementById(id);
 
   const el = {
@@ -28,36 +24,13 @@
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-  // ✅ Fetch helper (tetap ringan & cepat)
-  async function apiGetDrama(input) {
-    const url =
-      typeof input === "string" && /^https?:\/\//i.test(input)
-        ? input
-        : `${API_BASE}${input || ""}`;
-
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 15000);
-
-    try {
-      const res = await fetch(url, {
-        method: "GET",
-        signal: ctrl.signal,
-        headers: { Accept: "application/json" },
-      });
-      if (!res.ok) throw new Error(`HTTP_${res.status}`);
-      return await res.json();
-    } finally {
-      clearTimeout(t);
-    }
-  }
-
   const normalizeList = (j) => {
     if (Array.isArray(j)) return j;
 
-    // format: { success:true, message:"Success", result:[...] }
+    // ✅ format: { success:true, message:"Success", result:[...] }
     if (Array.isArray(j?.result)) return j.result;
 
-    // format lain: { success:true, data:{ result:[...] } }
+    // ✅ format anabot / lain: { success:true, data:{ result:[...] } }
     if (Array.isArray(j?.data?.result)) return j.data.result;
     if (Array.isArray(j?.data?.list)) return j.data.list;
     if (Array.isArray(j?.data)) return j.data;
@@ -106,10 +79,8 @@
   };
 
   async function loadLatestOnce() {
-    // ✅ Updated endpoint
-    const url = `${API_BASE}/api/internet/dramabox/latest?apikey=${encodeURIComponent(API_KEY)}`;
-    const j = await apiGetDrama(url);
-
+    // ✅ pakai mapper lama -> core.js akan map ke /latest + apikey + fallback proxy
+    const j = await window.apiGetDrama("/api/dramabox/latest");
     const listRaw = normalizeList(j);
     if (!Array.isArray(listRaw)) throw new Error("DRAMA_INVALID_RESPONSE");
 
@@ -122,11 +93,7 @@
   function initForYouHero(list) {
     const items = (list || [])
       .filter(
-        (x) =>
-          x &&
-          x.bookId &&
-          (x.coverWap || x.cover) &&
-          (x.cardType === 1 || x.cardType == null)
+        (x) => x && x.bookId && (x.coverWap || x.cover) && (x.cardType === 1 || x.cardType == null)
       )
       .slice(0, 12);
 
@@ -211,10 +178,7 @@
   async function tryLoadForYouLoop() {
     while (true) {
       try {
-        // ✅ Updated endpoint
-        const url = `${API_BASE}/api/internet/dramabox/foryou?apikey=${encodeURIComponent(API_KEY)}`;
-        const j = await apiGetDrama(url);
-
+        const j = await window.apiGetDrama("/api/dramabox/foryou");
         const list = normalizeList(j);
         if (Array.isArray(list)) {
           initForYouHero(list);
