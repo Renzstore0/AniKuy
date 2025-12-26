@@ -1,3 +1,4 @@
+/* ========= assets/js/core.js ========= */
 (() => {
   "use strict";
 
@@ -187,10 +188,16 @@
     return k;
   };
 
+  // ✅ UPDATE: support path lama & path full
   const mapDramaPath = (path) => {
     const p = String(path || "");
+
+    // support path full: "/api/internet/dramabox/allepisode" -> "/allepisode"
+    if (p.startsWith("/api/internet/dramabox/")) return p.replace("/api/internet/dramabox", "");
+
     // support pemanggilan lama: "/api/dramabox/latest" -> "/latest"
     if (p.startsWith("/api/dramabox/")) return p.replace("/api/dramabox", "");
+
     return p.startsWith("/") ? p : `/${p}`;
   };
 
