@@ -1,4 +1,3 @@
-/* ========= assets/js/drama-detail.js ========= */
 (() => {
   "use strict";
 
@@ -80,16 +79,12 @@
 
   // ====== DRAMA API (Ryhar) + apikey ======
   const DRAMA_BASE = "https://api.ryhar.my.id";
-
-  // ✅ samakan dengan core.js + tetap support key lama
-  const LS_DRAMA_KEY = "dramabox_apikey";
-  const LS_DRAMA_KEY_OLD = "ryhar_apikey";
+  const LS_DRAMA_KEY = "ryhar_apikey";
 
   const getDramaApiKey = () => {
     const k =
       (window.DRAMA_APIKEY && String(window.DRAMA_APIKEY).trim()) ||
       (localStorage.getItem(LS_DRAMA_KEY) || "").trim() ||
-      (localStorage.getItem(LS_DRAMA_KEY_OLD) || "").trim() ||
       "RyAPIs";
     return k;
   };
@@ -142,8 +137,6 @@
   };
 
   const apiGetDramaSafe = async (path) => {
-    // ✅ kalau core.js sudah define window.apiGetDrama, pakai itu
-    // (core.js versi update sudah support path /api/internet/dramabox/* juga)
     if (typeof window.apiGetDrama === "function") return await window.apiGetDrama(path);
 
     const pth = String(path || "");
