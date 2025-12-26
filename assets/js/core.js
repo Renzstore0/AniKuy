@@ -1,14 +1,14 @@
+/* ========= assets/js/core.js ========= */
 (() => {
   "use strict";
 
   /* ========= CONST ========= */
   const BASE = "https://www.sankavollerei.com",
-    // ✅ Gateway anabot untuk dramabox
-    DRAMA_BASE = "https://anabot.my.id/api/search/drama/dramabox",
+    // Ryhar only
+    DRAMA_BASE = "https://api.ryhar.my.id/api/internet/dramabox",
     LS_FAV = "anikuy_favorites",
     LS_DRAMA_FAV = "anikuy_drama_favorites",
     LS_THEME = "anikuy_theme",
-    // ✅ simpan apikey drama
     LS_DRAMA_KEY = "dramabox_apikey",
     LS_MODE = "anikuy_mode",
     MODE_DRAMA = "drama",
@@ -22,21 +22,12 @@
   const isDramaRoute = () =>
     document.body?.dataset?.page === "drama" || (location.pathname || "").startsWith("/drama");
 
-  // mode untuk halaman netral (my-list / profile / settings)
   const getAppMode = () => {
     const p = location.pathname || "";
     const routeDrama = p.startsWith("/drama");
 
-    // anime pages (eksplisit)
     const routeAnime =
-      p === "/" ||
-      p.startsWith("/anime") ||
-      p.startsWith("/search") ||
-      p.startsWith("/explore") ||
-      p.startsWith("/anime/");
-
-    // halaman netral: jangan override mode
-    const neutral = p.startsWith("/my-list") || p.startsWith("/profile") || p.startsWith("/settings");
+      p === "/" || p.startsWith("/anime") || p.startsWith("/search") || p.startsWith("/explore") || p.startsWith("/anime/");
 
     try {
       if (routeDrama) localStorage.setItem(LS_MODE, MODE_DRAMA);
@@ -46,7 +37,6 @@
     if (routeDrama) return MODE_DRAMA;
     if (routeAnime) return MODE_ANIME;
 
-    // netral / lainnya: pakai mode terakhir
     try {
       return localStorage.getItem(LS_MODE) === MODE_DRAMA ? MODE_DRAMA : MODE_ANIME;
     } catch {
@@ -54,7 +44,6 @@
     }
   };
 
-  // expose untuk script lain
   window.getAppMode = getAppMode;
   window.isDramaMode = () => getAppMode() === MODE_DRAMA;
 
@@ -109,7 +98,7 @@
     });
   };
 
-  /* ========= FETCH HELPERS (anti CORS / timeout) ========= */
+  /* ========= FETCH HELPERS (timeout + fallback proxy) ========= */
   const fetchJsonTry = async (url, timeoutMs = 12000) => {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -124,13 +113,14 @@
         signal: ctrl.signal,
       });
 
-      if (!r.ok) throw new Error(`HTTP_${r.status}`);
-
       const text = await r.text();
+
+      if (!r.ok) throw new Error(`HTTP_${r.status}::${text.slice(0, 160)}`);
+
       try {
-        return JSON.parse(text);
+        return text ? JSON.parse(text) : null;
       } catch {
-        throw new Error("INVALID_JSON");
+        throw new Error(`INVALID_JSON::${text.slice(0, 160)}`);
       }
     } finally {
       clearTimeout(t);
@@ -156,12 +146,26 @@
     throw lastErr || new Error("FETCH_FAILED");
   };
 
-  /* ========= API ========= */
-  window.apiGet = async (path) => {
+  const buildUrl = (base, path, params) => {
+    const p = String(path || "");
+    const url = new URL(base + (p.startsWith("/") ? p : `/${p}`));
+
+    if (params && typeof params === "object") {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v == null) return;
+        url.searchParams.set(String(k), String(v));
+      });
+    }
+
+    return url.toString();
+  };
+
+  /* ========= API ANIME ========= */
+  // now supports params: apiGet("/api/search", { q:"naruto", page:1 })
+  window.apiGet = async (path, params) => {
     try {
-      const r = await fetch(BASE + path);
-      if (!r.ok) throw r.status;
-      return await r.json();
+      const url = buildUrl(BASE, path, params);
+      return await fetchJsonWithFallback(url);
     } catch (e) {
       console.error(e);
       showToast("Gagal memuat data");
@@ -169,8 +173,7 @@
     }
   };
 
-  /* ========= DRAMA APIKEY + PATH MAPPER ========= */
-  // ✅ set apikey dari console / halaman settings
+  /* ========= DRAMA (RYHAR ONLY) ========= */
   window.setDramaApiKey = (k) => {
     try {
       localStorage.setItem(LS_DRAMA_KEY, String(k || "").trim());
@@ -179,41 +182,47 @@
   };
 
   const getDramaApiKey = () => {
-    // prioritas: window.DRAMA_APIKEY -> localStorage -> default
     const k =
       (window.DRAMA_APIKEY && String(window.DRAMA_APIKEY).trim()) ||
       (localStorage.getItem(LS_DRAMA_KEY) || "").trim() ||
-      "freeApikey";
+      "RyAPIs";
     return k;
   };
 
-  const mapDramaPath = (path) => {
+  const normalizeDramaPath = (path) => {
     const p = String(path || "");
-    // support pemanggilan lama: "/api/dramabox/latest" -> "/latest"
+    // kalau sudah full path "/api/internet/dramabox/..." -> potong jadi "/..."
+    if (p.startsWith("/api/internet/dramabox/")) return p.replace("/api/internet/dramabox", "");
+    // alias internal kalau masih kepakai di kode lain
     if (p.startsWith("/api/dramabox/")) return p.replace("/api/dramabox", "");
     return p.startsWith("/") ? p : `/${p}`;
   };
 
-  const withApiKey = (url) => {
-    const key = getDramaApiKey();
-    const join = url.includes("?") ? "&" : "?";
-    return `${url}${join}apikey=${encodeURIComponent(key)}`;
-  };
-
-  // ✅ DRAMA API (Anabot) + fallback proxy anti CORS
-  const apiGetDramaStable = async (path) => {
+  const apiGetDramaStable = async (path, params) => {
     try {
-      const url = withApiKey(DRAMA_BASE + mapDramaPath(path));
-      return await fetchJsonWithFallback(url);
+      const norm = normalizeDramaPath(path);
+      // norm boleh sudah punya query (?bookId=...) -> URL tetap aman
+      const url = new URL(DRAMA_BASE + norm);
+
+      // merge params object (kalau ada)
+      if (params && typeof params === "object") {
+        Object.entries(params).forEach(([k, v]) => {
+          if (v == null) return;
+          url.searchParams.set(String(k), String(v));
+        });
+      }
+
+      // always add apikey (Ryhar only)
+      url.searchParams.set("apikey", getDramaApiKey());
+
+      return await fetchJsonWithFallback(url.toString());
     } catch (e) {
       console.error(e);
-      // ✅ di route drama: jangan kasih toast (biar retry aja)
       if (!isDramaRoute()) showToast("Gagal memuat drama");
       throw e;
     }
   };
 
-  // kunci biar nggak ketimpa script lain
   try {
     Object.defineProperty(window, "apiGetDrama", {
       value: apiGetDramaStable,
@@ -224,7 +233,7 @@
     window.apiGetDrama = apiGetDramaStable;
   }
 
-  /* ========= FAVORITES ========= */
+  /* ========= FAVORITES ANIME ========= */
   let favs = (() => {
     try {
       return JSON.parse(localStorage.getItem(LS_FAV)) || [];
@@ -239,7 +248,7 @@
   window.isFavorite = (s) => favs.some((a) => a.slug === s);
 
   window.addFavorite = (a) => {
-    if (!a?.slug || isFavorite(a.slug)) return;
+    if (!a?.slug || window.isFavorite(a.slug)) return;
     favs.push({
       slug: a.slug,
       title: a.title || "",
@@ -258,7 +267,7 @@
     showToast("Dihapus dari My List");
   };
 
-  /* ========= DRAMA FAVORITES ========= */
+  /* ========= FAVORITES DRAMA (Ryhar only) ========= */
   let dramaFavs = (() => {
     try {
       return JSON.parse(localStorage.getItem(LS_DRAMA_FAV)) || [];
@@ -331,7 +340,7 @@
     return c;
   };
 
-  /* ========= DRAWER (bind markup existing) ========= */
+  /* ========= DRAWER ========= */
   function closeDrawer() {
     const d = $("sideDrawer");
     const o = $("drawerOverlay");
@@ -444,7 +453,6 @@
 
     setLeftButtonMode(page);
 
-    // ✅ Bottom nav: sinkronkan mode
     const homeNav =
       document.querySelector('.bottom-nav a[data-tab="home"]') ||
       document.querySelector('.bottom-nav a.nav-item[href="/"]') ||
@@ -454,7 +462,6 @@
     const exploreNav = document.querySelector('.bottom-nav a.nav-item[href="/explore"]');
     if (exploreNav) exploreNav.setAttribute("href", dramaPage ? "/drama/explore" : "/explore");
 
-    // hide bottom-nav saat scroll
     const main = $("mainContent"),
       nav = document.querySelector(".bottom-nav");
 
@@ -471,7 +478,6 @@
       );
     }
 
-    // proteksi
     document.oncontextmenu = (e) => e.preventDefault();
     document.ondragstart = (e) => e.preventDefault();
     document.onkeydown = (e) => {
