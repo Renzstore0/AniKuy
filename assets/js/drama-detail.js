@@ -4,9 +4,18 @@
   const $ = (id) => document.getElementById(id);
   const toast = (m) => typeof showToast === "function" && showToast(m);
 
-  const isDFav = typeof window.isDramaFavorite === "function" ? window.isDramaFavorite : () => false;
-  const addDFav = typeof window.addDramaFavorite === "function" ? window.addDramaFavorite : () => {};
-  const rmDFav = typeof window.removeDramaFavorite === "function" ? window.removeDramaFavorite : () => {};
+  const isDFav =
+    typeof window.isDramaFavorite === "function"
+      ? window.isDramaFavorite
+      : () => false;
+  const addDFav =
+    typeof window.addDramaFavorite === "function"
+      ? window.addDramaFavorite
+      : () => {};
+  const rmDFav =
+    typeof window.removeDramaFavorite === "function"
+      ? window.removeDramaFavorite
+      : () => {};
 
   const p = new URLSearchParams(location.search);
   const bookId = p.get("bookId");
@@ -68,15 +77,15 @@
     document.head.appendChild(st);
   };
 
-  // ====== DRAMA API (Anabot) + apikey ======
-  const DRAMA_BASE = "https://anabot.my.id/api/search/drama/dramabox";
-  const LS_DRAMA_KEY = "dramabox_apikey";
+  // ====== DRAMA API (Ryhar) + apikey ======
+  const DRAMA_BASE = "https://api.ryhar.my.id";
+  const LS_DRAMA_KEY = "ryhar_apikey";
 
   const getDramaApiKey = () => {
     const k =
       (window.DRAMA_APIKEY && String(window.DRAMA_APIKEY).trim()) ||
       (localStorage.getItem(LS_DRAMA_KEY) || "").trim() ||
-      "freeApikey";
+      "RyAPIs";
     return k;
   };
 
@@ -141,7 +150,11 @@
   const normalizeEpisodes = (payload) => {
     if (Array.isArray(payload)) return payload;
 
-    // format anabot:
+    // format ryhar:
+    // { success:true, message:"Success", result:[...] }
+    if (Array.isArray(payload?.result)) return payload.result;
+
+    // format anabot lama:
     // { success:true, data:{ result:{ chapterList:[...] } } }
     const chapterList = payload?.data?.result?.chapterList;
     if (Array.isArray(chapterList)) return chapterList;
@@ -188,7 +201,8 @@
     return m ? parseInt(m[1], 10) : idx + 1;
   };
 
-  const isDesktopNow = () => window.matchMedia && window.matchMedia("(min-width: 900px)").matches;
+  const isDesktopNow = () =>
+    window.matchMedia && window.matchMedia("(min-width: 900px)").matches;
 
   // ====== DETAIL ======
   const buildDetail = (b) => {
@@ -248,7 +262,7 @@
 
     const MAX_TAGS_MOBILE = 3;
     const desktop = isDesktopNow();
-    let tagsExpanded = desktop; // desktop langsung expanded
+    let tagsExpanded = desktop;
 
     const renderTags = () => {
       if (!tagWrap) return;
@@ -306,7 +320,9 @@
         };
 
         requestAnimationFrame(() => {
-          const need = synText !== "Tidak ada sinopsis." && syn.scrollHeight > syn.clientHeight + 2;
+          const need =
+            synText !== "Tidak ada sinopsis." &&
+            syn.scrollHeight > syn.clientHeight + 2;
           synToggle.style.display = need ? "inline-block" : "none";
         });
       }
@@ -336,17 +352,15 @@
         refreshFav();
       });
 
-    // kalau user resize dari mobile ke desktop (atau kebalik), biar auto ngikut rules
+    // auto update kalau resize mobile/desktop
     const mq = window.matchMedia ? window.matchMedia("(min-width: 900px)") : null;
     if (mq) {
       const onChange = () => {
         const d = isDesktopNow();
 
-        // genres
         tagsExpanded = d ? true : tagsExpanded;
         renderTags();
 
-        // synopsis
         if (syn && synToggle) {
           if (d) {
             syn.classList.add("expanded");
@@ -354,7 +368,9 @@
           } else {
             syn.classList.remove("expanded");
             requestAnimationFrame(() => {
-              const need = synText !== "Tidak ada sinopsis." && syn.scrollHeight > syn.clientHeight + 2;
+              const need =
+                synText !== "Tidak ada sinopsis." &&
+                syn.scrollHeight > syn.clientHeight + 2;
               synToggle.style.display = need ? "inline-block" : "none";
               synToggle.textContent = "Baca selengkapnya";
             });
@@ -362,7 +378,6 @@
         }
       };
 
-      // aman untuk browser lama
       try {
         mq.addEventListener("change", onChange);
       } catch {
@@ -392,14 +407,14 @@
       box.className = "episode-box";
       box.setAttribute("data-ep", String(n));
       box.setAttribute("data-vip", String(vip));
-
-      // ✅ cuma angka episode, tanpa "VIP"
       box.textContent = String(n);
 
       box.onclick = () => {
-        location.href = `/drama/watch?bookId=${encodeURIComponent(bookId)}&chapterId=${encodeURIComponent(
-          ep?.chapterId || ""
-        )}&name=${encodeURIComponent(nameFromUrl || "")}`;
+        location.href = `/drama/watch?bookId=${encodeURIComponent(
+          bookId
+        )}&chapterId=${encodeURIComponent(ep?.chapterId || "")}&name=${encodeURIComponent(
+          nameFromUrl || ""
+        )}`;
       };
 
       grid.appendChild(box);
@@ -413,9 +428,11 @@
       firstBtn.onclick = () => {
         const first = sorted[0];
         if (!first?.chapterId) return;
-        location.href = `/drama/watch?bookId=${encodeURIComponent(bookId)}&chapterId=${encodeURIComponent(
-          first.chapterId
-        )}&name=${encodeURIComponent(nameFromUrl || "")}`;
+        location.href = `/drama/watch?bookId=${encodeURIComponent(
+          bookId
+        )}&chapterId=${encodeURIComponent(first.chapterId)}&name=${encodeURIComponent(
+          nameFromUrl || ""
+        )}`;
       };
     }
   };
@@ -427,8 +444,10 @@
     el.list.innerHTML = `<div class="season-empty">Memuat episode...</div>`;
 
     try {
-      // endpoint anabot: /chapter?id=<bookId>&apikey=...
-      const payload = await apiGetDramaSafe(`/chapter?id=${encodeURIComponent(bookId)}`);
+      // ✅ endpoint ryhar: /api/internet/dramabox/allepisode?bookId=<bookId>&apikey=...
+      const payload = await apiGetDramaSafe(
+        `/api/internet/dramabox/allepisode?bookId=${encodeURIComponent(bookId)}`
+      );
       const eps = normalizeEpisodes(payload);
 
       if (!eps.length) {
