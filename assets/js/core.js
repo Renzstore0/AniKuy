@@ -3,8 +3,8 @@
 
   /* ========= CONST ========= */
   const BASE = "https://www.sankavollerei.com",
-    // ✅ Gateway anabot untuk dramabox
-    DRAMA_BASE = "https://anabot.my.id/api/search/drama/dramabox",
+    // ✅ Gateway dramabox (baru)
+    DRAMA_BASE = "https://api.ryhar.my.id/api/internet/dramabox",
     LS_FAV = "anikuy_favorites",
     LS_DRAMA_FAV = "anikuy_drama_favorites",
     LS_THEME = "anikuy_theme",
@@ -183,7 +183,7 @@
     const k =
       (window.DRAMA_APIKEY && String(window.DRAMA_APIKEY).trim()) ||
       (localStorage.getItem(LS_DRAMA_KEY) || "").trim() ||
-      "freeApikey";
+      "RyAPIs"; // ✅ default baru
     return k;
   };
 
@@ -200,7 +200,7 @@
     return `${url}${join}apikey=${encodeURIComponent(key)}`;
   };
 
-  // ✅ DRAMA API (Anabot) + fallback proxy anti CORS
+  // ✅ DRAMA API + fallback proxy anti CORS
   const apiGetDramaStable = async (path) => {
     try {
       const url = withApiKey(DRAMA_BASE + mapDramaPath(path));
