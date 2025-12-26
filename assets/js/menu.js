@@ -48,7 +48,7 @@
     </div>
     <div class="side-drawer-links">
       <a class="side-drawer-link ${active === "anime" ? "active" : ""}" href="/">Anime</a>
-      <a class="side-drawer-link ${active === "drama" ? "active" : ""}" href="/drama/index.html">Drama China</a>
+      <a class="side-drawer-link ${active === "drama" ? "active" : ""}" href="/drama/index.html">Short Drama</a>
     </div>
   `;
 
