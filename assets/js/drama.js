@@ -1,40 +1,71 @@
 (() => {
   "use strict";
 
-  const $ = (id) => document.getElementById(id);
+  // ====== CONFIG API (update) ======
+  const API_BASE = "https://api.ryhar.my.id";
+  const API_KEY = "RyAPIs";
 
-  const el = {
-    loading: $("dramaLoading"),
-
-    // hero
-    heroSection: $("todaySection"),
-    heroTitle: $("todayHeaderTitle"),
-    heroPrevBtn: $("todayPrevBtn"),
-    heroNextBtn: $("todayNextBtn"),
-    heroPosterPrev: $("todayPosterPrev"),
-    heroPoster: $("todayPoster"),
-    heroPosterNext: $("todayPosterNext"),
-    heroName: $("todayTitle"),
-    heroWatchBtn: $("todayWatchBtn"),
-    heroDots: $("todayDots"),
-
-    // only latest
-    latest: $("dramaLatestRow"),
+  const ENDPOINTS = {
+    latest: "/api/internet/dramabox/latest",
+    foryou: "/api/internet/dramabox/foryou",
   };
 
+  // ====== HELPERS ======
+  const $ = (id) => document.getElementById(id);
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  const apiGetDrama = async (path, opts = {}) => {
+    const timeoutMs = Number(opts.timeoutMs ?? 15000);
+
+    const url = new URL(path, API_BASE);
+    if (API_KEY && !url.searchParams.get("apikey")) url.searchParams.set("apikey", API_KEY);
+
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(url.toString(), {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
+        signal: controller.signal,
+      });
+
+      if (!res.ok) throw new Error(`HTTP_${res.status}`);
+
+      const text = await res.text();
+      let j = null;
+      try {
+        j = text ? JSON.parse(text) : null;
+      } catch {
+        throw new Error("DRAMA_INVALID_JSON");
+      }
+
+      // kalau API pakai flag success/message
+      if (j && j.success === false) throw new Error(j.message || "DRAMA_API_FAIL");
+
+      return j;
+    } catch (e) {
+      if (e?.name === "AbortError") throw new Error("DRAMA_TIMEOUT");
+      throw e;
+    } finally {
+      clearTimeout(t);
+    }
+  };
 
   const normalizeList = (j) => {
     if (Array.isArray(j)) return j;
 
-    // ✅ format anabot: { success:true, data:{ result:[...] } }
+    // format: { success:true, result:[...] }
+    if (Array.isArray(j?.result)) return j.result;
+
+    // format anabot: { success:true, data:{ result:[...] } }
     if (Array.isArray(j?.data?.result)) return j.data.result;
     if (Array.isArray(j?.data?.list)) return j.data.list;
     if (Array.isArray(j?.data)) return j.data;
 
     // fallback format lain
     if (Array.isArray(j?.list)) return j.list;
-    if (Array.isArray(j?.result)) return j.result;
     if (Array.isArray(j?.items)) return j.items;
 
     return null;
@@ -58,6 +89,37 @@
     return tags.slice(0, 3).join(", ");
   };
 
+  // ====== ELEMENTS ======
+  const el = {
+    loading: $("dramaLoading"),
+
+    // hero
+    heroSection: $("todaySection"),
+    heroTitle: $("todayHeaderTitle"),
+    heroPrevBtn: $("todayPrevBtn"),
+    heroNextBtn: $("todayNextBtn"),
+    heroPosterPrev: $("todayPosterPrev"),
+    heroPoster: $("todayPoster"),
+    heroPosterNext: $("todayPosterNext"),
+    heroName: $("todayTitle"),
+    heroWatchBtn: $("todayWatchBtn"),
+    heroDots: $("todayDots"),
+
+    // only latest
+    latest: $("dramaLatestRow"),
+  };
+
+  // ====== UI ======
+  const showLoading = () => {
+    document.body.classList.add("is-loading");
+    el.loading && el.loading.classList.add("show");
+  };
+
+  const hideLoading = () => {
+    document.body.classList.remove("is-loading");
+    el.loading && el.loading.classList.remove("show");
+  };
+
   const renderGrid = (container, list) => {
     if (!container) return;
     container.innerHTML = "";
@@ -77,8 +139,7 @@
   };
 
   async function loadLatestOnce() {
-    // bisa "/api/dramabox/latest" (akan dimap ke "/latest")
-    const j = await apiGetDrama("/api/dramabox/latest");
+    const j = await apiGetDrama(ENDPOINTS.latest);
     const listRaw = normalizeList(j);
     if (!Array.isArray(listRaw)) throw new Error("DRAMA_INVALID_RESPONSE");
 
@@ -87,13 +148,10 @@
     return list;
   }
 
-  // HERO "Untuk Kamu" (optional)
+  // HERO "Untuk Kamu"
   function initForYouHero(list) {
     const items = (list || [])
-      // ✅ anabot result biasanya tidak punya cardType, jadi fleksibel
-      .filter(
-        (x) => x && x.bookId && (x.coverWap || x.cover) && (x.cardType === 1 || x.cardType == null)
-      )
+      .filter((x) => x && x.bookId && (x.coverWap || x.cover) && (x.cardType === 1 || x.cardType == null))
       .slice(0, 12);
 
     if (!el.heroSection || items.length === 0) return;
@@ -103,6 +161,7 @@
 
     let idx = 0;
     const mod = (n, m) => ((n % m) + m) % m;
+    const posterOf = (x) => (x?.coverWap || x?.cover || "");
 
     const setDots = () => {
       if (!el.heroDots) return;
@@ -117,8 +176,6 @@
         el.heroDots.appendChild(dot);
       });
     };
-
-    const posterOf = (x) => (x?.coverWap || x?.cover || "");
 
     const render = () => {
       const n = items.length;
@@ -164,20 +221,10 @@
     render();
   }
 
-  const showLoading = () => {
-    document.body.classList.add("is-loading");
-    el.loading && el.loading.classList.add("show");
-  };
-
-  const hideLoading = () => {
-    document.body.classList.remove("is-loading");
-    el.loading && el.loading.classList.remove("show");
-  };
-
   async function tryLoadForYouLoop() {
     while (true) {
       try {
-        const j = await apiGetDrama("/api/dramabox/foryou");
+        const j = await apiGetDrama(ENDPOINTS.foryou);
         const list = normalizeList(j);
         if (Array.isArray(list)) {
           initForYouHero(list);
