@@ -111,12 +111,11 @@
       realUrl,
       `https://corsproxy.io/?${encodeURIComponent(realUrl)}`,
       `https://api.allorigins.win/raw?url=${encodeURIComponent(realUrl)}`,
-      `https://cors.isomorphic-git.org/${realUrl}`,
     ];
     let lastErr = null;
     for (const u of tries) {
       try {
-        return await fetchJsonTry(u);
+        return await fetchJsonTry(u, 15000);
       } catch (e) {
         lastErr = e;
       }
@@ -126,10 +125,8 @@
 
   // ✅ support (path, params)
   const apiGetDramaSafe = async (path, params) => {
-    // kalau core.js sudah ada, pakai itu (paling stabil)
     if (typeof window.apiGetDrama === "function") return await window.apiGetDrama(path, params);
 
-    // fallback direct
     const pth = String(path || "");
     const norm = pth.startsWith("/") ? pth : `/${pth}`;
     const url = new URL(DRAMA_FALLBACK_BASE + norm);
@@ -145,7 +142,7 @@
     return await fetchJsonWithFallback(url.toString());
   };
 
-  // ====== RYHAR ONLY: episode ada di payload.result ======
+  // ====== normalize ======
   const normalizeEpisodes = (payload) => (Array.isArray(payload?.result) ? payload.result : []);
 
   const getSavedBook = () => {
@@ -165,6 +162,24 @@
     } catch {}
   };
 
+  const readEpsCache = () => {
+    try {
+      if (!bookId) return [];
+      const raw = sessionStorage.getItem(`dramabox_eps_${bookId}`);
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const saveEpsCache = (eps) => {
+    try {
+      if (!bookId) return;
+      sessionStorage.setItem(`dramabox_eps_${bookId}`, JSON.stringify(eps || []));
+    } catch {}
+  };
+
   const epNum = (ep, idx) => {
     const ci = ep?.chapterIndex;
     if (typeof ci === "number" && Number.isFinite(ci)) return ci + 1;
@@ -177,7 +192,7 @@
   const isDesktopNow = () =>
     window.matchMedia && window.matchMedia("(min-width: 900px)").matches;
 
-  // ====== DETAIL ======
+  // ====== DETAIL UI ======
   const buildDetail = (b) => {
     if (!el.detail) return;
 
@@ -323,9 +338,13 @@
       });
   };
 
+  // ====== EPISODE GRID ======
+  let hasRenderedEpisodes = false;
+
   const renderEpisodeGrid = (episodes) => {
     if (!el.list) return;
     ensureEpisodeGridStyle();
+    hasRenderedEpisodes = true;
 
     const grid = document.createElement("div");
     grid.className = "episode-grid";
@@ -389,28 +408,36 @@
     }
   }
 
-  // ✅ RETRY TERUS: UI gak pernah tampil "Gagal memuat..."
-  async function loadEpisodes() {
-    if (!bookId) return toast("bookId tidak ditemukan");
-    if (!el.list) return;
+  // ✅ pola drama.js: cache dulu, retry background, loading indicator dibatasi
+  async function loadEpisodesLoop() {
+    if (!bookId || !el.list) return;
 
-    el.list.innerHTML = `<div class="season-empty">Memuat episode...</div>`;
+    // 1) render cache dulu (biar gak kosong)
+    const cached = readEpsCache();
+    if (cached.length) renderEpisodeGrid(cached);
 
+    // 2) kalau belum ada cache, tampilkan loading (sementara)
+    if (!hasRenderedEpisodes) {
+      el.list.innerHTML = `<div class="season-empty">Memuat episode...</div>`;
+      // watchdog: max 12 detik, habis itu hilangkan teks loading (biar gak “memuat mulu”)
+      setTimeout(() => {
+        if (!hasRenderedEpisodes && el.list) el.list.innerHTML = "";
+      }, 12000);
+    }
+
+    // 3) retry terus di belakang layar sampai sukses
     while (true) {
       try {
         const payload = await apiGetDramaSafe("/allepisode", { bookId });
         const eps = normalizeEpisodes(payload);
 
         if (!eps.length) {
-          console.error("[loadEpisodes] empty result, retry...");
-          await sleep(2000);
+          console.error("[loadEpisodes] empty, retry...");
+          await sleep(2500);
           continue;
         }
 
-        try {
-          sessionStorage.setItem(`dramabox_eps_${bookId}`, JSON.stringify(eps));
-        } catch {}
-
+        saveEpsCache(eps);
         renderEpisodeGrid(eps);
         return;
       } catch (e) {
@@ -427,6 +454,7 @@
     buildDetail(saved || { bookName: nameFromUrl, chapterCount: "?", tags: [] });
 
     loadDetailFromApi();
+    loadEpisodesLoop();
 
     if (el.search) {
       el.search.addEventListener("input", () => {
@@ -438,7 +466,5 @@
         });
       });
     }
-
-    loadEpisodes();
   });
 })();
