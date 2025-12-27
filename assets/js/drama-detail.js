@@ -1,4 +1,4 @@
-/* ========= assets/js/drama-detail.js (UPDATED FULL) ========= */
+/* ========= assets/js/drama-detail.js (UPDATED v2 - stop infinite loading) ========= */
 (() => {
   "use strict";
 
@@ -76,7 +76,10 @@
     return k;
   };
 
-  const fetchJsonTry = async (url, timeoutMs = 15000) => {
+  // ====== FETCH (lebih cepat + gak ngegantung lama) ======
+  const FETCH_TIMEOUT_MS = 8000;
+
+  const fetchJsonTry = async (url, timeoutMs = FETCH_TIMEOUT_MS) => {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
@@ -103,15 +106,17 @@
   };
 
   const fetchJsonWithFallback = async (realUrl) => {
+    // urutan: direct -> corsproxy -> allorigins
     const tries = [
       realUrl,
       `https://corsproxy.io/?${encodeURIComponent(realUrl)}`,
       `https://api.allorigins.win/raw?url=${encodeURIComponent(realUrl)}`,
     ];
+
     let lastErr = null;
     for (const u of tries) {
       try {
-        return await fetchJsonTry(u, 15000);
+        return await fetchJsonTry(u, FETCH_TIMEOUT_MS);
       } catch (e) {
         lastErr = e;
       }
@@ -120,12 +125,11 @@
   };
 
   // ✅ kompatibel core.js lama/baru + support params
-  // - core.js baru: apiGetDrama(path, params)
-  // - core.js lama: apiGetDrama(path) (params diabaikan)
-  // - kalau core.js gak ada: fallback direct ke DRAMA_FALLBACK_BASE
   const apiGetDramaSafe = async (path, params) => {
+    // core.js ada
     if (typeof window.apiGetDrama === "function") return await window.apiGetDrama(path, params);
 
+    // fallback direct
     const pth = String(path || "");
     const norm = pth.startsWith("/") ? pth : `/${pth}`;
 
@@ -139,11 +143,10 @@
     }
 
     url.searchParams.set("apikey", getDramaApiKey());
-
     return await fetchJsonWithFallback(url.toString());
   };
 
-  // ====== normalize ======
+  // ====== normalize episodes (tahan format beda-beda) ======
   const pickArray = (...xs) => xs.find(Array.isArray) || [];
   const normalizeEpisodes = (p) =>
     pickArray(
@@ -159,6 +162,7 @@
       p?.chapters
     );
 
+  // ====== cache book / episodes ======
   const getSavedBook = () => {
     try {
       if (!bookId) return null;
@@ -377,12 +381,11 @@
       box.setAttribute("data-vip", String(vip));
       box.textContent = String(n);
 
+      const chId = ep?.chapterId || ep?.id || "";
       box.onclick = () => {
         location.href = `/drama/watch?bookId=${encodeURIComponent(
           bookId
-        )}&chapterId=${encodeURIComponent(ep?.chapterId || ep?.id || "")}&name=${encodeURIComponent(
-          nameFromUrl || ""
-        )}`;
+        )}&chapterId=${encodeURIComponent(chId)}&name=${encodeURIComponent(nameFromUrl || "")}`;
       };
 
       grid.appendChild(box);
@@ -436,12 +439,17 @@
     }
   }
 
-  // ✅ stop infinite loading: retry terbatas + multi endpoint
+  // ✅ FIX utama: batas total 35 detik + stop loading, bukan infinite
   let epsLoading = false;
 
   async function loadEpisodesLoop(force = false) {
     if (epsLoading) return;
     epsLoading = true;
+
+    const START = Date.now();
+    const MAX_TOTAL_MS = 35000;
+
+    let lastErr = null;
 
     try {
       if (!bookId || !el.list) {
@@ -455,24 +463,33 @@
         if (cached.length) renderEpisodeGrid(cached);
       }
 
-      if (!hasRenderedEpisodes) el.list.innerHTML = `<div class="season-empty">Memuat episode...</div>`;
+      if (!hasRenderedEpisodes) {
+        el.list.innerHTML = `<div class="season-empty">Memuat episode... (maks 35 detik)</div>`;
+      }
 
+      // coba beberapa endpoint + versi querystring (biar kompatibel aneh-aneh)
       const endpoints = [
-        "/allepisode",
-        "/allEpisode",
-        "/episode",
-        "/episodes",
-        "/episodeList",
-        "/chapterlist",
-        "/chapterList",
+        { path: "/allepisode", params: { bookId } },
+        { path: "/allEpisode", params: { bookId } },
+        { path: "/episode", params: { bookId } },
+        { path: "/episodes", params: { bookId } },
+        { path: "/episodeList", params: { bookId } },
+        { path: "/chapterlist", params: { bookId } },
+        { path: "/chapterList", params: { bookId } },
+
+        // versi querystring
+        { path: `/allepisode?bookId=${encodeURIComponent(bookId)}` },
+        { path: `/allEpisode?bookId=${encodeURIComponent(bookId)}` },
+        { path: `/episodes?bookId=${encodeURIComponent(bookId)}` },
       ];
 
-      const MAX_ATTEMPTS = 8;
+      // loop sampai timeout total
+      while (Date.now() - START < MAX_TOTAL_MS) {
+        for (const c of endpoints) {
+          if (Date.now() - START >= MAX_TOTAL_MS) break;
 
-      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-        for (const epPath of endpoints) {
           try {
-            const payload = await apiGetDramaSafe(epPath, { bookId });
+            const payload = await apiGetDramaSafe(c.path, c.params);
             const eps = normalizeEpisodes(payload);
 
             if (eps.length) {
@@ -480,13 +497,16 @@
               renderEpisodeGrid(eps);
               return;
             }
-          } catch {}
+          } catch (e) {
+            lastErr = e;
+          }
         }
 
-        await sleep(Math.min(2000 * attempt, 10000));
+        await sleep(800);
       }
 
-      renderEpisodesError("Episode tidak bisa dimuat (API kosong / endpoint berubah).");
+      console.error("[DRAMA_DETAIL] eps timeout:", lastErr);
+      renderEpisodesError("Episode tidak bisa dimuat (timeout). Coba lagi.");
     } finally {
       epsLoading = false;
     }
