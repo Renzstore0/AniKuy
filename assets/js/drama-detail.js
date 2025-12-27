@@ -1,9 +1,10 @@
-/* ========= assets/js/drama-detail.js ========= */
+/* ========= assets/js/detail.js (FIX) ========= */
 (() => {
   "use strict";
 
-  const $ = (id) => document.getElementById(id);
-  const toast = (m) => typeof showToast === "function" && showToast(m);
+  const $id = (id) => document.getElementById(id);
+  const $qs = (sel) => document.querySelector(sel);
+  const toast = (m) => typeof window.showToast === "function" && window.showToast(m);
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   const isDFav =
@@ -17,11 +18,56 @@
   const bookId = p.get("bookId");
   const nameFromUrl = p.get("name") || "";
 
-  const el = {
-    detail: $("dramaDetailContent"),
-    list: $("dramaEpisodeList"),
-    search: $("dramaEpisodeSearchInput"),
-    back: $("backButton"),
+  // ---- DOM refs (JANGAN di-cache sebelum DOM siap) ----
+  let el = { detail: null, list: null, search: null, back: null };
+
+  const pickEl = (...ids) => {
+    for (const id of ids) {
+      const node = id ? $id(id) : null;
+      if (node) return node;
+    }
+    return null;
+  };
+
+  const pickSel = (...sels) => {
+    for (const s of sels) {
+      const node = s ? $qs(s) : null;
+      if (node) return node;
+    }
+    return null;
+  };
+
+  const hydrateEls = () => {
+    el.detail =
+      pickEl("dramaDetailContent", "detailContent") ||
+      pickSel("[data-drama-detail]", ".drama-detail-content", ".detail-content");
+
+    el.list =
+      pickEl("dramaEpisodeList", "episodeList", "episode-list") ||
+      pickSel("[data-episode-list]", ".episode-list", ".episodeList", "#episode-list");
+
+    el.search =
+      pickEl("dramaEpisodeSearchInput", "episodeSearchInput", "episodeSearch") ||
+      pickSel("[data-episode-search]", ".episode-search input", "input.episode-search");
+
+    el.back = pickEl("backButton") || pickSel("[data-back]", ".back-button", ".btn-back");
+  };
+
+  const ensureEpisodeMount = () => {
+    if (el.list) return;
+
+    const mount =
+      pickSel("#episodeSection", "[data-episode-section]") ||
+      (el.detail ? el.detail.parentElement : null) ||
+      document.body;
+
+    const box = document.createElement("div");
+    box.id = "dramaEpisodeList";
+    box.className = "episode-list";
+    box.style.marginTop = "12px";
+    mount.appendChild(box);
+
+    el.list = box;
   };
 
   // ====== STYLE GRID (5 kolom) ======
@@ -64,6 +110,20 @@
       .episode-box:active{ transform: scale(.98); }
       .episode-box[data-vip="1"]{ opacity:.65; }
       .episode-box .vip-badge{ display:none !important; }
+      .season-empty{ opacity:.8; padding:10px 0; }
+      .episode-error{ opacity:.9; padding:10px 0; }
+      .episode-retry-btn{
+        margin-top:8px;
+        padding:10px 12px;
+        border-radius:10px;
+        border:1px solid rgba(255,255,255,.18);
+        background: rgba(255,255,255,.08);
+        color:#fff;
+        cursor:pointer;
+        display:inline-flex;
+        align-items:center;
+        gap:8px;
+      }
     `;
     document.head.appendChild(st);
   };
@@ -126,10 +186,8 @@
 
   // ✅ support (path, params)
   const apiGetDramaSafe = async (path, params) => {
-    // kalau core.js sudah ada, pakai itu (paling stabil)
     if (typeof window.apiGetDrama === "function") return await window.apiGetDrama(path, params);
 
-    // fallback direct
     const pth = String(path || "");
     const norm = pth.startsWith("/") ? pth : `/${pth}`;
     const url = new URL(DRAMA_FALLBACK_BASE + norm);
@@ -145,8 +203,20 @@
     return await fetchJsonWithFallback(url.toString());
   };
 
-  // ====== RYHAR ONLY: episode ada di payload.result ======
-  const normalizeEpisodes = (payload) => (Array.isArray(payload?.result) ? payload.result : []);
+  // ---- episode normalize (lebih toleran bentuk response) ----
+  const normalizeEpisodes = (payload) => {
+    const r =
+      payload?.result ??
+      payload?.data?.result ??
+      payload?.data ??
+      payload?.episodes ??
+      payload?.list;
+
+    if (Array.isArray(r)) return r;
+    if (r && Array.isArray(r.list)) return r.list;
+    if (r && Array.isArray(r.items)) return r.items;
+    return [];
+  };
 
   const getSavedBook = () => {
     try {
@@ -165,9 +235,21 @@
     } catch {}
   };
 
+  const getCachedEps = () => {
+    try {
+      if (!bookId) return null;
+      const raw = sessionStorage.getItem(`dramabox_eps_${bookId}`);
+      const arr = raw ? JSON.parse(raw) : null;
+      return Array.isArray(arr) ? arr : null;
+    } catch {
+      return null;
+    }
+  };
+
   const epNum = (ep, idx) => {
     const ci = ep?.chapterIndex;
-    if (typeof ci === "number" && Number.isFinite(ci)) return ci + 1;
+    const ciNum = typeof ci === "string" ? Number(ci) : ci;
+    if (typeof ciNum === "number" && Number.isFinite(ciNum)) return ciNum + 1;
 
     const s = String(ep?.chapterName || "");
     const m = s.match(/(\d+)/);
@@ -230,8 +312,8 @@
     el.detail.querySelector(".detail-main-title").textContent = title;
 
     // ===== GENRE =====
-    const tagWrap = $("dramaTags");
-    const genreToggle = $("dramaGenreToggle");
+    const tagWrap = $id("dramaTags");
+    const genreToggle = $id("dramaGenreToggle");
     const MAX_TAGS_MOBILE = 3;
     const desktop = isDesktopNow();
     let tagsExpanded = desktop;
@@ -270,8 +352,8 @@
     renderTags();
 
     // ===== SINOPSIS =====
-    const syn = $("dramaSynopsis");
-    const synToggle = $("dramaSynToggle");
+    const syn = $id("dramaSynopsis");
+    const synToggle = $id("dramaSynToggle");
     const synText = intro ? String(intro).trim() : "Tidak ada sinopsis.";
     if (syn) syn.textContent = synText;
 
@@ -299,8 +381,8 @@
     }
 
     // ===== FAVORIT =====
-    const favText = $("dramaFavText");
-    const favBtn = $("dramaFavBtn");
+    const favText = $id("dramaFavText");
+    const favBtn = $id("dramaFavBtn");
     const refreshFav = () => {
       if (!favText) return;
       favText.textContent = isDFav(bookId) ? "Hapus dari Favorit" : "Favorit";
@@ -324,8 +406,9 @@
   };
 
   const renderEpisodeGrid = (episodes) => {
-    if (!el.list) return;
     ensureEpisodeGridStyle();
+    ensureEpisodeMount();
+    if (!el.list) return;
 
     const grid = document.createElement("div");
     grid.className = "episode-grid";
@@ -358,7 +441,7 @@
     el.list.innerHTML = "";
     el.list.appendChild(grid);
 
-    const firstBtn = $("dramaPlayFirst");
+    const firstBtn = $id("dramaPlayFirst");
     if (firstBtn) {
       firstBtn.onclick = () => {
         const first = sorted[0];
@@ -389,21 +472,43 @@
     }
   }
 
-  // ✅ RETRY TERUS: UI gak pernah tampil "Gagal memuat..."
+  const showEpisodeError = (msg) => {
+    ensureEpisodeGridStyle();
+    ensureEpisodeMount();
+    if (!el.list) return;
+
+    el.list.innerHTML = `
+      <div class="episode-error">${msg || "Gagal memuat episode."}</div>
+      <button class="episode-retry-btn" type="button" id="episodeRetryBtn">↻ Muat ulang</button>
+    `;
+    const btn = $id("episodeRetryBtn");
+    if (btn) btn.onclick = () => loadEpisodes();
+  };
+
+  // ✅ RETRY tapi ada batas + fallback cache
   async function loadEpisodes() {
+    hydrateEls();
+    ensureEpisodeMount();
+
     if (!bookId) return toast("bookId tidak ditemukan");
     if (!el.list) return;
 
+    ensureEpisodeGridStyle();
     el.list.innerHTML = `<div class="season-empty">Memuat episode...</div>`;
 
-    while (true) {
+    // tampilkan cache dulu (kalau ada) biar gak kosong
+    const cached = getCachedEps();
+    if (cached?.length) renderEpisodeGrid(cached);
+
+    const maxTry = 8;
+    for (let i = 1; i <= maxTry; i++) {
       try {
         const payload = await apiGetDramaSafe("/allepisode", { bookId });
         const eps = normalizeEpisodes(payload);
 
         if (!eps.length) {
-          console.error("[loadEpisodes] empty result, retry...");
-          await sleep(2000);
+          console.error("[loadEpisodes] empty result", payload);
+          await sleep(700 * i);
           continue;
         }
 
@@ -414,13 +519,21 @@
         renderEpisodeGrid(eps);
         return;
       } catch (e) {
-        console.error("[loadEpisodes] fail, retry...", e);
-        await sleep(2500);
+        console.error("[loadEpisodes] fail", e);
+        await sleep(900 * i);
       }
     }
+
+    // kalau mentok, coba pakai cache; kalau gak ada, baru tampil error
+    const cached2 = getCachedEps();
+    if (cached2?.length) return renderEpisodeGrid(cached2);
+
+    showEpisodeError("Episode gagal dimuat. Coba tombol Muat ulang.");
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
+  const init = () => {
+    hydrateEls();
+
     if (el.back) el.back.addEventListener("click", () => history.back());
 
     const saved = getSavedBook();
@@ -428,6 +541,7 @@
 
     loadDetailFromApi();
 
+    // search episode
     if (el.search) {
       el.search.addEventListener("input", () => {
         const q = el.search.value.trim().toLowerCase();
@@ -440,5 +554,12 @@
     }
 
     loadEpisodes();
-  });
+  };
+
+  // ✅ jalan di semua skenario (script di head / SPA / dll)
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init, { once: true });
+  } else {
+    init();
+  }
 })();
