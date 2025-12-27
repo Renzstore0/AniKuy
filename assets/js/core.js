@@ -99,7 +99,6 @@
   };
 
   /* ========= FETCH HELPERS (timeout + fallback proxy) ========= */
-  // ✅ UPDATED: use res.json() only (no res.text())
   const fetchJsonTry = async (url, timeoutMs = 12000) => {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -114,24 +113,15 @@
         signal: ctrl.signal,
       });
 
-      if (r.status === 204) return null;
+      const text = await r.text();
 
-      let data = null;
+      if (!r.ok) throw new Error(`HTTP_${r.status}::${text.slice(0, 160)}`);
+
       try {
-        data = await r.json();
+        return text ? JSON.parse(text) : null;
       } catch {
-        if (!r.ok) throw new Error(`HTTP_${r.status}`);
-        throw new Error("INVALID_JSON");
+        throw new Error(`INVALID_JSON::${text.slice(0, 160)}`);
       }
-
-      if (!r.ok) {
-        const msg =
-          (data && (data.message || data.error || data.msg)) ||
-          (data != null ? JSON.stringify(data).slice(0, 160) : "");
-        throw new Error(`HTTP_${r.status}::${msg}`);
-      }
-
-      return data;
     } finally {
       clearTimeout(t);
     }
