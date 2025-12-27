@@ -4,6 +4,7 @@
 
   const $ = (id) => document.getElementById(id);
   const toast = (m) => typeof showToast === "function" && showToast(m);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   const isDFav =
     typeof window.isDramaFavorite === "function" ? window.isDramaFavorite : () => false;
@@ -123,7 +124,7 @@
     throw lastErr || new Error("FETCH_FAILED");
   };
 
-  // ✅ Updated: support (path, params)
+  // ✅ support (path, params)
   const apiGetDramaSafe = async (path, params) => {
     // kalau core.js sudah ada, pakai itu (paling stabil)
     if (typeof window.apiGetDrama === "function") return await window.apiGetDrama(path, params);
@@ -371,11 +372,9 @@
     }
   };
 
-  // ✅ Optional: fetch detail dari API (kalau endpoint ada)
+  // (opsional) update detail dari API kalau endpoint ada
   async function loadDetailFromApi() {
     if (!bookId) return;
-
-    // coba beberapa kemungkinan path biar tetap jalan walau naming beda
     const candidates = ["/detail", "/bookdetail", "/bookDetail", "/info"];
     for (const path of candidates) {
       try {
@@ -390,31 +389,34 @@
     }
   }
 
+  // ✅ RETRY TERUS: UI gak pernah tampil "Gagal memuat..."
   async function loadEpisodes() {
     if (!bookId) return toast("bookId tidak ditemukan");
     if (!el.list) return;
 
     el.list.innerHTML = `<div class="season-empty">Memuat episode...</div>`;
 
-    try {
-      // ✅ Updated: params object (lebih rapi)
-      const payload = await apiGetDramaSafe("/allepisode", { bookId });
-      const eps = normalizeEpisodes(payload);
-
-      if (!eps.length) {
-        el.list.innerHTML = `<div class="season-empty">Episode tidak ditemukan.</div>`;
-        return;
-      }
-
+    while (true) {
       try {
-        sessionStorage.setItem(`dramabox_eps_${bookId}`, JSON.stringify(eps));
-      } catch {}
+        const payload = await apiGetDramaSafe("/allepisode", { bookId });
+        const eps = normalizeEpisodes(payload);
 
-      renderEpisodeGrid(eps);
-    } catch (e) {
-      el.list.innerHTML = `<div class="season-empty">Gagal memuat episode.</div>`;
-      toast("Gagal memuat episode");
-      console.error("[loadEpisodes] error:", e);
+        if (!eps.length) {
+          console.error("[loadEpisodes] empty result, retry...");
+          await sleep(2000);
+          continue;
+        }
+
+        try {
+          sessionStorage.setItem(`dramabox_eps_${bookId}`, JSON.stringify(eps));
+        } catch {}
+
+        renderEpisodeGrid(eps);
+        return;
+      } catch (e) {
+        console.error("[loadEpisodes] fail, retry...", e);
+        await sleep(2500);
+      }
     }
   }
 
@@ -424,7 +426,6 @@
     const saved = getSavedBook();
     buildDetail(saved || { bookName: nameFromUrl, chapterCount: "?", tags: [] });
 
-    // coba update detail dari API (kalau endpoint ada)
     loadDetailFromApi();
 
     if (el.search) {
