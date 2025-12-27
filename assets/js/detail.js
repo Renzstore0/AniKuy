@@ -1,404 +1,368 @@
-// assets/js/detail.js
 (() => {
   "use strict";
 
-  // ========= DOM helpers =========
-  const $id = (id) => document.getElementById(id);
-  const $ = (sel, root = document) => root.querySelector(sel);
-  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-  const pick = (...els) => els.find(Boolean);
-
-  const animeDetailContent = pick(
-    $id("animeDetailContent"),
-    $id("animeDetail"),
-    $(".anime-detail"),
-    $("[data-detail-content]")
-  );
-  const episodeList = pick($id("episodeList"), $(".episode-list"));
-  const seasonList = pick($id("seasonList"), $(".season-list"));
-  const tabEpisodes = pick($id("tabEpisodes"), $('[data-tab="episodes"]'));
-  const tabSeasons = pick($id("tabSeasons"), $('[data-tab="seasons"]'));
-  const slug = new URLSearchParams(location.search).get("slug");
-
-  // ========= safe wrappers =========
+  const $ = (id) => document.getElementById(id);
   const toast = (m) => typeof showToast === "function" && showToast(m);
-  const isFav = typeof isFavorite === "function" ? isFavorite : () => false;
-  const addFav = typeof addFavorite === "function" ? addFavorite : () => {};
-  const rmFav = typeof removeFavorite === "function" ? removeFavorite : () => {};
+
+  const isDFav = typeof window.isDramaFavorite === "function" ? window.isDramaFavorite : () => false;
+  const addDFav = typeof window.addDramaFavorite === "function" ? window.addDramaFavorite : () => {};
+  const rmDFav = typeof window.removeDramaFavorite === "function" ? window.removeDramaFavorite : () => {};
+
+  const p = new URLSearchParams(location.search);
+  const bookId = p.get("bookId");
+  const nameFromUrl = p.get("name") || "";
+
+  const el = {
+    detail: $("dramaDetailContent"),
+    list: $("dramaEpisodeList"),
+    search: $("dramaEpisodeSearchInput"),
+    back: $("backButton"),
+  };
+
+  // ====== STYLE GRID (5 kolom) ======
+  // ✅ VIP disembunyikan + tombol seragam
+  const ensureEpisodeGridStyle = () => {
+    if (document.getElementById("episodeGridStyle")) return;
+    const st = document.createElement("style");
+    st.id = "episodeGridStyle";
+    st.textContent = `
+      .episode-grid{
+        display:grid;
+        grid-template-columns:repeat(5, minmax(0, 1fr));
+        gap:10px;
+        padding: 8px 0;
+      }
+      .episode-box{
+        box-sizing:border-box;
+        border:1px solid rgba(255,255,255,.18);
+        background: rgba(255,255,255,.06);
+        color:#fff;
+        border-radius:12px;
+
+        height:46px;
+        width:100%;
+        padding:0;
+
+        display:flex;
+        align-items:center;
+        justify-content:center;
+
+        font-weight:700;
+        font-size:14px;
+        line-height:1;
+        white-space:nowrap;
+        font-variant-numeric: tabular-nums;
+
+        user-select:none;
+        cursor:pointer;
+        transition: transform .08s ease, background .12s ease;
+      }
+      .episode-box:active{ transform: scale(.98); }
+
+      /* opsional: VIP cuma diredup, tanpa tulisan */
+      .episode-box[data-vip="1"]{ opacity:.65; }
+
+      /* ✅ sembunyikan badge VIP kalau masih ada */
+      .episode-box .vip-badge{ display:none !important; }
+    `;
+    document.head.appendChild(st);
+  };
+
+  // ====== DRAMA API (Anabot) + apikey ======
+  const DRAMA_BASE = "https://anabot.my.id/api/search/drama/dramabox";
+  const LS_DRAMA_KEY = "dramabox_apikey";
+
+  const getDramaApiKey = () => {
+    const k =
+      (window.DRAMA_APIKEY && String(window.DRAMA_APIKEY).trim()) ||
+      (localStorage.getItem(LS_DRAMA_KEY) || "").trim() ||
+      "freeApikey";
+    return k;
+  };
+
+  // ====== FETCH JSON (timeout + fallback proxy) ======
+  const fetchJsonTry = async (url, timeoutMs = 15000) => {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        mode: "cors",
+        credentials: "omit",
+        cache: "no-store",
+        signal: ctrl.signal,
+        headers: { Accept: "application/json,text/plain,*/*" },
+      });
+
+      const text = await res.text();
+      if (!res.ok) throw new Error(`HTTP ${res.status} :: ${text.slice(0, 160)}`);
+
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new Error("Response bukan JSON");
+      }
+    } finally {
+      clearTimeout(t);
+    }
+  };
+
+  const fetchJsonWithFallback = async (realUrl) => {
+    const tries = [
+      realUrl,
+      `https://corsproxy.io/?${encodeURIComponent(realUrl)}`,
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(realUrl)}`,
+      `https://cors.isomorphic-git.org/${realUrl}`,
+    ];
+
+    let lastErr = null;
+    for (const u of tries) {
+      try {
+        return await fetchJsonTry(u);
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error("FETCH_FAILED");
+  };
+
+  const apiGetDramaSafe = async (path) => {
+    if (typeof window.apiGetDrama === "function") return await window.apiGetDrama(path);
+
+    const pth = String(path || "");
+    const url = pth.startsWith("/") ? DRAMA_BASE + pth : `${DRAMA_BASE}/${pth}`;
+    const join = url.includes("?") ? "&" : "?";
+    const full = `${url}${join}apikey=${encodeURIComponent(getDramaApiKey())}`;
+    return await fetchJsonWithFallback(full);
+  };
+
+  // ====== Normalisasi episode ======
+  const normalizeEpisodes = (payload) => {
+    if (Array.isArray(payload)) return payload;
+
+    // format anabot:
+    // { success:true, data:{ result:{ chapterList:[...] } } }
+    const chapterList = payload?.data?.result?.chapterList;
+    if (Array.isArray(chapterList)) return chapterList;
+
+    const candidates = [
+      payload?.data,
+      payload?.result,
+      payload?.list,
+      payload?.rows,
+      payload?.items,
+      payload?.chapterList,
+      payload?.episodeList,
+      payload?.data?.list,
+      payload?.data?.rows,
+      payload?.data?.items,
+      payload?.data?.result,
+      payload?.data?.result?.list,
+      payload?.data?.result?.items,
+    ];
+
+    for (const c of candidates) {
+      if (Array.isArray(c)) return c;
+      if (Array.isArray(c?.chapterList)) return c.chapterList;
+    }
+    return [];
+  };
+
+  const getSavedBook = () => {
+    try {
+      if (!bookId) return null;
+      const raw = sessionStorage.getItem(`dramabox_book_${bookId}`);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const epNum = (ep, idx) => {
+    const ci = ep?.chapterIndex;
+    if (typeof ci === "number" && Number.isFinite(ci)) return ci + 1;
+
+    const s = String(ep?.chapterName || "");
+    const m = s.match(/(\d+)/);
+    return m ? parseInt(m[1], 10) : idx + 1;
+  };
 
   const isDesktopNow = () => window.matchMedia && window.matchMedia("(min-width: 900px)").matches;
 
-  let episodeSearchWrap = null;
+  // ====== DETAIL ======
+  const buildDetail = (b) => {
+    if (!el.detail) return;
 
-  // ========= remove/hide recommendations (global + season tab) =========
-  const hideRecommendations = () => {
-    const candidates = [
-      $id("recommendationGrid"),
-      $id("seasonRecommendationGrid"),
-      $(".recommendation-grid"),
-      $(".recommendations"),
-      $("[data-recommendation]"),
-      $("[data-rekomendasi]"),
-    ].filter(Boolean);
+    const title = b?.bookName || nameFromUrl || `Book ${bookId || "-"}`;
+    const poster = b?.coverWap || b?.cover || "";
+    const intro = b?.introduction || "";
+    const tags = Array.isArray(b?.tags) ? b.tags : [];
 
-    candidates.forEach((el) => {
-      el.innerHTML = "";
-      el.style.display = "none";
-      const prev = el.previousElementSibling;
-      if (prev && /rekomendasi/i.test(prev.textContent || "")) prev.style.display = "none";
-    });
-
-    seasonList &&
-      $$(
-        ".recommendation,.recommendations,.recommendation-grid,[data-recommendation],[data-rekomendasi]",
-        seasonList
-      ).forEach((el) => el.remove());
-  };
-
-  // ========= Season utils =========
-  const cleanBase = (s) =>
-    String(s || "")
-      .toLowerCase()
-      .replace(/\(.*?\)/g, " ")
-      .replace(/subtitle indonesia/g, " ")
-      .replace(/\s+eps?\.?\s*\d+.*/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-  const normFull = (t) =>
-    cleanBase(t)
-      .replace(/season\s*\d+(\s*part\s*\d+)?/g, " ")
-      .replace(/\d+(st|nd|rd|th)\s*season/g, " ")
-      .replace(/\bpart\s*\d+\b/g, " ")
-      .replace(/[^a-z0-9\s]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-
-  const normRoot = (t) => {
-    const w = normFull(t).split(" ").filter(Boolean);
-    return w.length >= 2 ? `${w[0]} ${w[1]}` : w.join(" ");
-  };
-
-  const hasSeason = (t) =>
-    /season\s*\d+|\d+(st|nd|rd|th)\s*season|\bpart\s*\d+\b/i.test(String(t || ""));
-
-  const seasonNo = (t) => {
-    const s = String(t || "").toLowerCase();
-    const m = s.match(/season\s*(\d+)/) || s.match(/(\d+)(st|nd|rd|th)\s*season/);
-    const n = m ? parseInt(m[1], 10) : 1;
-    return Number.isFinite(n) && n > 0 ? n : 1;
-  };
-
-  const seasonTitle = (t) =>
-    String(t || "")
-      .replace(/\(.*?\)/g, "")
-      .replace(/subtitle indonesia/gi, "")
-      .replace(/\s+eps?\.?\s*\d+.*/gi, "")
-      .replace(/\s+/g, " ")
-      .trim();
-
-  // ========= Tabs =========
-  const setTab = (showEps) => {
-    if (!episodeList || !seasonList || !tabEpisodes || !tabSeasons) return;
-    tabEpisodes.classList.toggle("active", showEps);
-    tabSeasons.classList.toggle("active", !showEps);
-    episodeList.classList.toggle("hidden", !showEps);
-    seasonList.classList.toggle("hidden", showEps);
-    episodeSearchWrap?.classList.toggle("hidden", !showEps);
-  };
-
-  // ========= seasons loader =========
-  const setSeasonEmpty = (msg = "Season belum ada") => {
-    if (!seasonList) return;
-    seasonList.innerHTML = "";
-    const div = document.createElement("div");
-    div.className = "season-empty";
-    div.textContent = msg;
-    seasonList.appendChild(div);
-  };
-
-  async function loadSeasons(d, currentSlug) {
-    if (!seasonList) return;
-    seasonList.innerHTML = "";
-
-    const title =
-      [d?.english, d?.synonyms, d?.title].map((v) => String(v || "").trim()).find(Boolean) || "";
-    if (!title) return setSeasonEmpty();
-
-    const q = normRoot(title) || normFull(title) || title;
-    if (!q) return setSeasonEmpty();
-
-    let json;
-    try {
-      json = await apiGet(`/anime/samehadaku/search?q=${encodeURIComponent(q)}`);
-    } catch {
-      return;
-    }
-
-    const list = Array.isArray(json?.data?.animeList) ? json.data.animeList : [];
-    const curF = normFull(title);
-    const curR = normRoot(title);
-
-    const related = list.filter((a) => {
-      if (!a?.animeId || !a?.title) return false;
-      const oF = normFull(a.title);
-      const oR = normRoot(a.title);
-      return (curF && oF === curF) || (curR && oR === curR);
-    });
-
-    const seasonLike = hasSeason(title) || related.some((a) => hasSeason(a.title));
-    if (!seasonLike) return setSeasonEmpty();
-
-    const seasons = related
-      .filter((a) => a.animeId !== currentSlug)
-      .map((a) => ({
-        slug: a.animeId,
-        title: seasonTitle(a.title),
-        poster: a.poster || "",
-        n: seasonNo(a.title),
-        raw: String(a.title || ""),
-      }));
-
-    if (!seasons.length) return setSeasonEmpty();
-
-    seasons.sort((a, b) => a.n - b.n || a.raw.localeCompare(b.raw));
-
-    const frag = document.createDocumentFragment();
-    for (const s of seasons) {
-      const item = document.createElement("div");
-      item.className = "season-item";
-      item.innerHTML = `
-        <div class="season-thumb"><img alt=""></div>
-        <div class="season-info"><div class="season-title"></div></div>
-      `;
-
-      const img = $("img", item);
-      img.src = s.poster || "/assets/img/placeholder-poster.png";
-      img.alt = s.title || "Season";
-      img.onerror = () => {
-        img.onerror = null;
-        img.src = "/assets/img/placeholder-poster.png";
-      };
-
-      $(".season-title", item).textContent = s.title || "-";
-      item.addEventListener("click", () => {
-        location.href = `/anime/detail?slug=${encodeURIComponent(s.slug)}`;
-      });
-
-      frag.appendChild(item);
-    }
-    seasonList.appendChild(frag);
-
-    hideRecommendations();
-  }
-
-  // ========= detail loader =========
-  async function loadDetail(animeSlug) {
-    if (!animeDetailContent) return toast('Element detail tidak ketemu (id "animeDetailContent").');
-
-    let json;
-    try {
-      json = await apiGet(`/anime/samehadaku/anime/${encodeURIComponent(animeSlug)}`);
-    } catch {
-      return toast("Gagal memuat detail.");
-    }
-
-    const d = json?.status === "success" ? json.data : null;
-    if (!d) return toast("Detail tidak ditemukan.");
-
-    const titleMain =
-      (d.english && String(d.english).trim()) ||
-      (d.synonyms && String(d.synonyms).trim()) ||
-      (d.title && String(d.title).trim()) ||
-      animeSlug;
-
-    const titleJapanese = d.japanese && String(d.japanese).trim() ? String(d.japanese).trim() : "";
-
-    const scoreVal = d.score?.value != null ? String(d.score.value) : "N/A";
-    const eps = Array.isArray(d.episodeList) ? d.episodeList : [];
-
-    // synopsis text
-    const paragraphs = Array.isArray(d.synopsis?.paragraphs) ? d.synopsis.paragraphs : [];
-    const synText =
-      paragraphs.map((s) => String(s || "").trim()).filter(Boolean).join(" ") || "Tidak ada sinopsis.";
-
-    animeDetailContent.innerHTML = `
-      <div class="anime-detail-card" style="${d.poster ? `--detail-bg:url('${d.poster}')` : ""}">
-        <div class="detail-poster"><img alt="${titleMain}"></div>
+    el.detail.innerHTML = `
+      <div class="anime-detail-card" style="${poster ? `--detail-bg:url('${poster}')` : ""}">
+        <div class="detail-poster"><img alt="${title}"></div>
 
         <div class="detail-info">
           <div class="detail-main-title"></div>
-          ${titleJapanese ? `<div class="detail-sub"></div>` : ""}
-          <div class="detail-meta"></div>
+          <div class="detail-meta">
+            <div><span class="label">Total Episode:</span> ${b?.chapterCount ?? "?"}</div>
+          </div>
 
-          <div class="detail-genres" id="animeGenres"></div>
-          <button type="button" class="genre-toggle" id="animeGenreToggle" style="display:none">Lainnya</button>
+          <div class="detail-genres" id="dramaTags"></div>
+          <button type="button" class="genre-toggle" id="dramaGenreToggle" style="display:none">Lainnya</button>
         </div>
 
         <div class="detail-synopsis-box">
           <div class="detail-synopsis-title">Sinopsis</div>
-          <p id="synopsisText" class="synopsis synopsis--card"></p>
-          <button type="button" class="synopsis-toggle" id="synopsisToggle" style="display:none">Baca selengkapnya</button>
+          <p id="dramaSynopsis" class="synopsis synopsis--card"></p>
+          <button type="button" class="synopsis-toggle" id="dramaSynToggle" style="display:none">Baca selengkapnya</button>
         </div>
       </div>
 
       <div class="detail-actions">
-        <button type="button" class="btn-play" id="animePlayBtn">
+        <button type="button" class="btn-play" id="dramaPlayFirst">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"></path></svg>
-          <span>Putar</span>
+          <span>Putar EP 1</span>
         </button>
 
-        <button type="button" class="btn-fav" id="animeFavBtn">
+        <button type="button" class="btn-fav" id="dramaFavBtn">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 6 4 4 6.5 4 8.04 4 9.54 4.81 10.35 6.09 11.16 4.81 12.66 4 14.2 4 16.7 4 18.7 6 18.7 8.5c0 3.78-3.4 6.86-8.55 11.54z" fill="currentColor"></path></svg>
-          <span class="fav-text" id="animeFavText"></span>
+          <span class="fav-text" id="dramaFavText"></span>
         </button>
       </div>
     `;
 
-    const card = $(".anime-detail-card", animeDetailContent);
-    if (d.poster) card?.style.setProperty("--detail-bg", `url("${d.poster}")`);
-
-    const posterImg = $(".detail-poster img", animeDetailContent);
-    posterImg.src = d.poster || "/assets/img/placeholder-poster.png";
-    posterImg.alt = titleMain;
-    posterImg.onerror = () => {
-      posterImg.onerror = null;
-      posterImg.src = "/assets/img/placeholder-poster.png";
+    const img = el.detail.querySelector(".detail-poster img");
+    img.src = poster || "/assets/img/placeholder-poster.png";
+    img.onerror = () => {
+      img.onerror = null;
+      img.src = "/assets/img/placeholder-poster.png";
     };
 
-    $(".detail-main-title", animeDetailContent).textContent = titleMain;
-    if (titleJapanese) $(".detail-sub", animeDetailContent).textContent = titleJapanese;
-
-    $(".detail-meta", animeDetailContent).innerHTML = `
-      <div><span class="label">Rating:</span> ${scoreVal}</div>
-      <div><span class="label">Tipe:</span> ${d.type || "-"}</div>
-      <div><span class="label">Status:</span> ${d.status || "-"}</div>
-      <div><span class="label">Episode:</span> ${d.episodes != null ? d.episodes : "?"}</div>
-      <div><span class="label">Rilis:</span> ${d.aired || "-"}</div>
-      <div><span class="label">Studio:</span> ${d.studios || "-"}</div>
-    `;
+    el.detail.querySelector(".detail-main-title").textContent = title;
 
     // ===== GENRE (Mobile: Lainnya/Tutup, Desktop: tampil semua tanpa tombol) =====
-    const genresWrap = $id("animeGenres");
-    const genreToggle = $id("animeGenreToggle");
-    const genreList = Array.isArray(d.genreList) ? d.genreList : [];
+    const tagWrap = $("dramaTags");
+    const genreToggle = $("dramaGenreToggle");
 
-    const MAX_GENRES_MOBILE = 3;
-    let genresExpanded = isDesktopNow(); // desktop langsung expanded
+    const MAX_TAGS_MOBILE = 3;
+    const desktop = isDesktopNow();
+    let tagsExpanded = desktop; // desktop langsung expanded
 
-    const renderGenres = () => {
-      if (!genresWrap) return;
-      genresWrap.innerHTML = "";
+    const renderTags = () => {
+      if (!tagWrap) return;
+      tagWrap.innerHTML = "";
 
-      const desktop = isDesktopNow();
-      const showAll = desktop || genresExpanded;
-      const list = showAll ? genreList : genreList.slice(0, MAX_GENRES_MOBILE);
+      const list = tagsExpanded ? tags : tags.slice(0, MAX_TAGS_MOBILE);
 
-      const frag = document.createDocumentFragment();
-      for (const g of list) {
+      list.forEach((t) => {
         const btn = document.createElement("button");
         btn.type = "button";
         btn.className = "genre-pill";
-        btn.textContent = g?.title || "-";
-        btn.addEventListener("click", () => {
-          if (!g?.genreId) return;
-          location.href = `/anime/genre?slug=${encodeURIComponent(g.genreId)}&name=${encodeURIComponent(
-            g.title || ""
-          )}`;
-        });
-        frag.appendChild(btn);
-      }
-      genresWrap.appendChild(frag);
+        btn.textContent = t;
+        btn.onclick = () => toast(t);
+        tagWrap.appendChild(btn);
+      });
 
       if (!genreToggle) return;
-      if (desktop || genreList.length <= MAX_GENRES_MOBILE) {
+
+      if (desktop || tags.length <= MAX_TAGS_MOBILE) {
         genreToggle.style.display = "none";
       } else {
         genreToggle.style.display = "inline-block";
-        genreToggle.textContent = genresExpanded ? "Tutup" : "Lainnya";
+        genreToggle.textContent = tagsExpanded ? "Tutup" : "Lainnya";
       }
     };
 
     if (genreToggle) {
       genreToggle.onclick = () => {
-        genresExpanded = !genresExpanded;
-        renderGenres();
+        tagsExpanded = !tagsExpanded;
+        renderTags();
       };
     }
-    renderGenres();
+    renderTags();
 
     // ===== SINOPSIS (Desktop: full tanpa tombol, Mobile: toggle) =====
-    const syn = $id("synopsisText");
-    const synToggle = $id("synopsisToggle");
+    const syn = $("dramaSynopsis");
+    const synToggle = $("dramaSynToggle");
+    const synText = intro ? String(intro).trim() : "Tidak ada sinopsis.";
     if (syn) syn.textContent = synText;
 
-    const applySynopsisRule = () => {
-      if (!syn || !synToggle) return;
-      const desktop = isDesktopNow();
+    if (syn && synToggle) {
+      const desktop2 = isDesktopNow();
 
-      if (desktop) {
+      if (desktop2) {
         syn.classList.add("expanded");
         synToggle.style.display = "none";
-        return;
+      } else {
+        syn.classList.remove("expanded");
+        synToggle.style.display = "none";
+        synToggle.textContent = "Baca selengkapnya";
+
+        synToggle.onclick = () => {
+          const on = syn.classList.toggle("expanded");
+          synToggle.textContent = on ? "Tutup" : "Baca selengkapnya";
+        };
+
+        requestAnimationFrame(() => {
+          const need = synText !== "Tidak ada sinopsis." && syn.scrollHeight > syn.clientHeight + 2;
+          synToggle.style.display = need ? "inline-block" : "none";
+        });
       }
+    }
 
-      syn.classList.remove("expanded");
-      synToggle.textContent = "Baca selengkapnya";
-      synToggle.style.display = "none";
-
-      if (synText === "Tidak ada sinopsis.") return;
-
-      synToggle.onclick = () => {
-        const expanded = syn.classList.toggle("expanded");
-        synToggle.textContent = expanded ? "Tutup" : "Baca selengkapnya";
-      };
-
-      requestAnimationFrame(() => {
-        const need = syn.scrollHeight > syn.clientHeight + 2;
-        synToggle.style.display = need ? "inline-block" : "none";
-      });
-    };
-
-    applySynopsisRule();
-
-    // play
-    $id("animePlayBtn")?.addEventListener("click", () => {
-      const first = eps[0];
-      if (!first?.episodeId) return;
-      location.href = `/anime/episode?slug=${encodeURIComponent(first.episodeId)}`;
-    });
-
-    // favorite
-    const favText = $id("animeFavText");
+    // ===== FAVORIT (drama) =====
+    const favText = $("dramaFavText");
+    const favBtn = $("dramaFavBtn");
     const refreshFav = () => {
       if (!favText) return;
-      favText.textContent = isFav(animeSlug) ? "Hapus dari Favorit" : "Favorit";
+      favText.textContent = isDFav(bookId) ? "Hapus dari Favorit" : "Favorit";
     };
     refreshFav();
 
-    $id("animeFavBtn")?.addEventListener("click", () => {
-      const payload = {
-        slug: animeSlug,
-        title: titleMain,
-        poster: d.poster || "",
-        rating: scoreVal !== "N/A" ? scoreVal : "",
-        episode_count: d.episodes != null ? String(d.episodes) : "",
-        status: d.status || "",
-      };
-      isFav(animeSlug) ? rmFav(animeSlug) : addFav(payload);
-      refreshFav();
-    });
+    favBtn &&
+      favBtn.addEventListener("click", () => {
+        if (!bookId) return;
+        const payload = {
+          bookId,
+          bookName: title,
+          coverWap: poster,
+          cover: b?.cover || "",
+          chapterCount: b?.chapterCount != null ? String(b.chapterCount) : "",
+          tags,
+        };
+        isDFav(bookId) ? rmDFav(bookId) : addDFav(payload);
+        refreshFav();
+      });
 
-    // resize watcher (mobile <-> desktop)
+    // kalau user resize dari mobile ke desktop (atau kebalik), biar auto ngikut rules
     const mq = window.matchMedia ? window.matchMedia("(min-width: 900px)") : null;
     if (mq) {
       const onChange = () => {
-        const desktop = isDesktopNow();
-        if (desktop) genresExpanded = true;
-        renderGenres();
-        applySynopsisRule();
+        const d = isDesktopNow();
+
+        // genres
+        tagsExpanded = d ? true : tagsExpanded;
+        renderTags();
+
+        // synopsis
+        if (syn && synToggle) {
+          if (d) {
+            syn.classList.add("expanded");
+            synToggle.style.display = "none";
+          } else {
+            syn.classList.remove("expanded");
+            requestAnimationFrame(() => {
+              const need = synText !== "Tidak ada sinopsis." && syn.scrollHeight > syn.clientHeight + 2;
+              synToggle.style.display = need ? "inline-block" : "none";
+              synToggle.textContent = "Baca selengkapnya";
+            });
+          }
+        }
       };
 
+      // aman untuk browser lama
       try {
         mq.addEventListener("change", onChange);
       } catch {
@@ -407,75 +371,100 @@
         } catch {}
       }
     }
+  };
 
-    // episodes + search (tetap sama)
-    if (episodeList) {
-      episodeList.innerHTML = "";
-      const old = $id("episodeSearchWrap");
-      old?.parentNode?.removeChild(old);
-      episodeSearchWrap = null;
+  const renderEpisodeGrid = (episodes) => {
+    if (!el.list) return;
+    ensureEpisodeGridStyle();
 
-      if (eps.length) {
-        const wrap = document.createElement("div");
-        wrap.id = "episodeSearchWrap";
-        wrap.className = "episode-search-wrap";
-        wrap.innerHTML =
-          '<input class="episode-search-input" type="text" placeholder="Cari episode... (misal: 5 atau 12)">';
+    const grid = document.createElement("div");
+    grid.className = "episode-grid";
 
-        const input = $("input", wrap);
-        input.addEventListener("input", () => {
-          const q = input.value.trim().toLowerCase();
-          $$(".episode-item", episodeList).forEach((it) => {
-            it.style.display = (it.textContent || "").toLowerCase().includes(q) ? "" : "none";
-          });
-        });
+    const sorted = episodes
+      .slice()
+      .sort((a, b) => (Number(a?.chapterIndex) || 0) - (Number(b?.chapterIndex) || 0));
 
-        episodeList.parentNode?.insertBefore(wrap, episodeList);
-        episodeSearchWrap = wrap;
-        tabSeasons?.classList.contains("active") && wrap.classList.add("hidden");
-      }
+    sorted.forEach((ep, i) => {
+      const n = epNum(ep, i);
+      const vip = Number(ep?.isCharge || ep?.chargeChapter || ep?.isVip || 0) ? 1 : 0;
 
-      const frag = document.createDocumentFragment();
-      for (let i = eps.length - 1; i >= 0; i--) {
-        const ep = eps[i];
-        if (!ep) continue;
+      const box = document.createElement("div");
+      box.className = "episode-box";
+      box.setAttribute("data-ep", String(n));
+      box.setAttribute("data-vip", String(vip));
 
-        const item = document.createElement("div");
-        item.className = "episode-item";
-        const epNum = ep.title != null ? ep.title : eps.length - i;
-        item.innerHTML = `<span>Episode ${epNum}</span>`;
-        item.addEventListener("click", () => {
-          if (!ep?.episodeId) return;
-          location.href = `/anime/episode?slug=${encodeURIComponent(ep.episodeId)}`;
-        });
-        frag.appendChild(item);
-      }
-      episodeList.appendChild(frag);
+      // ✅ cuma angka episode, tanpa "VIP"
+      box.textContent = String(n);
+
+      box.onclick = () => {
+        location.href = `/drama/watch?bookId=${encodeURIComponent(bookId)}&chapterId=${encodeURIComponent(
+          ep?.chapterId || ""
+        )}&name=${encodeURIComponent(nameFromUrl || "")}`;
+      };
+
+      grid.appendChild(box);
+    });
+
+    el.list.innerHTML = "";
+    el.list.appendChild(grid);
+
+    const firstBtn = $("dramaPlayFirst");
+    if (firstBtn) {
+      firstBtn.onclick = () => {
+        const first = sorted[0];
+        if (!first?.chapterId) return;
+        location.href = `/drama/watch?bookId=${encodeURIComponent(bookId)}&chapterId=${encodeURIComponent(
+          first.chapterId
+        )}&name=${encodeURIComponent(nameFromUrl || "")}`;
+      };
     }
+  };
 
-    // seasons
-    loadSeasons(d, animeSlug);
+  async function loadEpisodes() {
+    if (!bookId) return toast("bookId tidak ditemukan");
+    if (!el.list) return;
 
-    document.title = `AniKuy - ${titleMain}`;
+    el.list.innerHTML = `<div class="season-empty">Memuat episode...</div>`;
 
-    hideRecommendations();
+    try {
+      // endpoint anabot: /chapter?id=<bookId>&apikey=...
+      const payload = await apiGetDramaSafe(`/chapter?id=${encodeURIComponent(bookId)}`);
+      const eps = normalizeEpisodes(payload);
+
+      if (!eps.length) {
+        el.list.innerHTML = `<div class="season-empty">Episode tidak ditemukan.</div>`;
+        return;
+      }
+
+      try {
+        sessionStorage.setItem(`dramabox_eps_${bookId}`, JSON.stringify(eps));
+      } catch {}
+
+      renderEpisodeGrid(eps);
+    } catch (e) {
+      el.list.innerHTML = `<div class="season-empty">Gagal memuat episode.</div>`;
+      toast("Gagal memuat episode");
+      console.error("[loadEpisodes] error:", e);
+    }
   }
 
-  // ========= init =========
   document.addEventListener("DOMContentLoaded", () => {
-    if (!slug) return toast("Slug anime tidak ditemukan");
+    if (el.back) el.back.addEventListener("click", () => history.back());
 
-    hideRecommendations(); // ✅ remove rekomendasi (termasuk tab season)
+    const saved = getSavedBook();
+    buildDetail(saved || { bookName: nameFromUrl, chapterCount: "?", tags: [] });
 
-    if (tabEpisodes && tabSeasons && episodeList && seasonList) {
-      tabEpisodes.addEventListener("click", () => setTab(true));
-      tabSeasons.addEventListener("click", () => {
-        setTab(false);
-        hideRecommendations();
+    if (el.search) {
+      el.search.addEventListener("input", () => {
+        const q = el.search.value.trim().toLowerCase();
+        const boxes = el.list?.querySelectorAll(".episode-box") || [];
+        boxes.forEach((b) => {
+          const n = (b.getAttribute("data-ep") || "").toLowerCase();
+          b.style.display = !q || n.includes(q) ? "" : "none";
+        });
       });
-      setTab(true);
     }
 
-    loadDetail(slug);
+    loadEpisodes();
   });
 })();
