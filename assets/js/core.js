@@ -1,4 +1,4 @@
-/* ========= assets/js/core.js ========= */
+/* ========= assets/js/core.js (UPDATED) ========= */
 (() => {
   "use strict";
 
@@ -81,7 +81,7 @@
 
     const hide = () => sheet?.classList.remove("show");
 
-    toggle?.addEventListener("click", () => sheet.classList.toggle("show"));
+    toggle?.addEventListener("click", () => sheet?.classList.toggle("show"));
     close?.addEventListener("click", hide);
     overlay?.addEventListener("click", hide);
 
@@ -89,17 +89,19 @@
       r.checked = r.value === current;
       r.onchange = () => {
         const v = r.value === LIGHT ? LIGHT : DARK;
-        localStorage.setItem(LS_THEME, v);
+        try {
+          localStorage.setItem(LS_THEME, v);
+        } catch {}
         applyTheme(v);
         label && (label.textContent = txt(v));
-        showToast("Tema berhasil diubah");
+        window.showToast?.("Tema berhasil diubah");
         hide();
       };
     });
   };
 
-  /* ========= FETCH HELPERS (timeout + fallback proxy) ========= */
-  const fetchJsonTry = async (url, timeoutMs = 12000) => {
+  /* ========= FETCH HELPERS (timeout + retry only, no proxy) ========= */
+  const fetchJsonTry = async (url, timeoutMs = 15000) => {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs);
 
@@ -114,7 +116,6 @@
       });
 
       const text = await r.text();
-
       if (!r.ok) throw new Error(`HTTP_${r.status}::${text.slice(0, 160)}`);
 
       try {
@@ -127,20 +128,15 @@
     }
   };
 
-  const fetchJsonWithFallback = async (realUrl) => {
-    const tries = [
-      realUrl,
-      `https://corsproxy.io/?${encodeURIComponent(realUrl)}`,
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(realUrl)}`,
-      `https://cors.isomorphic-git.org/${realUrl}`,
-    ];
-
+  const fetchJson = async (realUrl) => {
     let lastErr = null;
-    for (const u of tries) {
+    // retry ringan biar nggak “memuat terus” kalau koneksi lagi drop
+    for (let i = 0; i < 3; i++) {
       try {
-        return await fetchJsonTry(u);
+        return await fetchJsonTry(realUrl, 15000 + i * 4000);
       } catch (e) {
         lastErr = e;
+        await new Promise((r) => setTimeout(r, 350 + i * 400));
       }
     }
     throw lastErr || new Error("FETCH_FAILED");
@@ -161,14 +157,13 @@
   };
 
   /* ========= API ANIME ========= */
-  // now supports params: apiGet("/api/search", { q:"naruto", page:1 })
   window.apiGet = async (path, params) => {
     try {
       const url = buildUrl(BASE, path, params);
-      return await fetchJsonWithFallback(url);
+      return await fetchJson(url);
     } catch (e) {
       console.error(e);
-      showToast("Gagal memuat data");
+      window.showToast?.("Gagal memuat data");
       throw e;
     }
   };
@@ -177,7 +172,7 @@
   window.setDramaApiKey = (k) => {
     try {
       localStorage.setItem(LS_DRAMA_KEY, String(k || "").trim());
-      showToast("API key drama disimpan");
+      window.showToast?.("API key drama disimpan");
     } catch {}
   };
 
@@ -191,9 +186,7 @@
 
   const normalizeDramaPath = (path) => {
     const p = String(path || "");
-    // kalau sudah full path "/api/internet/dramabox/..." -> potong jadi "/..."
     if (p.startsWith("/api/internet/dramabox/")) return p.replace("/api/internet/dramabox", "");
-    // alias internal kalau masih kepakai di kode lain
     if (p.startsWith("/api/dramabox/")) return p.replace("/api/dramabox", "");
     return p.startsWith("/") ? p : `/${p}`;
   };
@@ -201,10 +194,8 @@
   const apiGetDramaStable = async (path, params) => {
     try {
       const norm = normalizeDramaPath(path);
-      // norm boleh sudah punya query (?bookId=...) -> URL tetap aman
       const url = new URL(DRAMA_BASE + norm);
 
-      // merge params object (kalau ada)
       if (params && typeof params === "object") {
         Object.entries(params).forEach(([k, v]) => {
           if (v == null) return;
@@ -212,13 +203,11 @@
         });
       }
 
-      // always add apikey (Ryhar only)
       url.searchParams.set("apikey", getDramaApiKey());
-
-      return await fetchJsonWithFallback(url.toString());
+      return await fetchJson(url.toString());
     } catch (e) {
       console.error(e);
-      if (!isDramaRoute()) showToast("Gagal memuat drama");
+      if (!isDramaRoute()) window.showToast?.("Gagal memuat drama");
       throw e;
     }
   };
@@ -242,7 +231,11 @@
     }
   })();
 
-  const saveFav = () => localStorage.setItem(LS_FAV, JSON.stringify(favs));
+  const saveFav = () => {
+    try {
+      localStorage.setItem(LS_FAV, JSON.stringify(favs));
+    } catch {}
+  };
 
   window.getFavorites = () => [...favs];
   window.isFavorite = (s) => favs.some((a) => a.slug === s);
@@ -258,16 +251,16 @@
       status: a.status || "",
     });
     saveFav();
-    showToast("Ditambahkan ke My List");
+    window.showToast?.("Ditambahkan ke My List");
   };
 
   window.removeFavorite = (slug) => {
     favs = favs.filter((a) => a.slug !== slug);
     saveFav();
-    showToast("Dihapus dari My List");
+    window.showToast?.("Dihapus dari My List");
   };
 
-  /* ========= FAVORITES DRAMA (Ryhar only) ========= */
+  /* ========= FAVORITES DRAMA ========= */
   let dramaFavs = (() => {
     try {
       return JSON.parse(localStorage.getItem(LS_DRAMA_FAV)) || [];
@@ -276,7 +269,11 @@
     }
   })();
 
-  const saveDramaFav = () => localStorage.setItem(LS_DRAMA_FAV, JSON.stringify(dramaFavs));
+  const saveDramaFav = () => {
+    try {
+      localStorage.setItem(LS_DRAMA_FAV, JSON.stringify(dramaFavs));
+    } catch {}
+  };
 
   window.getDramaFavorites = () => [...dramaFavs];
   window.isDramaFavorite = (bookId) =>
@@ -296,14 +293,14 @@
       tags,
     });
     saveDramaFav();
-    showToast("Ditambahkan ke My List");
+    window.showToast?.("Ditambahkan ke My List");
   };
 
   window.removeDramaFavorite = (bookId) => {
     const id = bookId != null ? String(bookId) : "";
     dramaFavs = dramaFavs.filter((b) => String(b?.bookId || "") !== id);
     saveDramaFav();
-    showToast("Dihapus dari My List");
+    window.showToast?.("Dihapus dari My List");
   };
 
   /* ========= CARD ========= */
