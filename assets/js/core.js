@@ -27,7 +27,11 @@
     const routeDrama = p.startsWith("/drama");
 
     const routeAnime =
-      p === "/" || p.startsWith("/anime") || p.startsWith("/search") || p.startsWith("/explore") || p.startsWith("/anime/");
+      p === "/" ||
+      p.startsWith("/anime") ||
+      p.startsWith("/search") ||
+      p.startsWith("/explore") ||
+      p.startsWith("/anime/");
 
     try {
       if (routeDrama) localStorage.setItem(LS_MODE, MODE_DRAMA);
@@ -99,7 +103,7 @@
   };
 
   /* ========= FETCH HELPERS (timeout + fallback proxy) ========= */
-  const fetchJsonTry = async (url, timeoutMs = 12000) => {
+  const fetchJsonTry = async (url, timeoutMs = 9000) => {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs);
 
@@ -114,7 +118,6 @@
       });
 
       const text = await r.text();
-
       if (!r.ok) throw new Error(`HTTP_${r.status}::${text.slice(0, 160)}`);
 
       try {
@@ -127,18 +130,18 @@
     }
   };
 
+  // ✅ Biar gak “kejebak lama”: limit proxy + tiap try 9 detik
   const fetchJsonWithFallback = async (realUrl) => {
     const tries = [
       realUrl,
       `https://corsproxy.io/?${encodeURIComponent(realUrl)}`,
       `https://api.allorigins.win/raw?url=${encodeURIComponent(realUrl)}`,
-      `https://cors.isomorphic-git.org/${realUrl}`,
     ];
 
     let lastErr = null;
     for (const u of tries) {
       try {
-        return await fetchJsonTry(u);
+        return await fetchJsonTry(u, 9000);
       } catch (e) {
         lastErr = e;
       }
@@ -146,6 +149,7 @@
     throw lastErr || new Error("FETCH_FAILED");
   };
 
+  /* ========= URL BUILDER ========= */
   const buildUrl = (base, path, params) => {
     const p = String(path || "");
     const url = new URL(base + (p.startsWith("/") ? p : `/${p}`));
@@ -156,12 +160,10 @@
         url.searchParams.set(String(k), String(v));
       });
     }
-
     return url.toString();
   };
 
   /* ========= API ANIME ========= */
-  // now supports params: apiGet("/api/search", { q:"naruto", page:1 })
   window.apiGet = async (path, params) => {
     try {
       const url = buildUrl(BASE, path, params);
@@ -191,9 +193,7 @@
 
   const normalizeDramaPath = (path) => {
     const p = String(path || "");
-    // kalau sudah full path "/api/internet/dramabox/..." -> potong jadi "/..."
     if (p.startsWith("/api/internet/dramabox/")) return p.replace("/api/internet/dramabox", "");
-    // alias internal kalau masih kepakai di kode lain
     if (p.startsWith("/api/dramabox/")) return p.replace("/api/dramabox", "");
     return p.startsWith("/") ? p : `/${p}`;
   };
@@ -201,10 +201,8 @@
   const apiGetDramaStable = async (path, params) => {
     try {
       const norm = normalizeDramaPath(path);
-      // norm boleh sudah punya query (?bookId=...) -> URL tetap aman
       const url = new URL(DRAMA_BASE + norm);
 
-      // merge params object (kalau ada)
       if (params && typeof params === "object") {
         Object.entries(params).forEach(([k, v]) => {
           if (v == null) return;
@@ -212,9 +210,7 @@
         });
       }
 
-      // always add apikey (Ryhar only)
       url.searchParams.set("apikey", getDramaApiKey());
-
       return await fetchJsonWithFallback(url.toString());
     } catch (e) {
       console.error(e);
@@ -233,7 +229,7 @@
     window.apiGetDrama = apiGetDramaStable;
   }
 
-  /* ========= FAVORITES ANIME ========= */
+  /* ========= FAVORITES (anime + drama) ========= */
   let favs = (() => {
     try {
       return JSON.parse(localStorage.getItem(LS_FAV)) || [];
@@ -267,7 +263,6 @@
     showToast("Dihapus dari My List");
   };
 
-  /* ========= FAVORITES DRAMA (Ryhar only) ========= */
   let dramaFavs = (() => {
     try {
       return JSON.parse(localStorage.getItem(LS_DRAMA_FAV)) || [];
@@ -340,7 +335,7 @@
     return c;
   };
 
-  /* ========= DRAWER ========= */
+  /* ========= DRAWER + UI ========= */
   function closeDrawer() {
     const d = $("sideDrawer");
     const o = $("drawerOverlay");
@@ -393,7 +388,6 @@
   window.openSideDrawer = openDrawer;
   window.closeSideDrawer = closeDrawer;
 
-  /* ========= LEFT BUTTON MODE ========= */
   const ICON_BACK = `
     <svg class="icon-svg" viewBox="0 0 24 24" aria-hidden="true">
       <path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
@@ -415,7 +409,6 @@
     if (isHamburger) {
       back.setAttribute("aria-label", "Menu");
       back.innerHTML = ICON_HAMBURGER;
-
       back.onclick = (e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -426,7 +419,6 @@
 
     back.setAttribute("aria-label", "Kembali");
     back.innerHTML = ICON_BACK;
-
     back.onclick = (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -436,7 +428,6 @@
     };
   };
 
-  /* ========= GLOBAL UI ========= */
   document.addEventListener("DOMContentLoaded", () => {
     bindTheme(initTheme());
 
