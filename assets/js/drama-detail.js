@@ -1,4 +1,4 @@
-/* ========= assets/js/drama-detail.js ========= */
+/* ========= assets/js/drama-detail.js (UPDATED FULL) ========= */
 (() => {
   "use strict";
 
@@ -119,23 +119,45 @@
     throw lastErr || new Error("FETCH_FAILED");
   };
 
-  // ✅ kompatibel core.js lama/baru
-  // - kalau core.js ada: pakai apiGetDrama(path) (arg ke-2 boleh diabaikan)
-  // - kalau gak ada: fallback direct ke DRAMA_FALLBACK_BASE
-  const apiGetDramaSafe = async (path) => {
-    if (typeof window.apiGetDrama === "function") return await window.apiGetDrama(path);
+  // ✅ kompatibel core.js lama/baru + support params
+  // - core.js baru: apiGetDrama(path, params)
+  // - core.js lama: apiGetDrama(path) (params diabaikan)
+  // - kalau core.js gak ada: fallback direct ke DRAMA_FALLBACK_BASE
+  const apiGetDramaSafe = async (path, params) => {
+    if (typeof window.apiGetDrama === "function") return await window.apiGetDrama(path, params);
 
     const pth = String(path || "");
     const norm = pth.startsWith("/") ? pth : `/${pth}`;
 
     const url = new URL(DRAMA_FALLBACK_BASE + norm);
+
+    if (params && typeof params === "object") {
+      Object.entries(params).forEach(([k, v]) => {
+        if (v == null) return;
+        url.searchParams.set(String(k), String(v));
+      });
+    }
+
     url.searchParams.set("apikey", getDramaApiKey());
 
     return await fetchJsonWithFallback(url.toString());
   };
 
   // ====== normalize ======
-  const normalizeEpisodes = (payload) => (Array.isArray(payload?.result) ? payload.result : []);
+  const pickArray = (...xs) => xs.find(Array.isArray) || [];
+  const normalizeEpisodes = (p) =>
+    pickArray(
+      p?.result,
+      p?.result?.list,
+      p?.result?.episodes,
+      p?.data?.result,
+      p?.data?.result?.list,
+      p?.data?.episodes,
+      p?.episodes,
+      p?.list,
+      p?.chapterList,
+      p?.chapters
+    );
 
   const getSavedBook = () => {
     try {
@@ -176,7 +198,7 @@
     const ci = ep?.chapterIndex;
     if (typeof ci === "number" && Number.isFinite(ci)) return ci + 1;
 
-    const s = String(ep?.chapterName || "");
+    const s = String(ep?.chapterName || ep?.name || ep?.title || "");
     const m = s.match(/(\d+)/);
     return m ? parseInt(m[1], 10) : idx + 1;
   };
@@ -188,9 +210,9 @@
   const buildDetail = (b) => {
     if (!el.detail) return;
 
-    const title = b?.bookName || nameFromUrl || `Book ${bookId || "-"}`;
-    const poster = b?.coverWap || b?.cover || "";
-    const intro = b?.introduction || "";
+    const title = b?.bookName || b?.title || nameFromUrl || `Book ${bookId || "-"}`;
+    const poster = b?.coverWap || b?.cover || b?.poster || "";
+    const intro = b?.introduction || b?.synopsis || b?.desc || "";
     const tags = Array.isArray(b?.tags) ? b.tags : [];
 
     el.detail.innerHTML = `
@@ -200,7 +222,7 @@
         <div class="detail-info">
           <div class="detail-main-title"></div>
           <div class="detail-meta">
-            <div><span class="label">Total Episode:</span> ${b?.chapterCount ?? "?"}</div>
+            <div><span class="label">Total Episode:</span> ${b?.chapterCount ?? b?.episodeCount ?? "?"}</div>
           </div>
 
           <div class="detail-genres" id="dramaTags"></div>
@@ -347,7 +369,7 @@
 
     sorted.forEach((ep, i) => {
       const n = epNum(ep, i);
-      const vip = Number(ep?.isCharge || 0) ? 1 : 0;
+      const vip = Number(ep?.isCharge || ep?.vip || 0) ? 1 : 0;
 
       const box = document.createElement("div");
       box.className = "episode-box";
@@ -358,7 +380,7 @@
       box.onclick = () => {
         location.href = `/drama/watch?bookId=${encodeURIComponent(
           bookId
-        )}&chapterId=${encodeURIComponent(ep?.chapterId || "")}&name=${encodeURIComponent(
+        )}&chapterId=${encodeURIComponent(ep?.chapterId || ep?.id || "")}&name=${encodeURIComponent(
           nameFromUrl || ""
         )}`;
       };
@@ -373,32 +395,38 @@
     if (firstBtn) {
       firstBtn.onclick = () => {
         const first = sorted[0];
-        if (!first?.chapterId) return;
+        const chId = first?.chapterId || first?.id;
+        if (!chId) return;
         location.href = `/drama/watch?bookId=${encodeURIComponent(
           bookId
-        )}&chapterId=${encodeURIComponent(first.chapterId)}&name=${encodeURIComponent(
-          nameFromUrl || ""
-        )}`;
+        )}&chapterId=${encodeURIComponent(chId)}&name=${encodeURIComponent(nameFromUrl || "")}`;
       };
     }
+  };
+
+  const renderEpisodesError = (msg) => {
+    if (!el.list) return;
+    el.list.innerHTML = `
+      <div class="season-empty">
+        <div style="margin-bottom:10px">${msg || "Gagal memuat episode."}</div>
+        <button type="button" class="btn-play" id="dramaRetryEps" style="width:auto;padding:10px 14px">
+          Coba lagi
+        </button>
+      </div>
+    `;
+    $("dramaRetryEps")?.addEventListener("click", () => loadEpisodesLoop(true));
   };
 
   // (opsional) update detail dari API kalau endpoint ada
   async function loadDetailFromApi() {
     if (!bookId) return;
 
-    const bid = encodeURIComponent(bookId);
-    const candidates = [
-      `/detail?bookId=${bid}`,
-      `/bookdetail?bookId=${bid}`,
-      `/bookDetail?bookId=${bid}`,
-      `/info?bookId=${bid}`,
-    ];
+    const candidates = ["/detail", "/bookdetail", "/bookDetail", "/info"];
 
     for (const path of candidates) {
       try {
-        const payload = await apiGetDramaSafe(path);
-        const book = payload?.result || payload;
+        const payload = await apiGetDramaSafe(path, { bookId });
+        const book = payload?.result || payload?.data?.result || payload;
         if (book && (book.bookName || book.coverWap || book.cover || book.chapterCount)) {
           setSavedBook(book);
           buildDetail(book);
@@ -408,38 +436,59 @@
     }
   }
 
-  // ✅ pola drama.js: cache dulu, retry background
-  async function loadEpisodesLoop() {
-    if (!bookId || !el.list) return;
+  // ✅ stop infinite loading: retry terbatas + multi endpoint
+  let epsLoading = false;
 
-    // cache dulu
-    const cached = readEpsCache();
-    if (cached.length) renderEpisodeGrid(cached);
+  async function loadEpisodesLoop(force = false) {
+    if (epsLoading) return;
+    epsLoading = true;
 
-    // kalau belum ada, tampilkan loading
-    if (!hasRenderedEpisodes) el.list.innerHTML = `<div class="season-empty">Memuat episode...</div>`;
+    try {
+      if (!bookId || !el.list) {
+        renderEpisodesError("bookId tidak ditemukan di URL.");
+        return;
+      }
 
-    const bid = encodeURIComponent(bookId);
-    const path = `/allepisode?bookId=${bid}`; // ✅ FIX: always include bookId in query
+      // cache dulu
+      if (!force) {
+        const cached = readEpsCache();
+        if (cached.length) renderEpisodeGrid(cached);
+      }
 
-    while (true) {
-      try {
-        const payload = await apiGetDramaSafe(path);
-        const eps = normalizeEpisodes(payload);
+      if (!hasRenderedEpisodes) el.list.innerHTML = `<div class="season-empty">Memuat episode...</div>`;
 
-        if (!eps.length) {
-          console.error("[loadEpisodes] empty, retry...");
-          await sleep(2500);
-          continue;
+      const endpoints = [
+        "/allepisode",
+        "/allEpisode",
+        "/episode",
+        "/episodes",
+        "/episodeList",
+        "/chapterlist",
+        "/chapterList",
+      ];
+
+      const MAX_ATTEMPTS = 8;
+
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        for (const epPath of endpoints) {
+          try {
+            const payload = await apiGetDramaSafe(epPath, { bookId });
+            const eps = normalizeEpisodes(payload);
+
+            if (eps.length) {
+              saveEpsCache(eps);
+              renderEpisodeGrid(eps);
+              return;
+            }
+          } catch {}
         }
 
-        saveEpsCache(eps);
-        renderEpisodeGrid(eps);
-        return;
-      } catch (e) {
-        console.error("[loadEpisodes] fail, retry...", e);
-        await sleep(2500);
+        await sleep(Math.min(2000 * attempt, 10000));
       }
+
+      renderEpisodesError("Episode tidak bisa dimuat (API kosong / endpoint berubah).");
+    } finally {
+      epsLoading = false;
     }
   }
 
