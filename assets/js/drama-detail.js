@@ -79,7 +79,6 @@
     return k;
   };
 
-  // ✅ UPDATED: use res.json() only (no res.text())
   const fetchJsonTry = async (url, timeoutMs = 15000) => {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -93,24 +92,14 @@
         headers: { Accept: "application/json,text/plain,*/*" },
       });
 
-      if (res.status === 204) return null;
+      const text = await res.text();
+      if (!res.ok) throw new Error(`HTTP ${res.status} :: ${text.slice(0, 160)}`);
 
-      let data = null;
       try {
-        data = await res.json();
+        return text ? JSON.parse(text) : null;
       } catch {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        throw new Error("INVALID_JSON");
+        throw new Error(`INVALID_JSON :: ${text.slice(0, 160)}`);
       }
-
-      if (!res.ok) {
-        const msg =
-          (data && (data.message || data.error || data.msg)) ||
-          (data != null ? JSON.stringify(data).slice(0, 160) : "");
-        throw new Error(`HTTP ${res.status} :: ${msg}`);
-      }
-
-      return data;
     } finally {
       clearTimeout(t);
     }
@@ -376,7 +365,7 @@
         location.href = `/drama/watch?bookId=${encodeURIComponent(
           bookId
         )}&chapterId=${encodeURIComponent(first.chapterId)}&name=${encodeURIComponent(
-          nameFromUrl
+          nameFromUrl || ""
         )}`;
       };
     }
