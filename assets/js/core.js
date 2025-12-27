@@ -1,4 +1,4 @@
-/* ========= assets/js/core.js ========= */
+/* ========= assets/js/core.js (UPDATED) ========= */
 (() => {
   "use strict";
 
@@ -15,6 +15,8 @@
     MODE_ANIME = "anime",
     DARK = "dark",
     LIGHT = "light";
+
+  const DEFAULT_TIMEOUT = 8000;
 
   const $ = (q) => document.getElementById(q);
   const $$ = (q) => document.querySelectorAll(q);
@@ -103,12 +105,12 @@
   };
 
   /* ========= FETCH HELPERS (timeout + fallback proxy) ========= */
-  const fetchJsonTry = async (url, timeoutMs = 9000) => {
+  const fetchJsonTry = async (url, timeoutMs = DEFAULT_TIMEOUT) => {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs);
 
     try {
-      const r = await fetch(url, {
+      const res = await fetch(url, {
         method: "GET",
         mode: "cors",
         credentials: "omit",
@@ -117,20 +119,25 @@
         signal: ctrl.signal,
       });
 
-      const text = await r.text();
-      if (!r.ok) throw new Error(`HTTP_${r.status}::${text.slice(0, 160)}`);
+      const clone = res.clone();
+
+      if (!res.ok) {
+        const txt = await clone.text().catch(() => "");
+        throw new Error(`HTTP_${res.status}::${txt.slice(0, 160)}`);
+      }
 
       try {
-        return text ? JSON.parse(text) : null;
+        return await res.json();
       } catch {
-        throw new Error(`INVALID_JSON::${text.slice(0, 160)}`);
+        const txt = await clone.text().catch(() => "");
+        throw new Error(`INVALID_JSON::${txt.slice(0, 160)}`);
       }
     } finally {
       clearTimeout(t);
     }
   };
 
-  // ✅ Biar gak “kejebak lama”: limit proxy + tiap try 9 detik
+  // ✅ direct -> corsproxy -> allorigins
   const fetchJsonWithFallback = async (realUrl) => {
     const tries = [
       realUrl,
@@ -141,7 +148,7 @@
     let lastErr = null;
     for (const u of tries) {
       try {
-        return await fetchJsonTry(u, 9000);
+        return await fetchJsonTry(u, DEFAULT_TIMEOUT);
       } catch (e) {
         lastErr = e;
       }
@@ -198,6 +205,7 @@
     return p.startsWith("/") ? p : `/${p}`;
   };
 
+  // ✅ SUPPORT params (ini penting buat detail)
   const apiGetDramaStable = async (path, params) => {
     try {
       const norm = normalizeDramaPath(path);
