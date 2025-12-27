@@ -28,8 +28,6 @@
   // Ryhar only: list ada di j.result
   const normalizeList = (j) => (Array.isArray(j?.result) ? j.result : []);
 
-  const CACHE_KEY_LATEST = "dramabox_latest_cache";
-
   const storeBook = (b) => {
     try {
       if (!b?.bookId) return;
@@ -63,28 +61,12 @@
     });
   };
 
-  const readLatestCache = () => {
-    try {
-      const raw = sessionStorage.getItem(CACHE_KEY_LATEST);
-      const list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list : [];
-    } catch {
-      return [];
-    }
-  };
-
-  const saveLatestCache = (list) => {
-    try {
-      sessionStorage.setItem(CACHE_KEY_LATEST, JSON.stringify(list || []));
-    } catch {}
-  };
-
   async function loadLatestOnce() {
+    // still works (apikey auto)
     const j = await window.apiGetDrama("/latest");
     const list = normalizeList(j).filter((x) => x && x.bookId);
     if (!list.length) throw new Error("DRAMA_EMPTY");
     renderGrid(el.latest, list);
-    saveLatestCache(list);
     return list;
   }
 
@@ -170,21 +152,6 @@
     el.loading && el.loading.classList.remove("show");
   };
 
-  // ✅ retry loop tapi gak nge-block UI
-  async function loadLatestLoop() {
-    while (true) {
-      try {
-        await loadLatestOnce();
-        hideLoading(); // sukses -> tutup spinner
-        return;
-      } catch (e) {
-        console.error("[DRAMA] latest fail, retry...", e);
-        await sleep(2500);
-      }
-    }
-  }
-
-  // ✅ hero juga retry terus (background)
   async function tryLoadForYouLoop() {
     while (true) {
       try {
@@ -194,25 +161,25 @@
           initForYouHero(list);
           return;
         }
-      } catch (e) {
-        console.error("[DRAMA] foryou fail, retry...", e);
-      }
+      } catch {}
       await sleep(6000);
     }
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("DOMContentLoaded", async () => {
     showLoading();
 
-    // ✅ watchdog: spinner global maksimal 12 detik, abis itu hilang walau API belum sukses
-    setTimeout(() => hideLoading(), 12000);
-
-    // ✅ render cache dulu biar ga kosong
-    const cached = readLatestCache();
-    if (cached.length) renderGrid(el.latest, cached);
-
-    // ✅ jalanin retry loop (background)
     tryLoadForYouLoop();
-    loadLatestLoop();
+
+    while (true) {
+      try {
+        await loadLatestOnce();
+        hideLoading();
+        break;
+      } catch (e) {
+        console.error("[DRAMA] latest fail", e);
+        await sleep(2500);
+      }
+    }
   });
 })();
