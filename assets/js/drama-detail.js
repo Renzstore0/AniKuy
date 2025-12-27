@@ -42,21 +42,17 @@
         background: rgba(255,255,255,.06);
         color:#fff;
         border-radius:12px;
-
         height:46px;
         width:100%;
         padding:0;
-
         display:flex;
         align-items:center;
         justify-content:center;
-
         font-weight:700;
         font-size:14px;
         line-height:1;
         white-space:nowrap;
         font-variant-numeric: tabular-nums;
-
         user-select:none;
         cursor:pointer;
         transition: transform .08s ease, background .12s ease;
@@ -123,22 +119,18 @@
     throw lastErr || new Error("FETCH_FAILED");
   };
 
-  // ✅ support (path, params)
-  const apiGetDramaSafe = async (path, params) => {
-    if (typeof window.apiGetDrama === "function") return await window.apiGetDrama(path, params);
+  // ✅ kompatibel core.js lama/baru
+  // - kalau core.js ada: pakai apiGetDrama(path) (arg ke-2 boleh diabaikan)
+  // - kalau gak ada: fallback direct ke DRAMA_FALLBACK_BASE
+  const apiGetDramaSafe = async (path) => {
+    if (typeof window.apiGetDrama === "function") return await window.apiGetDrama(path);
 
     const pth = String(path || "");
     const norm = pth.startsWith("/") ? pth : `/${pth}`;
+
     const url = new URL(DRAMA_FALLBACK_BASE + norm);
-
-    if (params && typeof params === "object") {
-      Object.entries(params).forEach(([k, v]) => {
-        if (v == null) return;
-        url.searchParams.set(String(k), String(v));
-      });
-    }
-
     url.searchParams.set("apikey", getDramaApiKey());
+
     return await fetchJsonWithFallback(url.toString());
   };
 
@@ -338,7 +330,7 @@
       });
   };
 
-  // ====== EPISODE GRID ======
+  // ====== EP GRID ======
   let hasRenderedEpisodes = false;
 
   const renderEpisodeGrid = (episodes) => {
@@ -394,10 +386,18 @@
   // (opsional) update detail dari API kalau endpoint ada
   async function loadDetailFromApi() {
     if (!bookId) return;
-    const candidates = ["/detail", "/bookdetail", "/bookDetail", "/info"];
+
+    const bid = encodeURIComponent(bookId);
+    const candidates = [
+      `/detail?bookId=${bid}`,
+      `/bookdetail?bookId=${bid}`,
+      `/bookDetail?bookId=${bid}`,
+      `/info?bookId=${bid}`,
+    ];
+
     for (const path of candidates) {
       try {
-        const payload = await apiGetDramaSafe(path, { bookId });
+        const payload = await apiGetDramaSafe(path);
         const book = payload?.result || payload;
         if (book && (book.bookName || book.coverWap || book.cover || book.chapterCount)) {
           setSavedBook(book);
@@ -408,27 +408,23 @@
     }
   }
 
-  // ✅ pola drama.js: cache dulu, retry background, loading indicator dibatasi
+  // ✅ pola drama.js: cache dulu, retry background
   async function loadEpisodesLoop() {
     if (!bookId || !el.list) return;
 
-    // 1) render cache dulu (biar gak kosong)
+    // cache dulu
     const cached = readEpsCache();
     if (cached.length) renderEpisodeGrid(cached);
 
-    // 2) kalau belum ada cache, tampilkan loading (sementara)
-    if (!hasRenderedEpisodes) {
-      el.list.innerHTML = `<div class="season-empty">Memuat episode...</div>`;
-      // watchdog: max 12 detik, habis itu hilangkan teks loading (biar gak “memuat mulu”)
-      setTimeout(() => {
-        if (!hasRenderedEpisodes && el.list) el.list.innerHTML = "";
-      }, 12000);
-    }
+    // kalau belum ada, tampilkan loading
+    if (!hasRenderedEpisodes) el.list.innerHTML = `<div class="season-empty">Memuat episode...</div>`;
 
-    // 3) retry terus di belakang layar sampai sukses
+    const bid = encodeURIComponent(bookId);
+    const path = `/allepisode?bookId=${bid}`; // ✅ FIX: always include bookId in query
+
     while (true) {
       try {
-        const payload = await apiGetDramaSafe("/allepisode", { bookId });
+        const payload = await apiGetDramaSafe(path);
         const eps = normalizeEpisodes(payload);
 
         if (!eps.length) {
